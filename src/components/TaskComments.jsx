@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { LuSend, LuTrash2, LuLoaderCircle, LuMessageSquare } from 'react-icons/lu';
+import { LuSend, LuTrash2, LuLoaderCircle, LuMessageSquare, LuSparkles, LuX, LuRefreshCcw } from 'react-icons/lu';
 import moment from 'moment';
 import { UserContext } from '../context/userContext';
 import { WorkspaceContext } from '../context/WorkspaceContext';
 import { getComments, addComment, deleteComment } from '../services/commentService';
 import { useRealtimeNotifications } from '../hooks/useRealtimeTasks';
 import { supabase } from '../utils/supabaseClient';
+import useAI from '../hooks/useAI';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TaskComments — threaded comment section for a task detail view
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TaskComments = ({ taskId }) => {
+const TaskComments = ({ taskId, taskTitle = 'Task' }) => {
   const { user }      = useContext(UserContext);
   const { workspace } = useContext(WorkspaceContext);
 
@@ -19,7 +20,9 @@ const TaskComments = ({ taskId }) => {
   const [text, setText]           = useState('');
   const [loading, setLoading]     = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [aiSummary, setAiSummary]   = useState(null);
   const bottomRef = useRef(null);
+  const { summariseComments, loading: aiLoading } = useAI();
 
   // ── Load comments ──────────────────────────────────────────────────────────
   const loadComments = async () => {
@@ -92,7 +95,19 @@ const TaskComments = ({ taskId }) => {
     }
   };
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
+  // ── AI Summary ──────────────────────────────────────────────────────
+  const handleAISummary = async () => {
+    if (!comments.length) return;
+    const formatted = comments.map((c) => ({ author: c.authorName || 'User', text: c.content }));
+    try {
+      const result = await summariseComments(taskTitle, formatted);
+      setAiSummary(result);
+    } catch {
+      // error shown by hook
+    }
+  };
+
+  // ── Delete ──────────────────────────────────────────────────────────────
   const handleDelete = async (commentId) => {
     try {
       await deleteComment(commentId);
@@ -105,12 +120,59 @@ const TaskComments = ({ taskId }) => {
   return (
     <div className="mt-6">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <LuMessageSquare className="text-gray-400 text-base" />
-        <h4 className="text-sm font-semibold text-gray-700">
-          Comments <span className="text-gray-400 font-normal">({comments.length})</span>
-        </h4>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <LuMessageSquare className="text-gray-400 text-base" />
+          <h4 className="text-sm font-semibold text-gray-700">
+            Comments <span className="text-gray-400 font-normal">({comments.length})</span>
+          </h4>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Refresh */}
+          <button
+            onClick={loadComments}
+            disabled={loading}
+            className="refresh-btn"
+            title="Refresh comments"
+          >
+            <LuRefreshCcw size={12} className={loading ? 'ai-spin' : ''} />
+          </button>
+          {/* AI Summary */}
+          {comments.length > 0 && (
+            <button
+              className="ai-summarise-btn"
+              onClick={handleAISummary}
+              disabled={aiLoading}
+              title="Summarise all comments with AI"
+            >
+              {aiLoading
+                ? <LuLoaderCircle size={11} className="ai-spin" />
+                : <LuSparkles size={11} />}
+              {aiLoading ? 'Analysing…' : '✨ AI Summary'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* AI Summary Panel */}
+      {aiSummary && (
+        <div className="ai-summary-panel">
+          <div className="ai-summary-header">
+            <span className="ai-summary-title">
+              <LuSparkles size={12} /> AI Summary
+            </span>
+            <button className="ai-summary-close" onClick={() => setAiSummary(null)}>
+              <LuX size={13} />
+            </button>
+          </div>
+          <ul className="ai-summary-bullets">
+            {(aiSummary.bullets || []).map((b, i) => <li key={i}>{b}</li>)}
+          </ul>
+          {aiSummary.summary && (
+            <p className="ai-summary-footer">🤖 {aiSummary.summary}</p>
+          )}
+        </div>
+      )}
 
       {/* Comment list */}
       <div className="space-y-4 max-h-72 overflow-y-auto pr-1">

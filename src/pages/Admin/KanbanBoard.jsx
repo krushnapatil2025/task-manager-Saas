@@ -4,6 +4,7 @@ import DashboardLayout from '../../components/layouts/DashboardLayout';
 import { WorkspaceContext } from '../../context/WorkspaceContext';
 import { getAllTasks, normalizeTask, updateTaskStatus } from '../../services/taskService';
 import useRealtimeTasks from '../../hooks/useRealtimeTasks';
+import useAutomation    from '../../hooks/useAutomation';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import toast from 'react-hot-toast';
@@ -31,6 +32,7 @@ const PRIORITY_COLOR = {
 const KanbanBoard = () => {
   const { workspace } = useContext(WorkspaceContext);
   const navigate      = useNavigate();
+  const { trigger: triggerAutomation } = useAutomation();
 
   const [columns, setColumns] = useState({
     'Pending':     [],
@@ -87,6 +89,19 @@ const KanbanBoard = () => {
 
     try {
       await updateTaskStatus(draggableId, dstCol);
+      // Fire automation rules
+      triggerAutomation('task_status_changed', {
+        taskId:  draggableId,
+        task:    { ...movedTask, status: dstCol },
+        oldTask: { ...movedTask, status: srcCol },
+      });
+      if (dstCol === 'Completed') {
+        triggerAutomation('task_completed', {
+          taskId:  draggableId,
+          task:    { ...movedTask, status: 'Completed' },
+          oldTask: { ...movedTask, status: srcCol },
+        });
+      }
     } catch (err) {
       console.error('Status update failed:', err);
       toast.error('Failed to update task status');

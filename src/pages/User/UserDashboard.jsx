@@ -13,6 +13,7 @@ import CustomPieChart from '../../components/Charts/CustomPieChart';
 import CustomBarChart from '../../components/Charts/CustomBarChart';
 import { getUserDashboardData } from '../../services/taskService';
 import toast from 'react-hot-toast';
+import UpcomingEventsWidget from '../../components/Calendar/UpcomingEventsWidget';
 
 const COLORS = ['#8D51FF', '#00B8DB', '#7BCE00'];
 
@@ -109,14 +110,26 @@ const UserDashboard = () => {
           <CustomBarChart data={barChartData} />
         </div>
 
-        <div className="md:col-span-2 card bg-white/90 border border-slate-200/50">
-          <div className="flex items-center justify-between mb-4">
-            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent Tasks</h5>
-            <button className="card-btn" onClick={() => navigate('/user/tasks')}>
-              See All <LuArrowRight className="text-base" />
-            </button>
+        <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="card lg:col-span-2 bg-white rounded-2xl border border-slate-200/50 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent Tasks</h5>
+              <button className="card-btn" onClick={() => navigate('/user/tasks')}>
+                See All <LuArrowRight className="text-base" />
+              </button>
+            </div>
+            <TaskListTable tableData={dashboardData?.recentTasks || []} />
           </div>
-          <TaskListTable tableData={dashboardData?.recentTasks || []} />
+
+          <div className="card bg-white rounded-2xl border border-slate-200/50 p-5 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">📅 Upcoming Events</h5>
+              <button className="card-btn text-xs font-bold text-indigo-655 flex items-center gap-1 hover:text-indigo-800 cursor-pointer" onClick={() => navigate('/calendar')}>
+                Calendar <LuArrowRight size={14} />
+              </button>
+            </div>
+            <UpcomingEventsWidget />
+          </div>
         </div>
       </div>
     </DashboardLayout>

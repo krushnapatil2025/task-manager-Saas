@@ -62,3 +62,24 @@ export const markAllAsRead = async (userId) => {
 
   if (error) throw error;
 };
+
+/**
+ * Create a new notification.
+ */
+export const createNotification = async ({ userId, type, title, body, link }) => {
+  const { data, error } = await supabase
+    .from("notifications")
+    .insert({
+      user_id: userId,
+      type,
+      title,
+      body,
+      link,
+      is_read: false
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};

@@ -7,6 +7,18 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    headers: {
+      "Content-Security-Policy": [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: blob: https: http:",
+        "connect-src 'self' https://gxfnmpqbuamzilgeogfh.supabase.co https://*.supabase.co wss://*.supabase.co https://api.brevo.com https://www.googleapis.com https://oauth2.googleapis.com https://drive.google.com https://tmpfiles.org https://api.groq.com https://api.microlink.io",
+        "worker-src 'self' blob:",
+        "frame-src 'self' https://drive.google.com",
+      ].join('; '),
+    },
   },
   build: {
     outDir: "dist",
@@ -28,4 +40,5 @@ export default defineConfig({
     },
   },
 });
+
 

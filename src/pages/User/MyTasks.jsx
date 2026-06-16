@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { getMyTasks, normalizeTask } from '../../services/taskService';
 import { UserContext } from '../../context/userContext';
 import { WorkspaceContext } from '../../context/WorkspaceContext';
+import RefreshButton from '../../components/RefreshButton';
 
 const MyTasks = () => {
   const [allTasks, setAllTasks]       = useState([]);
@@ -51,7 +52,15 @@ const MyTasks = () => {
     <DashboardLayout activeMenu="My Tasks">
       <div className="my-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <h2 className="text-xl font-medium">My Tasks</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-medium">My Tasks</h2>
+            <RefreshButton
+              id="my-tasks-refresh"
+              onRefresh={loadTasks}
+              label="Refresh"
+              size="sm"
+            />
+          </div>
           {tabs?.[0]?.count > 0 && (
             <TaskStatusTabs
               tabs={tabs}

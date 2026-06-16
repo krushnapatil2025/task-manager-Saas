@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layouts/DashboardLayout';
 import moment from 'moment';
 import AvatarGroup from '../../components/AvatarGroup';
-import TaskComments from '../../components/TaskComments';
+import TaskChatPanel    from '../../components/TaskChatPanel';
 import TaskFileUploader from '../../components/TaskFileUploader';
+import RefreshButton    from '../../components/RefreshButton';
+import TaskTimer        from '../../components/TaskTimer';
 import {
   LuSquareArrowOutUpRight, LuLoaderCircle, LuCalendar,
   LuFlag, LuRefreshCcw, LuArrowLeft,
@@ -17,6 +19,7 @@ import { getTaskFiles } from '../../services/fileService';
 import { UserContext } from '../../context/userContext';
 import { WorkspaceContext } from '../../context/WorkspaceContext';
 import useRealtimeTasks from '../../hooks/useRealtimeTasks';
+import useAutomation    from '../../hooks/useAutomation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ViewTaskDetails — full task detail view for members with:
@@ -56,6 +59,8 @@ const ViewTaskDetails = () => {
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  const { trigger: triggerAutomation } = useAutomation();
+
   // ── Fetch task + files ───────────────────────────────────────────────────
   const loadTask = useCallback(async () => {
     if (!id) return;
@@ -90,7 +95,8 @@ const ViewTaskDetails = () => {
   // ── Status cycle ─────────────────────────────────────────────────────────
   const handleStatusCycle = async () => {
     if (!task || updatingStatus) return;
-    const next = STATUS_CYCLE[task.status] || 'Pending';
+    const next    = STATUS_CYCLE[task.status] || 'Pending';
+    const oldTask = { ...task };
     setUpdatingStatus(true);
 
     // Optimistic update
@@ -98,9 +104,15 @@ const ViewTaskDetails = () => {
     try {
       await updateTaskStatus(id, next);
       toast.success(`Status → ${next}`);
+
+      // Fire automation rules
+      triggerAutomation('task_status_changed', { taskId: id, task: { ...task, status: next }, oldTask });
+      if (next === 'Completed') {
+        triggerAutomation('task_completed', { taskId: id, task: { ...task, status: next }, oldTask });
+      }
     } catch (err) {
       toast.error('Failed to update status');
-      setTask((prev) => ({ ...prev, status: task.status })); // revert
+      setTask((prev) => ({ ...prev, status: oldTask.status })); // revert
     } finally {
       setUpdatingStatus(false);
     }
@@ -175,13 +187,21 @@ const ViewTaskDetails = () => {
   return (
     <DashboardLayout activeMenu="My Tasks">
       <div className="mt-5 pb-12">
-        {/* ── Back button ── */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 mb-5 transition"
-        >
-          <LuArrowLeft /> Back
-        </button>
+        {/* ── Back + Refresh row ── */}
+        <div className="flex items-center justify-between mb-5">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition"
+          >
+            <LuArrowLeft /> Back
+          </button>
+          <RefreshButton
+            id="task-detail-refresh"
+            onRefresh={loadTask}
+            label="Refresh"
+            size="sm"
+          />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* ═══ Left column — Task details ═══════════════════════════════ */}
@@ -224,6 +244,15 @@ const ViewTaskDetails = () => {
                     {moment(task.dueDate).isBefore(moment(), 'day') && ' · Overdue'}
                   </span>
                 )}
+                <button
+                  onClick={() => {
+                    navigate(`/calendar?scheduleForTask=${task.id}&title=${encodeURIComponent('Sync: ' + task.title)}`);
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition cursor-pointer"
+                >
+                  <LuCalendar className="text-xs" />
+                  Schedule Meeting
+                </button>
               </div>
 
               {/* Description */}
@@ -332,10 +361,15 @@ const ViewTaskDetails = () => {
             )}
           </div>
 
-          {/* ═══ Right column — Comments ═══════════════════════════════════ */}
+          {/* ═══ Right column — Timer + Comments ════════════════════════════ */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sticky top-20">
-              <TaskComments taskId={id} />
+            {/* Time Tracker */}
+            <div className="bg-white rounded-2xl border border-slate-200/50 shadow-sm p-5 mb-4">
+              <TaskTimer taskId={id} />
+            </div>
+            {/* Real-time Chat */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" style={{ minHeight: 420 }}>
+              <TaskChatPanel taskId={id} taskTitle={task?.title || 'Task'} />
             </div>
           </div>
         </div>

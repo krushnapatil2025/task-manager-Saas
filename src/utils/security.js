@@ -93,14 +93,14 @@ export const injectCSPMeta = () => {
   meta.httpEquiv = 'Content-Security-Policy';
   meta.content = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' blob: https://checkout.razorpay.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://checkout.razorpay.com",
     "worker-src 'self' blob:",
     "child-src 'self' blob:",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    `connect-src 'self' ${import.meta.env?.VITE_SUPABASE_URL || ''} https://*.supabase.co wss://*.supabase.co https://api.brevo.com`,
-    "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
-    "frame-src 'none'",
+    `connect-src 'self' ${import.meta.env?.VITE_SUPABASE_URL || ''} https://*.supabase.co wss://*.supabase.co https://api.brevo.com https://www.googleapis.com https://oauth2.googleapis.com https://drive.google.com https://tmpfiles.org https://api.groq.com https://api.microlink.io`,
+    "img-src 'self' data: blob: https: http:",
+    "frame-src 'self' https://drive.google.com",
     "object-src 'none'",
   ].join('; ');
 

@@ -28,11 +28,24 @@ const ApiKeys          = lazy(() => import('./pages/Admin/ApiKeys'));
 const Webhooks         = lazy(() => import('./pages/Admin/Webhooks'));
 const Integrations     = lazy(() => import('./pages/Admin/Integrations'));
 const InviteEmployee   = lazy(() => import('./pages/Admin/InviteEmployee'));
+const Analytics        = lazy(() => import('./pages/Admin/Analytics'));
+const Reports          = lazy(() => import('./pages/Admin/Reports'));
+const AdminTimesheets  = lazy(() => import('./pages/Admin/AdminTimesheets'));
+const SprintBoard      = lazy(() => import('./pages/Admin/SprintBoard'));
+const AutomationRules  = lazy(() => import('./pages/Admin/AutomationRules'));
 
 // ── Member pages (lazy) ──────────────────────────────────────────────────────
 const UserDashboard   = lazy(() => import('./pages/User/UserDashboard'));
 const MyTasks         = lazy(() => import('./pages/User/MyTasks'));
 const ViewTaskDetails = lazy(() => import('./pages/User/ViewTaskDetails'));
+const MyTimesheet     = lazy(() => import('./pages/User/MyTimesheet'));
+
+// ── Chat pages (lazy) ───────────────────────────────────────────────────
+const TeamChat        = lazy(() => import('./pages/Chat/TeamChat'));
+const DirectMessages  = lazy(() => import('./pages/Chat/DirectMessages'));
+
+// ── Calendar pages (lazy) ────────────────────────────────────────────────
+const CalendarPage    = lazy(() => import('./pages/Calendar/CalendarPage'));
 
 // ── Onboarding (lazy) ────────────────────────────────────────────────────────
 const CreateWorkspace = lazy(() => import('./pages/Onboarding/CreateWorkspace'));
@@ -173,7 +186,22 @@ const App = () => (
               <Route path="/admin/webhooks"    element={<Webhooks          />} />
               <Route path="/admin/integrations" element={<Integrations     />} />
               <Route path="/admin/create-task" element={<CreateTask        />} />
+              <Route path="/admin/analytics"    element={<Analytics         />} />
+              <Route path="/admin/reports"      element={<Reports           />} />
+              <Route path="/admin/timesheets"   element={<AdminTimesheets   />} />
+              <Route path="/admin/sprints"      element={<SprintBoard       />} />
+              <Route path="/admin/automations"  element={<AutomationRules   />} />
+              <Route path="/admin/calendar"     element={<CalendarPage adminView />} />
             </Route>
+          </Route>
+
+          {/* ── Chat routes (shared — any logged-in user) ───────────────── */}
+          <Route element={<PrivateRoute />}>
+            <Route path="/chat"            element={<TeamChat        />} />
+            <Route path="/chat/dm"         element={<DirectMessages  />} />
+            <Route path="/chat/dm/:userId" element={<DirectMessages  />} />
+            <Route path="/calendar"            element={<CalendarPage    />} />
+            <Route path="/calendar/event/:id"  element={<CalendarPage    />} />
           </Route>
 
           {/* ── Member (also accessible by admin) ───────────────────── */}
@@ -182,6 +210,7 @@ const App = () => (
               <Route path="/user/dashboard"        element={<UserDashboard   />} />
               <Route path="/user/tasks"            element={<MyTasks         />} />
               <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
+              <Route path="/user/timesheet"         element={<MyTimesheet    />} />
             </Route>
           </Route>
 

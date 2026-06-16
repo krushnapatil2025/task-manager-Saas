@@ -27,6 +27,12 @@ const SideMenu = ({ activeMenu }) => {
 
   const handleClick = (route) => {
     if (route === 'logout') handleLogout();
+    else if (route === 'ai') {
+      // Trigger the global AI Command Bar by simulating Ctrl+K
+      window.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'k', ctrlKey: true, bubbles: true,
+      }));
+    }
     else navigate(route);
   };
 

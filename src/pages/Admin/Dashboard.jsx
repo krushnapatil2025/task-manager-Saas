@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import InfoCard from '../../components/Cards/InfoCard';
 import { addThousandsSeparator } from '../../utils/helper';
-import { LuArrowRight, LuClipboardList, LuHourglass, LuPlay, LuCircleCheck } from 'react-icons/lu';
+import { LuArrowRight, LuClipboardList, LuHourglass, LuPlay, LuCircleCheck, LuSparkles } from 'react-icons/lu';
 import TaskListTable from '../../components/TaskListTable';
 import CustomPieChart from '../../components/Charts/CustomPieChart';
 import CustomBarChart from '../../components/Charts/CustomBarChart';
@@ -16,6 +16,8 @@ import useRealtimeTasks from '../../hooks/useRealtimeTasks';
 import usePermissions from '../../hooks/usePermissions';
 import { JOB_PROFILES } from '../Admin/InviteEmployee';
 import toast from 'react-hot-toast';
+import RefreshButton from '../../components/RefreshButton';
+import UpcomingEventsWidget from '../../components/Calendar/UpcomingEventsWidget';
 
 const COLORS = ['#8D51FF', '#00B8DB', '#7BCE00'];
 
@@ -80,12 +82,23 @@ const Dashboard = () => {
       <div className="card my-5 bg-white/90 border border-slate-200/50 shadow-sm">
         <div>
           <div className="col-span-3">
-            <h2 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">
-              Good Morning! {user?.name}
-            </h2>
-            <p className="text-xs md:text-[13px] text-slate-400 mt-1.5 font-bold uppercase tracking-wider">
-              {moment().format('dddd Do MMMM YYYY')}
-            </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">
+                  Good Morning! {user?.name}
+                </h2>
+                <p className="text-xs md:text-[13px] text-slate-400 mt-1.5 font-bold uppercase tracking-wider">
+                  {moment().format('dddd Do MMMM YYYY')}
+                </p>
+              </div>
+              {/* Refresh button */}
+              <RefreshButton
+                id="dashboard-refresh"
+                onRefresh={() => loadDashboard(false)}
+                label="Refresh"
+                size="sm"
+              />
+            </div>
             {/* Role + quick-access permission chips */}
             <div className="flex flex-wrap gap-2 mt-4">
               {myJP && (
@@ -157,8 +170,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="md:col-span-2">
-          <div className="card">
+        <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="card lg:col-span-2 bg-white rounded-2xl border border-slate-200/50 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h5 className="text-lg">Recent Tasks</h5>
               <button className="card-btn" onClick={() => navigate('/admin/tasks')}>
@@ -166,6 +179,16 @@ const Dashboard = () => {
               </button>
             </div>
             <TaskListTable tableData={dashboardData?.recentTasks || []} />
+          </div>
+
+          <div className="card bg-white rounded-2xl border border-slate-200/50 p-5 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">📅 Upcoming Events</h5>
+              <button className="card-btn text-xs font-bold text-indigo-650 flex items-center gap-1 hover:text-indigo-800 cursor-pointer" onClick={() => navigate('/calendar')}>
+                Calendar <LuArrowRight size={14} />
+              </button>
+            </div>
+            <UpcomingEventsWidget />
           </div>
         </div>
       </div>

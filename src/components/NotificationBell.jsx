@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import {
   LuBell, LuCheckCheck, LuLoaderCircle,
-  LuClipboardCheck, LuMessageSquare, LuUserPlus, LuX,
+  LuClipboardCheck, LuMessageSquare, LuUserPlus, LuX, LuCalendar
 } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
@@ -18,6 +18,7 @@ const TYPE_ICON = {
   task_comment:  <LuMessageSquare className="text-purple-500" />,
   task_status:   <LuClipboardCheck className="text-lime-500"  />,
   mention:       <LuMessageSquare className="text-amber-500"  />,
+  calendar_event:<LuCalendar      className="text-indigo-500" />,
 };
 
 const NotificationBell = () => {

@@ -23,14 +23,17 @@ import {
 import { auditTaskCreated, auditTaskDeleted } from '../../services/auditService';
 import usePermissions from '../../hooks/usePermissions';
 import PermissionGate from '../../components/PermissionGate';
+import AISuggestionBadge from '../../components/AISuggestionBadge';
+import useAutomation from '../../hooks/useAutomation';
 
 const CreateTask = () => {
   const location = useLocation();
-  const { taskId } = location.state || {};
+  const { taskId, aiPrefill } = location.state || {};
   const navigate = useNavigate();
   const { user }      = useContext(UserContext);
   const { workspace } = useContext(WorkspaceContext);
   const { canCreateTask, canEditTask, canDeleteTask } = usePermissions();
+  const { trigger: triggerAutomation } = useAutomation();
 
   const [taskData, setTaskData] = useState({
     title: '',
@@ -78,8 +81,9 @@ const CreateTask = () => {
         user.id,
         workspace.id
       );
-      // Fire-and-forget audit
+      // Fire-and-forget audit + automation
       auditTaskCreated(workspace.id, newTask.id, taskData.title);
+      triggerAutomation('task_created', { taskId: newTask.id, task: { ...taskData, id: newTask.id } });
       toast.success('Task created successfully!');
       clearData();
     } catch (err) {
@@ -161,9 +165,21 @@ const CreateTask = () => {
     }
   };
 
+  // ── Load task for edit OR apply AI prefill from Ctrl+K command bar ────────
   useEffect(() => {
-    if (taskId) loadTaskDetails(taskId);
-  }, [taskId]);
+    if (taskId) {
+      loadTaskDetails(taskId);
+    } else if (aiPrefill) {
+      setTaskData((prev) => ({
+        ...prev,
+        title:       aiPrefill.title       || prev.title,
+        description: aiPrefill.description || prev.description,
+        priority:    aiPrefill.priority    || prev.priority,
+        dueDate:     aiPrefill.dueDate     || prev.dueDate,
+      }));
+      toast('✨ AI filled the form — review and submit!', { icon: '🤖' });
+    }
+  }, [taskId, aiPrefill]);
 
   return (
     <DashboardLayout activeMenu="Create Task">
@@ -209,6 +225,12 @@ const CreateTask = () => {
                   value={taskData.priority}
                   onChange={(value) => handleValueChange('priority', value)}
                   placeholder="Select Priority"
+                />
+                {/* ── AI Suggestion Badge ── */}
+                <AISuggestionBadge
+                  title={taskData.title}
+                  description={taskData.description}
+                  onAccept={(p) => handleValueChange('priority', p)}
                 />
               </div>
               <div>

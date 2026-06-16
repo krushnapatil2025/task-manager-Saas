@@ -11,6 +11,7 @@ import useRealtimeTasks from '../../hooks/useRealtimeTasks';
 import usePermissions from '../../hooks/usePermissions';
 import PermissionGate from '../../components/PermissionGate';
 import ExcelJS from 'exceljs';
+import RefreshButton from '../../components/RefreshButton';
 
 const ManageTasks = () => {
   const [allTasks,     setAllTasks]      = useState([]);
@@ -124,6 +125,12 @@ const ManageTasks = () => {
                 <LuRefreshCcw className="text-xs animate-spin" /> Live update
               </span>
             )}
+            {/* Manual refresh */}
+            <RefreshButton
+              id="manage-tasks-refresh"
+              onRefresh={() => loadTasks(false)}
+              size="sm"
+            />
             <button className="flex lg:hidden download-btn gap-2" onClick={handleDownloadReport}
               style={{ display: canExportTasks ? undefined : 'none' }}>
               <LuFileSpreadsheet className="text-lg" /> Download
