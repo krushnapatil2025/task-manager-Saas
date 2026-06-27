@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useContext } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { UserContext }      from '../context/userContext';
 import { WorkspaceContext } from '../context/WorkspaceContext';
+import { playUserPrefSound } from '../utils/audioSynthesizer';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useTaskChat — Real-time chat hook for a task
@@ -14,7 +15,8 @@ import { WorkspaceContext } from '../context/WorkspaceContext';
 const MSG_SELECT = `
   id, content, message_type, mentions, reactions,
   created_at, edited_at, user_id,
-  profiles!user_id(name, profile_image_url)
+  profiles!user_id(name, profile_image_url),
+  task_message_reactions(user_id, emoji)
 `;
 
 export const useTaskChat = (taskId) => {
@@ -58,6 +60,9 @@ export const useTaskChat = (taskId) => {
         table:  'task_messages',
         filter: `task_id=eq.${taskId}`,
       }, async (payload) => {
+        if (payload.new && payload.new.user_id !== user?.id) {
+          playUserPrefSound();
+        }
         const { data } = await supabase
           .from('task_messages')
           .select(MSG_SELECT)
@@ -125,25 +130,61 @@ export const useTaskChat = (taskId) => {
   // ── Toggle emoji reaction ─────────────────────────────────────────────────
   const toggleReaction = useCallback(async (messageId, emoji) => {
     if (!user?.id) return;
-    const { data: existing } = await supabase
-      .from('task_message_reactions')
-      .select('message_id')
-      .eq('message_id', messageId)
-      .eq('user_id', user.id)
-      .eq('emoji', emoji)
-      .maybeSingle();
 
-    if (existing) {
-      await supabase.from('task_message_reactions')
-        .delete()
+    // ── Optimistic update: toggle emoji in local state instantly ────────────
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+
+      // Check if user has already reacted with this emoji
+      const hasReacted = (m.reactionsList || []).some(r => r.user_id === user.id && r.emoji === emoji);
+
+      // 1. Update user reactions list
+      let newReactionsList = [...(m.reactionsList || [])];
+      if (hasReacted) {
+        newReactionsList = newReactionsList.filter(r => !(r.user_id === user.id && r.emoji === emoji));
+      } else {
+        newReactionsList.push({ user_id: user.id, emoji });
+      }
+
+      // 2. Update aggregated counts
+      const reactions = { ...(m.reactions || {}) };
+      if (hasReacted) {
+        reactions[emoji] = Math.max(0, (reactions[emoji] || 1) - 1);
+        if (reactions[emoji] === 0) {
+          delete reactions[emoji];
+        }
+      } else {
+        reactions[emoji] = (reactions[emoji] || 0) + 1;
+      }
+
+      return { ...m, reactions, reactionsList: newReactionsList };
+    }));
+
+    // ── Sync in the background ──────────────────────────────────────────────
+    try {
+      const { data: existing } = await supabase
+        .from('task_message_reactions')
+        .select('message_id')
         .eq('message_id', messageId)
         .eq('user_id', user.id)
-        .eq('emoji', emoji);
-    } else {
-      await supabase.from('task_message_reactions')
-        .insert({ message_id: messageId, user_id: user.id, emoji });
+        .eq('emoji', emoji)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from('task_message_reactions')
+          .delete()
+          .eq('message_id', messageId)
+          .eq('user_id', user.id)
+          .eq('emoji', emoji);
+      } else {
+        await supabase.from('task_message_reactions')
+          .insert({ message_id: messageId, user_id: user.id, emoji });
+      }
+    } catch (err) {
+      console.error('Failed to toggle task message reaction:', err);
+      // Roll back the optimistic change on error
+      await fetchMessages();
     }
-    fetchMessages();
   }, [user?.id, fetchMessages]);
 
   return {

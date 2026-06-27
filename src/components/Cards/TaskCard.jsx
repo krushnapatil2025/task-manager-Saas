@@ -17,6 +17,7 @@ const TaskCard = ({
     attachmentCount,
     completedTodoCount,
     todoChecklist,
+    recurrenceRule,
     onClick
 }) => {
 
@@ -55,6 +56,11 @@ const TaskCard = ({
                     <div className={`text-[10px] font-bold tracking-wide uppercase ${getPriorityTagColor()} px-3 py-1 rounded-full`}>
                         {priority}
                     </div>
+                    {recurrenceRule && (
+                        <div className="text-[10px] font-bold tracking-wide uppercase text-indigo-700 bg-indigo-50 border border-indigo-200/40 px-3 py-1 rounded-full flex items-center gap-0.5">
+                            🔁 {recurrenceRule}
+                        </div>
+                    )}
                 </div>
                 {attachmentCount > 0 && (
                     <div className="flex items-center gap-1 text-slate-400 font-semibold text-xs">
@@ -114,4 +120,4 @@ const TaskCard = ({
         </div>
     );
 }
-export default TaskCard;
+export default React.memo(TaskCard);

@@ -3,11 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import AuthLayout from '../../components/layouts/AuthLAyout';
 import { supabase } from '../../utils/supabaseClient';
 import { validateEmail } from '../../utils/helper';
+import { BRAND_COLORS } from '../../context/BrandContext';
 import toast from 'react-hot-toast';
 import {
   LuLoaderCircle, LuBuilding2, LuUser, LuMail, LuPhone,
   LuLock, LuChevronRight, LuChevronLeft, LuCircleCheck,
-  LuShield, LuEye, LuEyeOff,
+  LuShield, LuEye, LuEyeOff, LuPalette,
 } from 'react-icons/lu';
 
 // ── password strength ─────────────────────────────────────────────────────────
@@ -30,13 +31,13 @@ const INDUSTRIES = [
 ];
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'];
 
-const STEPS = ['Account', 'Company', 'Confirm'];
+const STEPS = ['Account', 'Company', 'Branding', 'Confirm'];
 
 // ── component ─────────────────────────────────────────────────────────────────
 const AdminRegister = () => {
   const navigate = useNavigate();
 
-  const [step,    setStep]    = useState(0); // 0, 1, 2
+  const [step,    setStep]    = useState(0); // 0, 1, 2, 3
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
   const [showPw,  setShowPw]  = useState(false);
@@ -52,6 +53,9 @@ const AdminRegister = () => {
   const [industry, setIndustry] = useState('');
   const [size,     setSize]     = useState('');
 
+  // Step 2 — branding
+  const [selectedColor, setSelectedColor] = useState(BRAND_COLORS[0]); // default Indigo
+
   // ── validation per step ───────────────────────────────────────────────────
   const validateStep = () => {
     setError('');
@@ -64,6 +68,9 @@ const AdminRegister = () => {
       if (!company.trim())          return setError('Company name is required.'), false;
       if (!industry)                return setError('Please select an industry.'), false;
       if (!size)                    return setError('Please select company size.'), false;
+    }
+    if (step === 2) {
+      if (!selectedColor)           return setError('Please choose a brand color preset.'), false;
     }
     return true;
   };
@@ -79,7 +86,6 @@ const AdminRegister = () => {
     setError('');
     setLoading(true);
 
-    // Hard timeout — if anything stalls > 15 s, bail gracefully
     const timeoutId = setTimeout(() => {
       setLoading(false);
       setError('Request timed out. Check your connection and try again.');
@@ -112,11 +118,8 @@ const AdminRegister = () => {
         .replace(/^-|-$/g, '')
         .slice(0, 48);
 
-      // 3. Call a single SECURITY DEFINER RPC that:
-      //    a) upserts the profile (bypasses RLS — user not confirmed yet)
-      //    b) creates the workspace
-      //    c) adds the user as company_admin member
-      const { error: rpcErr } = await supabase.rpc('bootstrap_company_admin', {
+      // 3. Call bootstrap_company_admin RPC
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('bootstrap_company_admin', {
         p_user_id:        userId,
         p_name:           name,
         p_phone:          phone || null,
@@ -127,9 +130,10 @@ const AdminRegister = () => {
         p_workspace_slug: `${slug}-${Date.now()}`,
       });
 
-      // If RPC doesn't exist yet, fall back to direct calls
+      let workspaceId = rpcData?.workspace_id;
+
+      // Fallback in case RPC bootstrap_company_admin is styled differently or has different columns
       if (rpcErr && rpcErr.code === 'PGRST202') {
-        // Fallback: direct profile upsert + workspace create
         await supabase.from('profiles').upsert({
           id:               userId,
           name,
@@ -142,28 +146,43 @@ const AdminRegister = () => {
           status:           'active',
         }, { onConflict: 'id' });
 
-        await supabase.rpc('create_workspace_with_admin', {
+        const { data: wsData, error: createWsErr } = await supabase.rpc('create_workspace_with_admin', {
           p_name: company,
           p_slug: `${slug}-${Date.now()}`,
         });
+        if (createWsErr) throw createWsErr;
+        workspaceId = wsData;
       } else if (rpcErr) {
         throw rpcErr;
       }
 
+      // 4. Set Selected Brand Theme on the Workspace
+      if (workspaceId && selectedColor) {
+        await supabase
+          .from('workspaces')
+          .update({
+            brand_color:       selectedColor.hex,
+            brand_color_light: selectedColor.light,
+            brand_color_text:  selectedColor.text,
+            brand_color_name:  selectedColor.name,
+            company_name:      company,
+          })
+          .eq('id', workspaceId);
+      }
+
       clearTimeout(timeoutId);
 
-      // 4. Check if email confirmation is required
+      // 5. Check if email confirmation is required
       const needsConfirm = !authData.session;
       if (needsConfirm) {
         toast.success('Account created! Check your email to confirm, then log in.');
       } else {
-        toast.success(`Welcome to TaskFlow, ${name.split(' ')[0]}! 🎉`);
+        toast.success(`Welcome to ${company}! 🎉`);
       }
       navigate('/login');
 
     } catch (err) {
       clearTimeout(timeoutId);
-      // Friendly messages for common Supabase errors
       const msg = err.message || '';
       if (msg.includes('already registered') || msg.includes('already been registered')) {
         setError('This email is already registered. Try logging in instead.');
@@ -180,291 +199,326 @@ const AdminRegister = () => {
 
   const strength = getStrength(password);
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <AuthLayout>
-      <div className="w-full max-w-lg mx-auto">
+    <AuthLayout title="Create Workspace" subtitle="Set up your enterprise tenant shell">
+      <div className="w-full">
         {/* ── Progress stepper ── */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="flex items-center justify-center gap-1.5 mb-6 select-none">
           {STEPS.map((label, i) => (
             <React.Fragment key={label}>
               <div className="flex flex-col items-center gap-1">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold transition-all duration-200 ${
                     i < step
                       ? 'bg-green-500 text-white'
                       : i === step
-                      ? 'bg-white text-indigo-700 shadow-lg shadow-white/20'
-                      : 'bg-white/10 text-white/40'
+                      ? 'bg-indigo-650 text-white shadow-md shadow-indigo-100'
+                      : 'bg-slate-100 text-slate-400 border border-slate-200/60'
                   }`}
                 >
-                  {i < step ? <LuCircleCheck size={16} /> : i + 1}
+                  {i < step ? <LuCircleCheck size={14} /> : i + 1}
                 </div>
-                <span className={`text-[10px] font-medium ${i === step ? 'text-white' : 'text-white/40'}`}>
+                <span className={`text-[9px] font-bold ${i === step ? 'text-slate-800' : 'text-slate-400'}`}>
                   {label}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`w-12 h-px mt-[-14px] ${i < step ? 'bg-green-500' : 'bg-white/20'}`} />
+                <div className={`w-8 h-px mt-[-14px] ${i < step ? 'bg-green-500' : 'bg-slate-200'}`} />
               )}
             </React.Fragment>
           ))}
         </div>
 
-        {/* ── Card ── */}
-        <div className="p-8 rounded-2xl bg-white/10 shadow-2xl backdrop-blur-xl border border-white/20 animate-fade-in">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg">
-              <LuShield className="text-white" size={20} />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white leading-tight">
-                {step === 0 && 'Create Admin Account'}
-                {step === 1 && 'Company Details'}
-                {step === 2 && 'Review & Confirm'}
-              </h3>
-              <p className="text-xs text-white/50">
-                {step === 0 && 'Your personal login credentials'}
-                {step === 1 && "Tell us about your organisation"}
-                {step === 2 && 'Everything look good?'}
-              </p>
-            </div>
+        {/* ── Error ── */}
+        {error && (
+          <div className="text-red-600 text-xs mb-4 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-center font-medium">
+            {error}
           </div>
+        )}
 
-          {/* Error */}
-          {error && (
-            <div className="text-red-300 text-xs mb-4 bg-red-500/15 border border-red-400/30 rounded-xl px-3 py-2 text-center">
-              {error}
+        {/* ── Step 0: Account ── */}
+        {step === 0 && (
+          <div className="flex flex-col gap-4">
+            <Field label="Full Name" icon={<LuUser size={13} />}>
+              <input
+                id="reg-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jane Smith"
+                className="form-input mt-0"
+                autoComplete="name"
+              />
+            </Field>
+
+            <Field label="Work Email" icon={<LuMail size={13} />}>
+              <input
+                id="reg-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jane@company.com"
+                className="form-input mt-0"
+                autoComplete="email"
+              />
+            </Field>
+
+            <Field label="Phone (optional)" icon={<LuPhone size={13} />}>
+              <input
+                id="reg-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                className="form-input mt-0"
+              />
+            </Field>
+
+            <div>
+              <Field label="Password" icon={<LuLock size={13} />}>
+                <div className="relative">
+                  <input
+                    id="reg-password"
+                    type={showPw ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    className="form-input mt-0 pr-10"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPw ? <LuEyeOff size={15} /> : <LuEye size={15} />}
+                  </button>
+                </div>
+              </Field>
+              {password && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex gap-1">
+                    {[1,2,3,4].map((i) => (
+                      <div
+                        key={i}
+                        className={`flex-1 h-1 rounded-full transition-all ${
+                          i <= strength ? strengthColor[strength] : 'bg-slate-100'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold">{strengthLabel[strength]}</p>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* ── Step 0: Account ── */}
-          {step === 0 && (
-            <div className="flex flex-col gap-4">
-              <Field label="Full Name" icon={<LuUser size={14} />}>
-                <input
-                  id="reg-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Jane Smith"
-                  className="input-ghost"
-                  autoComplete="name"
-                />
-              </Field>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center justify-center gap-2 cursor-pointer transition"
+            >
+              Next: Company Info <LuChevronRight size={14} />
+            </button>
+          </div>
+        )}
 
-              <Field label="Work Email" icon={<LuMail size={14} />}>
-                <input
-                  id="reg-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jane@company.com"
-                  className="input-ghost"
-                  autoComplete="email"
-                />
-              </Field>
+        {/* ── Step 1: Company ── */}
+        {step === 1 && (
+          <div className="flex flex-col gap-4">
+            <Field label="Company Name" icon={<LuBuilding2 size={13} />}>
+              <input
+                id="reg-company"
+                type="text"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="Acme Corp"
+                className="form-input mt-0"
+              />
+            </Field>
 
-              <Field label="Phone (optional)" icon={<LuPhone size={14} />}>
-                <input
-                  id="reg-phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className="input-ghost"
-                />
-              </Field>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-500 font-semibold">Industry</label>
+              <select
+                id="reg-industry"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="form-input mt-0 bg-white"
+              >
+                <option value="">Select industry…</option>
+                {INDUSTRIES.map((ind) => (
+                  <option key={ind} value={ind}>{ind}</option>
+                ))}
+              </select>
+            </div>
 
-              <div>
-                <Field label="Password" icon={<LuLock size={14} />}>
-                  <div className="relative">
-                    <input
-                      id="reg-password"
-                      type={showPw ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 8 characters"
-                      className="input-ghost pr-9"
-                      autoComplete="new-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPw((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
-                    >
-                      {showPw ? <LuEyeOff size={15} /> : <LuEye size={15} />}
-                    </button>
-                  </div>
-                </Field>
-                {password && (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex gap-1">
-                      {[1,2,3,4].map((i) => (
-                        <div
-                          key={i}
-                          className={`flex-1 h-1 rounded-full transition-all ${
-                            i <= strength ? strengthColor[strength] : 'bg-white/10'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-white/40">{strengthLabel[strength]}</p>
-                  </div>
-                )}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-500 font-semibold">Company Size</label>
+              <div className="grid grid-cols-5 gap-2">
+                {COMPANY_SIZES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSize(s)}
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all duration-155 cursor-pointer ${
+                      size === s
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100'
+                        : 'bg-slate-50 text-slate-650 border-slate-200 hover:border-slate-350 hover:bg-slate-100/60'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
+            </div>
 
+            <div className="flex gap-3 mt-2">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex-1 py-2.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-center justify-center gap-1"
+              >
+                <LuChevronLeft size={14} /> Back
+              </button>
               <button
                 type="button"
                 onClick={handleNext}
-                className="btn-primary mt-2 flex items-center justify-center gap-2"
+                className="flex-[2] bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition flex items-center justify-center gap-1"
               >
-                Next: Company Info <LuChevronRight size={16} />
+                Choose Brand theme <LuChevronRight size={14} />
               </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ── Step 1: Company ── */}
-          {step === 1 && (
-            <div className="flex flex-col gap-4">
-              <Field label="Company Name" icon={<LuBuilding2 size={14} />}>
-                <input
-                  id="reg-company"
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Acme Corp"
-                  className="input-ghost"
-                />
-              </Field>
+        {/* ── Step 2: Branding Settings ── */}
+        {step === 2 && (
+          <div className="flex flex-col gap-4">
+            <Field label="Choose Workspace Brand Color" icon={<LuPalette size={13} />}>
+              <div className="grid grid-cols-5 gap-3 mt-1.5">
+                {BRAND_COLORS.map((c) => (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => setSelectedColor(c)}
+                    className={`relative w-8 h-8 rounded-full border-2 transition-all cursor-pointer mx-auto ${
+                      selectedColor.name === c.name
+                        ? 'border-slate-700 scale-110 shadow-md ring-2 ring-indigo-500/10'
+                        : 'border-transparent hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                    title={c.name}
+                  >
+                    {selectedColor.name === c.name && (
+                      <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs select-none">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </Field>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-white/60 font-medium">Industry</label>
-                <select
-                  id="reg-industry"
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  className="input-ghost"
+            {/* Interactive Live Card Preview */}
+            <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 flex flex-col gap-2.5 select-none mt-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Live Brand Preview</span>
+              <div className="flex items-center gap-2">
+                <span 
+                  style={{ backgroundColor: selectedColor.hex }}
+                  className="w-6.5 h-6.5 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm"
                 >
-                  <option value="" className="bg-gray-900">Select industry…</option>
-                  {INDUSTRIES.map((ind) => (
-                    <option key={ind} value={ind} className="bg-gray-900">{ind}</option>
-                  ))}
-                </select>
+                  {company ? company[0].toUpperCase() : 'A'}
+                </span>
+                <span className="text-xs font-black text-slate-800">{company || 'My Company'}</span>
               </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-white/60 font-medium">Company Size</label>
-                <div className="grid grid-cols-5 gap-2">
-                  {COMPANY_SIZES.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setSize(s)}
-                      className={`py-2 rounded-xl text-xs font-semibold border transition-all ${
-                        size === s
-                          ? 'bg-white text-indigo-700 border-white shadow-lg'
-                          : 'bg-white/5 text-white/60 border-white/10 hover:border-white/30'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-2">
-                <button type="button" onClick={handleBack} className="btn-ghost flex items-center gap-1">
-                  <LuChevronLeft size={16} /> Back
+              <div className="flex gap-2 mt-0.5">
+                <button
+                  type="button"
+                  style={{ backgroundColor: selectedColor.hex }}
+                  className="text-[9px] font-bold text-white px-3 py-1.5 rounded-lg shadow-sm"
+                >
+                  Primary Action
                 </button>
-                <button type="button" onClick={handleNext} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  Review <LuChevronRight size={16} />
-                </button>
+                <span
+                  style={{ color: selectedColor.text, backgroundColor: selectedColor.light }}
+                  className="text-[9px] font-bold px-3 py-1.5 rounded-lg border border-transparent"
+                >
+                  {selectedColor.name} Theme
+                </span>
               </div>
             </div>
-          )}
 
-          {/* ── Step 2: Confirm ── */}
-          {step === 2 && (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="rounded-xl bg-white/5 border border-white/10 divide-y divide-white/10">
-                <SummaryRow label="Name"     value={name} />
-                <SummaryRow label="Email"    value={email} />
-                <SummaryRow label="Phone"    value={phone || '—'} />
-                <SummaryRow label="Company"  value={company} />
-                <SummaryRow label="Industry" value={industry} />
-                <SummaryRow label="Size"     value={size} />
-              </div>
+            <div className="flex gap-3 mt-2">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex-1 py-2.5 text-xs font-semibold text-slate-650 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-center justify-center gap-1"
+              >
+                <LuChevronLeft size={14} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                className="flex-[2] bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition flex items-center justify-center gap-1"
+              >
+                Review details <LuChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
 
-              <div className="rounded-xl bg-indigo-500/10 border border-indigo-400/20 p-3 text-xs text-indigo-200 leading-relaxed">
-                <strong className="text-indigo-100">What happens next?</strong><br />
-                A workspace is auto-created for <strong>{company}</strong>. You'll be the
-                Company Admin. Invite employees from your dashboard — they'll receive a Brevo
-                email with a setup link.
-              </div>
+        {/* ── Step 3: Confirm ── */}
+        {step === 3 && (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 divide-y divide-slate-150/60 overflow-hidden">
+              <SummaryRow label="Name"     value={name} />
+              <SummaryRow label="Email"    value={email} />
+              <SummaryRow label="Phone"    value={phone || '—'} />
+              <SummaryRow label="Company"  value={company} />
+              <SummaryRow label="Industry" value={industry} />
+              <SummaryRow label="Size"     value={size} />
+              <SummaryRow 
+                label="Theme"     
+                value={
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: selectedColor.hex }}></span>
+                    <span>{selectedColor.name}</span>
+                  </div>
+                } 
+              />
+            </div>
 
-              <div className="flex gap-3">
-                <button type="button" onClick={handleBack} disabled={loading} className="btn-ghost flex items-center gap-1">
-                  <LuChevronLeft size={16} /> Back
-                </button>
-                <button type="submit" disabled={loading} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  {loading ? <LuLoaderCircle className="animate-spin" size={16} /> : <LuCircleCheck size={16} />}
-                  {loading ? 'Creating account…' : 'Create Company Account'}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+            <div className="rounded-xl bg-indigo-50 border border-indigo-100/50 p-4 text-xs text-indigo-850 leading-relaxed font-semibold">
+              <strong className="text-indigo-950 font-black">What happens next?</strong><br />
+              A workspace will be automatically created with your preferred {selectedColor.name} theme. 
+              As the administrator, you can invite your team from the dashboard.
+            </div>
 
-        <p className="text-center text-xs text-white/40 mt-4">
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={handleBack} 
+                disabled={loading} 
+                className="flex-1 py-2.5 text-xs font-semibold text-slate-650 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-center justify-center gap-1"
+              >
+                <LuChevronLeft size={14} /> Back
+              </button>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                className="flex-[2] bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-500/10"
+              >
+                {loading ? <LuLoaderCircle className="animate-spin" size={14} /> : <LuCircleCheck size={14} />}
+                {loading ? 'Creating account…' : 'Create Company Workspace'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        <p className="text-center text-xs text-slate-500 mt-6 font-bold">
           Already have an account?{' '}
-          <Link to="/login" className="text-indigo-300 hover:underline">Sign in</Link>
+          <Link to="/login" className="text-indigo-650 hover:underline font-extrabold">Sign in</Link>
         </p>
       </div>
-
-      {/* Scoped styles */}
-      <style>{`
-        .input-ghost {
-          width: 100%;
-          background: rgba(255,255,255,0.07);
-          border: 1px solid rgba(255,255,255,0.15);
-          border-radius: 0.75rem;
-          padding: 0.5rem 0.75rem;
-          color: white;
-          font-size: 0.875rem;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-        .input-ghost::placeholder { color: rgba(255,255,255,0.3); }
-        .input-ghost:focus { border-color: rgba(147,197,253,0.6); }
-        .input-ghost option { background: #1e1b4b; }
-        .btn-primary {
-          background: linear-gradient(to right, #4f46e5, #7c3aed);
-          color: white;
-          font-weight: 600;
-          font-size: 0.875rem;
-          padding: 0.6rem 1.25rem;
-          border-radius: 0.75rem;
-          transition: opacity 0.2s;
-          cursor: pointer;
-          border: none;
-        }
-        .btn-primary:hover { opacity: 0.9; }
-        .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
-        .btn-ghost {
-          background: rgba(255,255,255,0.07);
-          color: rgba(255,255,255,0.7);
-          font-weight: 600;
-          font-size: 0.875rem;
-          padding: 0.6rem 1rem;
-          border-radius: 0.75rem;
-          border: 1px solid rgba(255,255,255,0.12);
-          transition: background 0.2s;
-          cursor: pointer;
-        }
-        .btn-ghost:hover { background: rgba(255,255,255,0.12); }
-      `}</style>
     </AuthLayout>
   );
 };
@@ -472,17 +526,17 @@ const AdminRegister = () => {
 // ── tiny helpers ──────────────────────────────────────────────────────────────
 const Field = ({ label, icon, children }) => (
   <div className="flex flex-col gap-1">
-    <label className="text-xs text-white/60 font-medium flex items-center gap-1">
-      {icon} {label}
+    <label className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 select-none">
+      <span className="text-slate-400">{icon}</span> {label}
     </label>
     {children}
   </div>
 );
 
 const SummaryRow = ({ label, value }) => (
-  <div className="flex items-center justify-between px-4 py-2.5">
-    <span className="text-xs text-white/40">{label}</span>
-    <span className="text-xs text-white font-medium">{value}</span>
+  <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+    <span className="text-xs text-slate-450 font-bold">{label}</span>
+    <span className="text-xs text-slate-800 font-extrabold">{value}</span>
   </div>
 );
 

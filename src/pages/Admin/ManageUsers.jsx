@@ -23,18 +23,18 @@ import ExcelJS from 'exceljs';
 const JP_MAP = Object.fromEntries(JOB_PROFILES.map(j => [j.value, j]));
 
 const statusBadge = (status, isPending, isExpired) => {
-  if (status === 'accepted') return { label: 'Accepted', cls: 'bg-green-500/15 text-green-300 border-green-400/30' };
-  if (status === 'revoked')  return { label: 'Revoked',  cls: 'bg-gray-500/15 text-gray-400 border-gray-500/30' };
-  if (isExpired)             return { label: 'Expired',  cls: 'bg-red-500/15 text-red-300 border-red-400/30' };
-  if (isPending)             return { label: 'Pending',  cls: 'bg-yellow-500/15 text-yellow-300 border-yellow-400/30' };
-  return                            { label: status,     cls: 'bg-white/10 text-white/50 border-white/10' };
+  if (status === 'accepted') return { label: 'Accepted', cls: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30' };
+  if (status === 'revoked')  return { label: 'Revoked',  cls: 'bg-slate-55 text-slate-600 border-slate-200 dark:bg-[#161619]/40 dark:text-[#a1a1aa] dark:border-zinc-800' };
+  if (isExpired)             return { label: 'Expired',  cls: 'bg-rose-50 text-rose-700 border-rose-205 dark:bg-rose-955/15 dark:text-rose-455 dark:border-rose-900/30' };
+  if (isPending)             return { label: 'Pending',  cls: 'bg-amber-50 text-amber-705 border-amber-200 dark:bg-amber-955/15 dark:text-amber-400 dark:border-amber-900/30' };
+  return                            { label: status,     cls: 'bg-slate-55 text-slate-600 border-slate-205 dark:bg-[#161619]/40 dark:text-[#a1a1aa] dark:border-zinc-800' };
 };
 
 const TABS = ['All Members', 'Pending Invitations', 'All Invitations', 'Access Control'];
 
 // ─────────────────────────────────────────────────────────────────────────────
 const ManageUsers = () => {
-  const { workspace } = useContext(WorkspaceContext);
+  const { workspace, onlineUsers = {} } = useContext(WorkspaceContext);
   const { user }      = useContext(UserContext);
 
   const [tab,            setTab]           = useState(0);
@@ -52,9 +52,6 @@ const ManageUsers = () => {
   const loadMembers = async () => {
     if (!workspace?.id) return;
 
-    // ── Try the enriched RPC first ─────────────────────────────────────────
-    // Falls through silently if the function hasn't been deployed to Supabase yet.
-    // Run supabase/fix_get_workspace_members_full.sql to deploy it permanently.
     try {
       const { data, error } = await supabase.rpc('get_workspace_members_full', {
         p_workspace_id: workspace.id,
@@ -63,15 +60,10 @@ const ManageUsers = () => {
         setMembers(data);
         return;
       }
-      // error.code 'PGRST202' = RPC not found → fall through silently
     } catch {
       // fall through
     }
 
-    // ── Fallback: direct PostgREST join (always works without the RPC) ─────
-    // NOTE:
-    //  • 'email' is in auth.users, NOT profiles → excluded from select
-    //  • .order() on a related table is not supported by PostgREST → sort client-side
     const { data, error: fallbackErr } = await supabase
       .from('workspace_members')
       .select(`
@@ -88,7 +80,7 @@ const ManageUsers = () => {
     const mapped = (data || []).map(m => ({
       user_id:           m.profiles?.id,
       name:              m.profiles?.name,
-      email:             null,   // not available without RPC (auth.users join)
+      email:             null,
       job_profile:       m.profiles?.job_profile || m.role,
       department:        m.profiles?.department,
       status:            m.profiles?.status || 'active',
@@ -99,11 +91,9 @@ const ManageUsers = () => {
       team_names:        [],
     }));
 
-    // Sort client-side by name (PostgREST can't order by a joined table column)
     mapped.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     setMembers(mapped);
   };
-
 
   const loadInvitations = async () => {
     if (!workspace?.id) return;
@@ -228,47 +218,47 @@ const ManageUsers = () => {
   // ── render ────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout activeMenu="Team Members">
-      <div className="mt-5 mb-10">
+      <div className="mt-5 mb-10 font-sans">
 
         {/* ── Page header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">User & Role Management</h2>
-            <p className="text-sm text-gray-400 mt-0.5">
+            <h2 className="text-xl md:text-2xl font-extrabold text-slate-905 dark:text-zinc-100 tracking-tight">👤 User & Role Management</h2>
+            <p className="text-xs text-slate-400 dark:text-zinc-550 mt-1.5 font-bold uppercase tracking-wider">
               {workspace?.name} ·{' '}
-              <span className="font-medium text-gray-600">{members.length} members</span>
+              <span className="font-extrabold text-indigo-650 dark:text-indigo-400">{members.length} member{members.length !== 1 ? 's' : ''}</span>
               {pendingInvites.length > 0 && (
-                <span className="ml-2 text-yellow-600 font-medium">
-                  · {pendingInvites.length} pending invite{pendingInvites.length > 1 ? 's' : ''}
+                <span className="ml-2 text-amber-600 dark:text-amber-400 font-bold">
+                  · {pendingInvites.length} pending
                 </span>
               )}
             </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleExport} className="btn-outline flex items-center gap-1.5 text-sm">
-              <LuFileSpreadsheet size={15}/> Export
+            <button onClick={handleExport} className="card-btn flex items-center gap-1.5 text-xs cursor-pointer">
+              <LuFileSpreadsheet size={14}/> Export
             </button>
-            <button onClick={() => setShowInvite(true)} className="btn-primary flex items-center gap-1.5 text-sm">
-              <LuUserPlus size={15}/> Invite Employee
+            <button onClick={() => setShowInvite(true)} className="card-btn-fill flex items-center gap-1.5 text-xs cursor-pointer">
+              <LuUserPlus size={14}/> Invite Employee
             </button>
           </div>
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
+        <div className="flex items-center gap-1 bg-slate-100/60 dark:bg-zinc-900/40 p-1 rounded-xl mb-5 w-fit border border-slate-205 dark:border-zinc-800/80">
           {TABS.map((t, i) => (
             <button
               key={t}
               onClick={() => { setTab(i); setSearch(''); setRoleFilter(''); }}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 tab === i
-                  ? 'bg-white text-blue-700 shadow'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white dark:bg-zinc-800 text-indigo-650 dark:text-indigo-455 shadow-sm'
+                  : 'text-slate-500 dark:text-zinc-450 hover:text-slate-705 dark:hover:text-zinc-200'
               }`}
             >
               {t}
               {t === 'Pending Invitations' && pendingInvites.length > 0 && (
-                <span className="ml-1.5 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                <span className="ml-1.5 bg-amber-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full">
                   {pendingInvites.length}
                 </span>
               )}
@@ -277,15 +267,15 @@ const ManageUsers = () => {
         </div>
 
         {/* ── Filters ── */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
-            <LuSearch size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+            <LuSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500"/>
             <input
               type="text"
               placeholder={tab === 0 ? 'Search by name or department…' : 'Search by email or name…'}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              className="field-input pl-9 dark:bg-[#121215] dark:border-zinc-800/80 dark:text-zinc-200"
             />
           </div>
           {tab === 0 && (
@@ -293,47 +283,47 @@ const ManageUsers = () => {
               <select
                 value={roleFilter}
                 onChange={e => setRoleFilter(e.target.value)}
-                className="pl-3 pr-8 py-2 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 bg-white appearance-none"
+                className="field-input pl-3 pr-8 dark:bg-[#121215] dark:border-zinc-800/80 dark:text-zinc-200 appearance-none cursor-pointer min-w-[130px]"
               >
                 <option value="">All Roles</option>
                 {JOB_PROFILES.map(j => (
                   <option key={j.value} value={j.value}>{j.emoji} {j.label}</option>
                 ))}
               </select>
-              <LuChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+              <LuChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
             </div>
           )}
-          <button onClick={loadAll} className="btn-outline flex items-center gap-1.5 text-sm px-3">
-            <LuRefreshCw size={14}/> Refresh
+          <button onClick={loadAll} className="card-btn flex items-center gap-1.5 text-xs px-3 cursor-pointer">
+            <LuRefreshCw size={13}/> Refresh
           </button>
         </div>
 
         {/* ── Loading ── */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <LuLoaderCircle className="animate-spin text-blue-500" size={28}/>
+            <LuLoaderCircle className="animate-spin text-indigo-500" size={28}/>
           </div>
         ) : (
           <>
             {/* ══════════ TAB 0 — All Members ══════════ */}
             {tab === 0 && (
-              <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
-                <table className="w-full text-sm">
+              <div className="card overflow-x-auto !p-0">
+                <table className="premium-table min-w-full">
                   <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                      <th className="text-left px-4 py-3">Member</th>
-                      <th className="text-left px-4 py-3">Job Profile</th>
-                      <th className="text-left px-4 py-3">Department</th>
-                      <th className="text-left px-4 py-3">Teams</th>
-                      <th className="text-left px-4 py-3">Status</th>
-                      <th className="text-left px-4 py-3">Role</th>
-                      <th className="text-right px-4 py-3">Actions</th>
+                    <tr>
+                      <th className="dark:text-zinc-500">Member</th>
+                      <th className="dark:text-zinc-500">Job Profile</th>
+                      <th className="dark:text-zinc-500">Department</th>
+                      <th className="dark:text-zinc-500">Teams</th>
+                      <th className="dark:text-zinc-500">Status</th>
+                      <th className="dark:text-zinc-500">Role</th>
+                      <th className="text-right dark:text-zinc-500">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody>
                     {filteredMembers.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="text-center py-12 text-gray-400">
+                        <td colSpan={7} className="text-center py-12 text-slate-400 dark:text-zinc-500 font-semibold uppercase tracking-wider">
                           <LuUsers size={32} className="mx-auto mb-2 opacity-30"/>
                           No members found.
                         </td>
@@ -342,102 +332,18 @@ const ManageUsers = () => {
                       const jp = JP_MAP[m.job_profile] || JP_MAP[m.role] || JP_MAP.employee;
                       const isMe = m.user_id === user?.id;
                       return (
-                        <tr key={m.user_id} className="hover:bg-gray-50 transition-colors">
-                          {/* Avatar + name */}
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              {m.profile_image_url ? (
-                                <img src={m.profile_image_url} alt={m.name}
-                                  className="w-8 h-8 rounded-lg object-cover"/>
-                              ) : (
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
-                                  style={{ background: jp?.color + '22' }}>
-                                  {jp?.emoji || '👤'}
-                                </div>
-                              )}
-                              <div>
-                                <p className="font-semibold text-gray-800 leading-tight">
-                                  {m.name} {isMe && <span className="text-[10px] text-blue-500 font-normal">(you)</span>}
-                                </p>
-                                {m.email && <p className="text-xs text-gray-400">{m.email}</p>}
-                              </div>
-                            </div>
-                          </td>
-                          {/* Job profile */}
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
-                              style={{ background: (jp?.color || '#64748b') + '18', color: jp?.color || '#64748b' }}>
-                              {jp?.emoji} {jp?.label || m.job_profile}
-                            </span>
-                          </td>
-                          {/* Department */}
-                          <td className="px-4 py-3 text-gray-500 text-xs">
-                            {m.department || <span className="text-gray-300">—</span>}
-                          </td>
-                          {/* Teams */}
-                          <td className="px-4 py-3">
-                            {m.team_names?.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {m.team_names.map(t => (
-                                  <span key={t} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">
-                                    {t}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : <span className="text-gray-300 text-xs">—</span>}
-                          </td>
-                          {/* Status */}
-                          <td className="px-4 py-3">
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                              m.status === 'active'
-                                ? 'bg-green-50 text-green-600 border-green-200'
-                                : m.status === 'pending_setup'
-                                ? 'bg-yellow-50 text-yellow-600 border-yellow-200'
-                                : 'bg-gray-100 text-gray-400 border-gray-200'
-                            }`}>
-                              {m.status === 'active' ? '● Active' : m.status === 'pending_setup' ? '◌ Setup Pending' : '○ Inactive'}
-                            </span>
-                          </td>
-                          {/* Role select */}
-                          <td className="px-4 py-3">
-                            {isMe ? (
-                              <span className="text-xs text-gray-400">Admin</span>
-                            ) : (
-                              <select
-                                value={m.role}
-                                onChange={e => handleChangeRole(m.user_id, e.target.value)}
-                                className="text-xs border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200 bg-white cursor-pointer"
-                              >
-                                {JOB_PROFILES.map(j => (
-                                  <option key={j.value} value={j.value}>{j.emoji} {j.label}</option>
-                                ))}
-                                <option value="viewer">👁 Viewer</option>
-                              </select>
-                            )}
-                          </td>
-                          {/* Actions */}
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              {/* Manage Access button — opens per-user permission panel */}
-                              <button
-                                onClick={() => setSelectedMember(m)}
-                                title="Manage Access Permissions"
-                                className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-1.5 rounded-lg transition"
-                              >
-                                <LuShieldCheck size={15}/>
-                              </button>
-                              {!isMe && (
-                                <button
-                                  onClick={() => handleDeactivate(m.user_id)}
-                                  title="Deactivate member"
-                                  className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition"
-                                >
-                                  <LuUserX size={15}/>
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+                        <UserRow
+                          key={m.user_id}
+                          m={m}
+                          user={user}
+                          jp={jp}
+                          isMe={isMe}
+                          handleChangeRole={handleChangeRole}
+                          setSelectedMember={setSelectedMember}
+                          handleDeactivate={handleDeactivate}
+                          JOB_PROFILES={JOB_PROFILES}
+                          onlineUsers={onlineUsers}
+                        />
                       );
                     })}
                   </tbody>
@@ -447,23 +353,23 @@ const ManageUsers = () => {
 
             {/* ══════════ TAB 1 & 2 — Invitations ══════════ */}
             {(tab === 1 || tab === 2) && (
-              <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
-                <table className="w-full text-sm">
+              <div className="card overflow-x-auto !p-0">
+                <table className="premium-table min-w-full">
                   <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                      <th className="text-left px-4 py-3">Invitee</th>
-                      <th className="text-left px-4 py-3">Job Profile</th>
-                      <th className="text-left px-4 py-3">Department / Team</th>
-                      <th className="text-left px-4 py-3">Status</th>
-                      <th className="text-left px-4 py-3">Sent</th>
-                      <th className="text-left px-4 py-3">Expires</th>
-                      <th className="text-right px-4 py-3">Actions</th>
+                    <tr>
+                      <th className="dark:text-zinc-500">Invitee</th>
+                      <th className="dark:text-zinc-500">Job Profile</th>
+                      <th className="dark:text-zinc-500">Department / Team</th>
+                      <th className="dark:text-zinc-500">Status</th>
+                      <th className="dark:text-zinc-500">Sent</th>
+                      <th className="dark:text-zinc-500">Expires</th>
+                      <th className="text-right dark:text-zinc-500">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody>
                     {filteredInvites.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="text-center py-12 text-gray-400">
+                        <td colSpan={7} className="text-center py-12 text-slate-400 dark:text-zinc-500 font-semibold uppercase tracking-wider">
                           <LuMail size={32} className="mx-auto mb-2 opacity-30"/>
                           {tab === 1 ? 'No pending invitations.' : 'No invitations found.'}
                         </td>
@@ -473,88 +379,16 @@ const ManageUsers = () => {
                       const badge  = statusBadge(inv.status, inv.isPending, inv.isExpired);
                       const busy   = actionLoading[inv.id];
                       return (
-                        <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                          {/* Invitee */}
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-                                style={{ background: (jp?.color || '#64748b') + '22' }}>
-                                {jp?.emoji}
-                              </div>
-                              <div>
-                                {inv.fullName && (
-                                  <p className="font-semibold text-gray-800 leading-tight text-xs">{inv.fullName}</p>
-                                )}
-                                <p className="text-gray-500 text-xs">{inv.email}</p>
-                                <p className="text-gray-400 text-[10px]">Invited by {inv.inviterName}</p>
-                              </div>
-                            </div>
-                          </td>
-                          {/* Job profile */}
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-                              style={{ background: (jp?.color || '#64748b') + '18', color: jp?.color || '#64748b' }}>
-                              {jp?.emoji} {jp?.label}
-                            </span>
-                          </td>
-                          {/* Dept / Team */}
-                          <td className="px-4 py-3 text-xs text-gray-500">
-                            {inv.department && <p>{inv.department}</p>}
-                            {inv.teamName   && <p className="text-indigo-500">👥 {inv.teamName}</p>}
-                            {!inv.department && !inv.teamName && <span className="text-gray-300">—</span>}
-                          </td>
-                          {/* Status */}
-                          <td className="px-4 py-3">
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.cls}`}>
-                              {badge.label}
-                            </span>
-                          </td>
-                          {/* Sent */}
-                          <td className="px-4 py-3 text-xs text-gray-400">
-                            {new Date(inv.createdAt).toLocaleDateString()}
-                          </td>
-                          {/* Expires */}
-                          <td className="px-4 py-3 text-xs">
-                            {inv.isAccepted ? (
-                              <span className="text-green-500 flex items-center gap-1">
-                                <LuCircleCheck size={12}/> Done
-                              </span>
-                            ) : (
-                              <span className={inv.isExpired ? 'text-red-400' : 'text-gray-400'}>
-                                {new Date(inv.expiresAt).toLocaleDateString()}
-                              </span>
-                            )}
-                          </td>
-                          {/* Actions */}
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-end gap-1">
-                              {inv.isPending && (
-                                <>
-                                  <ActionBtn
-                                    title="Resend email"
-                                    onClick={() => handleResend(inv.id)}
-                                    loading={busy}
-                                    icon={<LuRefreshCw size={13}/>}
-                                    cls="text-blue-500 hover:bg-blue-50"
-                                  />
-                                  <ActionBtn
-                                    title="Copy setup link"
-                                    onClick={() => handleCopyLink(inv.id)}
-                                    icon={<LuCopy size={13}/>}
-                                    cls="text-gray-400 hover:bg-gray-100"
-                                  />
-                                  <ActionBtn
-                                    title="Revoke invitation"
-                                    onClick={() => handleRevoke(inv.id)}
-                                    loading={busy}
-                                    icon={<LuCircleX size={13}/>}
-                                    cls="text-red-400 hover:bg-red-50"
-                                  />
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+                        <InviteRow
+                          key={inv.id}
+                          inv={inv}
+                          jp={jp}
+                          badge={badge}
+                          busy={busy}
+                          handleResend={handleResend}
+                          handleCopyLink={handleCopyLink}
+                          handleRevoke={handleRevoke}
+                        />
                       );
                     })}
                   </tbody>
@@ -564,11 +398,11 @@ const ManageUsers = () => {
             {/* ══════════ TAB 3 — Access Control ══════════ */}
             {tab === 3 && (
               <div>
-                <div className="mb-4 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-start gap-3">
+                <div className="mb-5 p-4 bg-indigo-50/50 dark:bg-indigo-950/15 border border-indigo-150/30 dark:border-indigo-900/30 rounded-xl flex items-start gap-3">
                   <LuShield size={18} className="text-indigo-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold text-indigo-700">Per-User Access Control</p>
-                    <p className="text-xs text-indigo-500 mt-0.5">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">Per-User Access Control</p>
+                    <p className="text-xs text-indigo-650 dark:text-indigo-305 mt-1 font-semibold">
                       Click <strong>🛡 Manage Access</strong> on any member to open a panel with
                       toggle switches for every permission. Overrides layer on top of the
                       role-based defaults without changing the member's job profile.
@@ -578,10 +412,10 @@ const ManageUsers = () => {
 
                 {loading ? (
                   <div className="flex justify-center py-12">
-                    <LuLoaderCircle className="animate-spin text-blue-500" size={28}/>
+                    <LuLoaderCircle className="animate-spin text-indigo-500" size={28}/>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {members
                       .filter(m => {
                         const q = search.toLowerCase();
@@ -592,21 +426,21 @@ const ManageUsers = () => {
                         const isMe = m.user_id === user?.id;
                         return (
                           <div key={m.user_id}
-                            className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3">
+                            className="card flex flex-col gap-3.5 !p-5">
                             {/* Member info */}
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
                                 style={{ background: (jp?.color || '#64748b') + '20' }}>
                                 {m.profile_image_url
-                                  ? <img src={m.profile_image_url} alt={m.name} className="w-10 h-10 rounded-xl object-cover"/>
+                                  ? <img src={m.profile_image_url} alt={m.name} className="w-10 h-10 rounded-lg object-cover"/>
                                   : jp?.emoji || '👤'}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-800 text-sm truncate">
+                                <p className="font-extrabold text-slate-800 dark:text-zinc-200 text-xs truncate">
                                   {m.name}
-                                  {isMe && <span className="ml-1 text-[10px] text-blue-500">(you)</span>}
+                                  {isMe && <span className="ml-1 text-[9px] text-indigo-605 dark:text-indigo-400 font-bold uppercase">(you)</span>}
                                 </p>
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5"
+                                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full mt-1 uppercase tracking-wider"
                                   style={{ background: (jp?.color || '#64748b') + '18', color: jp?.color || '#64748b' }}>
                                   {jp?.emoji} {jp?.label}
                                 </span>
@@ -614,26 +448,26 @@ const ManageUsers = () => {
                             </div>
 
                             {/* Status */}
-                            <div className="flex items-center justify-between text-xs">
-                              <span className={`px-2 py-0.5 rounded-full font-medium border ${
+                            <div className="flex items-center justify-between text-xs mt-1">
+                              <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wider border ${
                                 m.status === 'active'
-                                  ? 'bg-green-50 text-green-600 border-green-200'
+                                  ? 'bg-emerald-50 text-emerald-705 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
                                   : m.status === 'pending_setup'
-                                  ? 'bg-yellow-50 text-yellow-600 border-yellow-200'
-                                  : 'bg-gray-100 text-gray-400 border-gray-200'
+                                  ? 'bg-amber-50 text-amber-705 border-amber-100 dark:bg-amber-955/15 dark:text-amber-400 dark:border-amber-900/30'
+                                  : 'bg-slate-50 text-slate-600 border-slate-205 dark:bg-zinc-800/40 dark:text-zinc-400 dark:border-zinc-700'
                               }`}>
                                 {m.status === 'active' ? '● Active' : m.status === 'pending_setup' ? '◌ Setup Pending' : '○ Inactive'}
                               </span>
                               {m.department && (
-                                <span className="text-gray-400 truncate ml-2">{m.department}</span>
+                                <span className="text-slate-400 dark:text-zinc-500 font-bold text-[9px] truncate ml-2 uppercase tracking-wider">{m.department}</span>
                               )}
                             </div>
 
                             {/* CTA */}
                             <button
                               onClick={() => setSelectedMember(m)}
-                              className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold
-                                bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-90 transition"
+                              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold
+                                bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer transition shadow-[0_1px_2px_rgba(79,70,229,0.15)]"
                             >
                               <LuShieldCheck size={13}/>
                               Manage Access Permissions
@@ -665,19 +499,6 @@ const ManageUsers = () => {
           onClose={() => setSelectedMember(null)}
         />
       )}
-
-      <style>{`
-        .btn-primary{
-          background:linear-gradient(to right,#2563eb,#7c3aed);color:white;font-weight:600;
-          padding:.45rem 1rem;border-radius:.65rem;border:none;cursor:pointer;transition:opacity .2s;
-        }
-        .btn-primary:hover{opacity:.9;}
-        .btn-outline{
-          background:white;color:#374151;font-weight:600;padding:.45rem 1rem;
-          border-radius:.65rem;border:1px solid #e5e7eb;cursor:pointer;transition:background .15s;
-        }
-        .btn-outline:hover{background:#f9fafb;}
-      `}</style>
     </DashboardLayout>
   );
 };
@@ -687,10 +508,223 @@ const ActionBtn = ({ title, onClick, loading, icon, cls }) => (
     title={title}
     onClick={onClick}
     disabled={loading}
-    className={`p-1.5 rounded-lg transition ${cls} ${loading ? 'opacity-40 cursor-wait' : ''}`}
+    className={`p-1.5 rounded-lg transition cursor-pointer ${cls} ${loading ? 'opacity-40 cursor-wait' : ''}`}
   >
     {loading ? <LuLoaderCircle size={13} className="animate-spin"/> : icon}
   </button>
 );
+
+const UserRow = React.memo(({ m, user, jp, isMe, handleChangeRole, setSelectedMember, handleDeactivate, JOB_PROFILES, onlineUsers = {} }) => {
+  const userStatus = onlineUsers[m.user_id];
+  return (
+    <tr className="dark:border-zinc-800/80 hover:dark:bg-zinc-900/10">
+      {/* Avatar + name */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            {m.profile_image_url ? (
+              <img src={m.profile_image_url} alt={m.name}
+                className={`w-8 h-8 rounded-lg object-cover ${
+                  userStatus === 'active'
+                    ? 'ring-2 ring-emerald-500 ring-offset-2'
+                    : userStatus === 'idle'
+                    ? 'ring-2 ring-amber-500 ring-offset-2'
+                    : ''
+                }`}/>
+            ) : (
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base ${
+                userStatus === 'active'
+                  ? 'ring-2 ring-emerald-500 ring-offset-2'
+                  : userStatus === 'idle'
+                  ? 'ring-2 ring-amber-500 ring-offset-2'
+                  : ''
+              }`}
+                style={{ background: jp?.color + '22' }}>
+                {jp?.emoji || '👤'}
+              </div>
+            )}
+            {userStatus && (
+              <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#151518] ${
+                userStatus === 'active' ? 'bg-emerald-500' : 'bg-amber-500'
+              }`} />
+            )}
+          </div>
+          <div>
+            <p className="font-bold text-slate-800 dark:text-zinc-200 leading-tight text-xs">
+              {m.name} {isMe && <span className="text-[9px] text-indigo-605 dark:text-indigo-400 font-extrabold uppercase">(you)</span>}
+            </p>
+            {m.email && <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-semibold">{m.email}</p>}
+          </div>
+        </div>
+      </td>
+      {/* Job profile */}
+      <td className="px-4 py-3">
+        <span className="inline-flex items-center gap-1.5 text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider"
+          style={{ background: (jp?.color || '#64748b') + '18', color: jp?.color || '#64748b' }}>
+          {jp?.emoji} {jp?.label || m.job_profile}
+        </span>
+      </td>
+      {/* Department */}
+      <td className="px-4 py-3 text-slate-500 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-wider">
+        {m.department || <span className="text-slate-300 dark:text-zinc-700">—</span>}
+      </td>
+      {/* Teams */}
+      <td className="px-4 py-3">
+        {m.team_names?.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {m.team_names.map(t => (
+              <span key={t} className="text-[9px] font-bold uppercase tracking-wider bg-indigo-50/50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-100/30 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30">
+                {t}
+              </span>
+            ))}
+          </div>
+        ) : <span className="text-slate-350 dark:text-zinc-700 text-xs font-bold">—</span>}
+      </td>
+      {/* Status */}
+      <td className="px-4 py-3">
+        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+          m.status === 'active'
+            ? 'bg-emerald-50 text-emerald-750 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
+            : m.status === 'pending_setup'
+            ? 'bg-amber-50 text-amber-750 border-amber-100 dark:bg-amber-955/15 dark:text-amber-400 dark:border-amber-900/30'
+            : 'bg-slate-50 text-slate-600 border-slate-205 dark:bg-zinc-800/40 dark:text-zinc-400 dark:border-zinc-700'
+        }`}>
+          {m.status === 'active' ? '● Active' : m.status === 'pending_setup' ? '◌ Pending' : '○ Inactive'}
+        </span>
+      </td>
+      {/* Role select */}
+      <td className="px-4 py-3">
+        {isMe ? (
+          <span className="text-[10px] text-slate-400 dark:text-zinc-550 font-bold uppercase tracking-wider">Admin</span>
+        ) : (
+          <div className="relative inline-block">
+            <select
+              value={m.role}
+              onChange={e => handleChangeRole(m.user_id, e.target.value)}
+              className="field-input px-2.5 pr-6 py-1 dark:bg-[#121215] dark:border-zinc-800 dark:text-zinc-200 cursor-pointer text-xs h-auto w-auto min-w-[110px] appearance-none"
+            >
+              {JOB_PROFILES.map(j => (
+                <option key={j.value} value={j.value} className="dark:bg-zinc-900">{j.emoji} {j.label}</option>
+              ))}
+              <option value="viewer" className="dark:bg-zinc-900">👁 Viewer</option>
+            </select>
+            <LuChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+          </div>
+        )}
+      </td>
+      {/* Actions */}
+      <td className="px-4 py-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          {/* Manage Access button — opens per-user permission panel */}
+          <button
+            onClick={() => setSelectedMember(m)}
+            title="Manage Access Permissions"
+            className="text-indigo-500 hover:text-indigo-755 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 p-1.5 rounded-lg transition cursor-pointer"
+          >
+            <LuShieldCheck size={15}/>
+          </button>
+          {!isMe && (
+            <button
+              onClick={() => handleDeactivate(m.user_id)}
+              title="Deactivate member"
+              className="text-red-400 hover:text-red-655 hover:bg-red-50/50 dark:hover:bg-rose-955/20 p-1.5 rounded-lg transition cursor-pointer"
+            >
+              <LuUserX size={15}/>
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+UserRow.displayName = 'UserRow';
+
+const InviteRow = React.memo(({ inv, jp, badge, busy, handleResend, handleCopyLink, handleRevoke }) => {
+  return (
+    <tr className="dark:border-zinc-800/80 hover:dark:bg-zinc-900/10">
+      {/* Invitee */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+            style={{ background: (jp?.color || '#64748b') + '22' }}>
+            {jp?.emoji}
+          </div>
+          <div>
+            {inv.fullName && (
+              <p className="font-bold text-slate-800 dark:text-zinc-200 leading-tight text-xs">{inv.fullName}</p>
+            )}
+            <p className="text-slate-400 dark:text-zinc-500 text-[10px] font-semibold">{inv.email}</p>
+            <p className="text-slate-400 dark:text-zinc-550 text-[9px] font-bold uppercase tracking-wider">Invited by {inv.inviterName}</p>
+          </div>
+        </div>
+      </td>
+      {/* Job profile */}
+      <td className="px-4 py-3">
+        <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider"
+          style={{ background: (jp?.color || '#64748b') + '18', color: jp?.color || '#64748b' }}>
+          {jp?.emoji} {jp?.label}
+        </span>
+      </td>
+      {/* Dept / Team */}
+      <td className="px-4 py-3 text-[10px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
+        {inv.department && <p>{inv.department}</p>}
+        {inv.teamName && <p className="text-indigo-500 dark:text-indigo-400">👥 {inv.teamName}</p>}
+        {!inv.department && !inv.teamName && <span className="text-slate-350 dark:text-zinc-700">—</span>}
+      </td>
+      {/* Status */}
+      <td className="px-4 py-3">
+        <span className={`text-[9px] font-extrabold px-2 py-0.5 border uppercase tracking-wider rounded-full ${badge.cls}`}>
+          {badge.label}
+        </span>
+      </td>
+      {/* Sent */}
+      <td className="px-4 py-3 text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">
+        {new Date(inv.createdAt).toLocaleDateString()}
+      </td>
+      {/* Expires */}
+      <td className="px-4 py-3 text-xs">
+        {inv.isAccepted ? (
+          <span className="text-emerald-500 flex items-center gap-1 font-bold text-xs">
+            <LuCircleCheck size={12}/> Done
+          </span>
+        ) : (
+          <span className={inv.isExpired ? 'text-red-400 font-bold' : 'text-slate-400 dark:text-zinc-500 font-bold text-[10px] uppercase tracking-wider'}>
+            {new Date(inv.expiresAt).toLocaleDateString()}
+          </span>
+        )}
+      </td>
+      {/* Actions */}
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-end gap-1">
+          {inv.isPending && (
+            <>
+              <ActionBtn
+                title="Resend email"
+                onClick={() => handleResend(inv.id)}
+                loading={busy}
+                icon={<LuRefreshCw size={13}/>}
+                cls="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20"
+              />
+              <ActionBtn
+                title="Copy setup link"
+                onClick={() => handleCopyLink(inv.id)}
+                icon={<LuCopy size={13}/>}
+                cls="text-slate-400 dark:text-zinc-500 hover:bg-slate-100/50 dark:hover:bg-zinc-800/30"
+              />
+              <ActionBtn
+                title="Revoke invitation"
+                onClick={() => handleRevoke(inv.id)}
+                loading={busy}
+                icon={<LuCircleX size={13}/>}
+                cls="text-red-400 dark:text-rose-455 hover:bg-red-50/50 dark:hover:bg-rose-955/20"
+              />
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+InviteRow.displayName = 'InviteRow';
 
 export default ManageUsers;

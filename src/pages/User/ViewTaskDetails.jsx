@@ -283,7 +283,7 @@ const ViewTaskDetails = () => {
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                   <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
-                    Checklist
+                    Subtasks
                   </label>
                   <span className="text-xs font-bold text-gray-500">
                     {todoCompleted}/{todoTotal} · {todoProgress}%
@@ -300,24 +300,35 @@ const ViewTaskDetails = () => {
 
                 <div className="space-y-2">
                   {task.todoChecklist.map((item, index) => (
-                    <label
+                    <div
                       key={item.id || index}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition group"
+                      className="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 transition group"
                     >
                       <input
                         type="checkbox"
                         checked={item.completed}
                         onChange={() => handleChecklistToggle(index)}
-                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                        className="w-4 h-4 rounded accent-blue-600 cursor-pointer mt-0.5"
                       />
-                      <span className={`text-sm transition-all ${
-                        item.completed
-                          ? 'line-through text-gray-400'
-                          : 'text-gray-800 group-hover:text-gray-900'
-                      }`}>
-                        {item.title}
-                      </span>
-                    </label>
+                      <div className="flex-1">
+                        <span className={`text-sm font-semibold transition-all block ${
+                          item.completed
+                            ? 'line-through text-gray-400'
+                            : 'text-gray-800 group-hover:text-gray-900'
+                        }`}>
+                          {item.title}
+                        </span>
+                        {item.description && (
+                          <span className={`text-xs mt-1 block leading-relaxed ${
+                            item.completed
+                              ? 'line-through text-gray-300'
+                              : 'text-gray-500'
+                          }`}>
+                            {item.description}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

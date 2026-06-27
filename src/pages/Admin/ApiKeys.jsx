@@ -7,8 +7,7 @@ import {
 } from '../../services/apiKeyService';
 import {
   LuKey, LuPlus, LuCopy, LuTrash2, LuLoaderCircle,
-  LuShieldCheck, LuCircleAlert, LuEye, LuEyeOff,
-  LuCircleCheck, LuCircleX, LuClock,
+  LuShieldCheck, LuCircleCheck, LuCircleX, LuClock,
 } from 'react-icons/lu';
 import moment from 'moment';
 import toast from 'react-hot-toast';
@@ -83,66 +82,69 @@ const ApiKeys = () => {
 
   return (
     <DashboardLayout activeMenu="API Keys">
-      <div className="mt-5 max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
+      <div className="mt-4 pb-12 max-w-3xl animate-fade-in font-sans">
+        
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <LuKey className="text-blue-500" /> API Keys
-            </h2>
-            <p className="text-sm text-gray-400 mt-0.5">
-              Keys let external tools access <strong className="text-gray-600">{workspace?.name}</strong>'s task data.
+            <h1 className="text-xl md:text-2xl font-extrabold text-slate-905 dark:text-zinc-105 tracking-tight flex items-center gap-2">
+              🔑 Workspace API Access
+            </h1>
+            <p className="text-xs text-slate-400 dark:text-zinc-555 mt-1.5 font-bold uppercase tracking-wider">
+              Authorize external client integrations for <strong className="text-indigo-655 dark:text-indigo-400">{workspace?.name}</strong>
             </p>
           </div>
           <button
             onClick={() => setShowForm((o) => !o)}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow hover:opacity-90 transition"
+            className="card-btn-fill flex items-center justify-center gap-1.5 text-xs self-start sm:self-center cursor-pointer"
           >
-            <LuPlus /> New API Key
+            <LuPlus size={14} /> New API Key
           </button>
         </div>
 
         {/* ── One-time raw key reveal ── */}
         {newKey && (
-          <div className="mb-5 bg-lime-50 border border-lime-200 rounded-2xl p-5">
-            <div className="flex items-start gap-3">
-              <LuShieldCheck className="text-lime-600 text-xl flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-lime-800 mb-1">
+          <div className="mb-6 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-start gap-3.5">
+              <LuShieldCheck className="text-emerald-600 dark:text-emerald-450 text-xl flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-extrabold text-emerald-800 dark:text-emerald-355 mb-1.5 uppercase tracking-wide">
                   Save your API key now — it won't be shown again!
                 </p>
-                <div className="flex items-center gap-2 bg-white border border-lime-200 rounded-xl px-4 py-2.5">
-                  <code className="text-xs text-gray-700 flex-1 font-mono break-all">{newKey}</code>
-                  <button onClick={() => handleCopy(newKey)} className="text-lime-600 hover:text-lime-800 flex-shrink-0">
-                    <LuCopy className="text-sm" />
+                <div className="flex items-center gap-2 bg-white dark:bg-[#121215] border border-emerald-200/50 dark:border-emerald-900/40 rounded-xl px-4 py-3">
+                  <code className="text-xs text-slate-750 dark:text-zinc-200 flex-1 font-mono break-all select-all">{newKey}</code>
+                  <button onClick={() => handleCopy(newKey)} className="text-emerald-605 dark:text-emerald-400 hover:text-emerald-700 transition cursor-pointer">
+                    <LuCopy size={15} />
                   </button>
                 </div>
-                <button onClick={() => setNewKey(null)} className="text-xs text-gray-400 hover:text-gray-600 mt-2">
-                  I've saved it. Dismiss ✕
+                <button onClick={() => setNewKey(null)} className="text-[10px] font-bold text-slate-450 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-slate-300 mt-2.5 uppercase tracking-wider block cursor-pointer">
+                  I have copied this key. Dismiss ✕
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Create form ── */}
+        {/* ── Create Form ── */}
         {showForm && (
-          <form onSubmit={handleCreate} className="bg-white border border-gray-200 rounded-2xl p-6 mb-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Create New Key</h3>
-            <div className="space-y-4">
+          <form onSubmit={handleCreate} className="card p-6 mb-6">
+            <h3 className="text-xs font-extrabold text-slate-805 dark:text-zinc-200 uppercase tracking-wider mb-4">Create New Access Key</h3>
+            <div className="space-y-5">
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest block mb-1.5">
-                  Key Name
+                <label className="field-label text-slate-500 dark:text-zinc-400">
+                  Friendly Label Name
                 </label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. CI/CD Bot, Slack Integration"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                  placeholder="e.g. GitHub Actions, Reporting Bot"
+                  className="field-input dark:bg-[#121215] dark:border-zinc-800/80 dark:text-zinc-200"
                 />
               </div>
+
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest block mb-1.5">
-                  Scopes (permissions)
+                <label className="field-label text-slate-500 dark:text-zinc-400">
+                  Authorized Scopes
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {AVAILABLE_SCOPES.map((s) => (
@@ -150,31 +152,32 @@ const ApiKeys = () => {
                       key={s.value}
                       type="button"
                       onClick={() => toggleScope(s.value)}
-                      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition ${
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
                         scopes.includes(s.value)
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+                          ? 'bg-indigo-650 text-white border-transparent shadow-sm'
+                          : 'bg-slate-100/60 dark:bg-zinc-900/60 text-slate-505 dark:text-zinc-400 border-slate-205 dark:border-zinc-800/80 hover:text-slate-700 dark:hover:text-zinc-200'
                       }`}
                     >
-                      {scopes.includes(s.value) && <LuCircleCheck className="text-xs" />}
+                      {scopes.includes(s.value) && <LuCircleCheck size={12} />}
                       {s.label}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="flex gap-3">
+
+              <div className="flex items-center gap-3 pt-2">
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition disabled:opacity-60"
+                  className="card-btn-fill flex items-center justify-center gap-1.5 text-xs py-2 px-5 cursor-pointer"
                 >
-                  {creating ? <LuLoaderCircle className="animate-spin" /> : <LuKey />}
-                  {creating ? 'Creating...' : 'Create Key'}
+                  {creating ? <LuLoaderCircle className="animate-spin" size={14} /> : <LuKey size={14} />}
+                  {creating ? 'Creating...' : 'Generate Key'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2.5"
+                  className="card-btn text-xs px-4 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -183,42 +186,49 @@ const ApiKeys = () => {
           </form>
         )}
 
-        {/* ── Key list ── */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-700">Active Keys</h3>
-            <span className="text-xs text-gray-400">{keys.length} total</span>
+        {/* ── Key List ── */}
+        <div className="card !p-0 overflow-hidden mb-6">
+          <div className="px-5 py-4 border-b border-slate-105 dark:border-zinc-800/80 flex items-center justify-between">
+            <h3 className="text-[10px] font-bold text-slate-405 dark:text-zinc-555 uppercase tracking-wider">Active Workspace Keys</h3>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-550 uppercase tracking-wider">{keys.length} keys total</span>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <LuLoaderCircle className="text-blue-500 text-2xl animate-spin" />
+              <LuLoaderCircle className="text-indigo-650 text-2xl animate-spin" />
             </div>
           ) : keys.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 py-10">No API keys yet.</p>
+            <div className="text-center py-12 text-slate-400 dark:text-zinc-550 font-bold text-xs flex flex-col items-center gap-2 uppercase tracking-wider">
+              <LuKey size={28} className="opacity-30" />
+              No integrations active. Generate an API Key to begin.
+            </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-105 dark:divide-zinc-800/80">
               {keys.map((k) => (
-                <div key={k.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 group transition">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <LuKey className="text-blue-500 text-base" />
+                <div key={k.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-25/40 dark:hover:bg-zinc-900/10 group transition-colors">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100/30 dark:border-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                    <LuKey className="text-indigo-655 dark:text-indigo-400 text-sm" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-gray-800">{k.name}</p>
+                      <p className="text-xs font-bold text-slate-805 dark:text-zinc-200">{k.name}</p>
                       {k.is_active
-                        ? <span className="text-[10px] font-bold text-lime-600 bg-lime-50 border border-lime-200 px-2 py-0.5 rounded-full">Active</span>
-                        : <span className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">Revoked</span>
+                        ? <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-2 py-0.5 rounded-full uppercase tracking-wider">Active</span>
+                        : <span className="text-[9px] font-extrabold text-rose-600 dark:text-rose-455 bg-rose-50 dark:bg-rose-955/15 border border-rose-100 dark:border-rose-900/30 px-2 py-0.5 rounded-full uppercase tracking-wider">Revoked</span>
                       }
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5 font-mono">{k.key_prefix}</p>
-                    <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-400">
-                      <span>{(k.scopes || []).join(', ')}</span>
-                      {k.last_used_at && (
+                    <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 font-mono select-all">{k.key_prefix}</p>
+                    <div className="flex items-center gap-2.5 mt-1.5 text-[9px] font-bold text-slate-450 dark:text-zinc-550 uppercase tracking-wide">
+                      <span className="text-indigo-650 dark:text-indigo-400">{(k.scopes || []).join(' · ')}</span>
+                      <span className="text-slate-350 dark:text-zinc-700">|</span>
+                      {k.last_used_at ? (
                         <span className="flex items-center gap-1">
-                          <LuClock className="text-[10px]" /> Last used {moment(k.last_used_at).fromNow()}
+                          <LuClock size={10} /> Active {moment(k.last_used_at).fromNow()}
                         </span>
+                      ) : (
+                        <span>Never Used</span>
                       )}
+                      <span className="text-slate-350 dark:text-zinc-700">|</span>
                       <span>Created {moment(k.created_at).format('DD MMM YYYY')}</span>
                     </div>
                   </div>
@@ -227,17 +237,17 @@ const ApiKeys = () => {
                       <button
                         onClick={() => handleRevoke(k.id)}
                         title="Revoke key"
-                        className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition"
+                        className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-amber-600 dark:hover:text-amber-450 hover:bg-amber-50 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
                       >
-                        <LuCircleX className="text-sm" />
+                        <LuCircleX size={15} />
                       </button>
                     )}
                     <button
                       onClick={() => handleDelete(k.id)}
                       title="Delete key"
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                      className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-rose-650 hover:bg-rose-50 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
                     >
-                      <LuTrash2 className="text-sm" />
+                      <LuTrash2 size={15} />
                     </button>
                   </div>
                 </div>
@@ -246,19 +256,19 @@ const ApiKeys = () => {
           )}
         </div>
 
-        {/* Usage docs */}
-        <div className="mt-5 bg-slate-800 rounded-2xl p-5">
-          <p className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-widest">Quick Start</p>
-          <pre className="text-xs text-green-400 font-mono overflow-x-auto leading-relaxed">{
-`# List tasks
+        {/* Usage Docs Card */}
+        <div className="bg-[#121215] border border-zinc-800/80 rounded-2xl p-5 shadow-sm">
+          <p className="text-[9px] font-extrabold text-slate-450 dark:text-zinc-500 mb-3.5 uppercase tracking-widest">REST CLI Access Quickstart</p>
+          <pre className="text-xs text-emerald-400 dark:text-emerald-400/90 font-mono overflow-x-auto leading-relaxed select-all">{
+`# List active tasks
 curl ${window.location.origin.replace('5173','54321')}/functions/v1/api-tasks \\
   -H "X-API-Key: tf_live_..."
 
-# Create a task
-curl -X POST .../api-tasks \\
+# Create a project task
+curl -X POST ${window.location.origin.replace('5173','54321')}/functions/v1/api-tasks \\
   -H "X-API-Key: tf_live_..." \\
   -H "Content-Type: application/json" \\
-  -d '{"title":"Ship feature","priority":"high"}'`
+  -d '{"title":"Ship dashboard updates","priority":"high"}'`
           }</pre>
         </div>
       </div>

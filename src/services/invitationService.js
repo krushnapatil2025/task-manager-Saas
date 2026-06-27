@@ -63,7 +63,7 @@ export const createInvitation = async (workspaceId, email, role, invitedBy) => {
   const { error } = await supabase.from("workspace_invitations").insert({
     workspace_id: workspaceId,
     email:        email.toLowerCase().trim(),
-    role:         role || "member",
+    role:         role || "employee",
     token,
     expires_at:   expiresAt,
     invited_by:   invitedBy,
@@ -72,7 +72,7 @@ export const createInvitation = async (workspaceId, email, role, invitedBy) => {
   return {
     id: token,
     email: email.toLowerCase().trim(),
-    role,
+    role: role || "employee",
     token,
     expiresAt,
     createdAt: new Date().toISOString(),
@@ -111,7 +111,7 @@ export const sendInvite = async ({ email, role, workspaceId }) => {
   const { error } = await supabase.from("workspace_invitations").insert({
     workspace_id: workspaceId,
     email:        email.toLowerCase().trim(),
-    role:         role || "member",
+    role:         role || "employee",
     token,
     expires_at:   expiresAt,
   });

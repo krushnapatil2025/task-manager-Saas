@@ -48,11 +48,12 @@ CREATE TABLE IF NOT EXISTS task_assignments (
 -- 4. TODO CHECKLIST ITEMS
 -- ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS todo_checklist (
-  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  task_id    UUID REFERENCES tasks(id) ON DELETE CASCADE,
-  title      TEXT NOT NULL,
-  completed  BOOLEAN DEFAULT false,
-  sort_order INTEGER DEFAULT 0
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  task_id     UUID REFERENCES tasks(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  description TEXT,
+  completed   BOOLEAN DEFAULT false,
+  sort_order  INTEGER DEFAULT 0
 );
 
 -- ─────────────────────────────────────────────

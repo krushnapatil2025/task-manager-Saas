@@ -112,3 +112,34 @@ export const getMimeIcon = (mime = "") => {
   if (mime.includes("word"))           return "word";
   return "file";
 };
+
+/**
+ * Get all files uploaded in a workspace, joined with task title and uploader details.
+ * @param {string} workspaceId
+ */
+export const getWorkspaceFiles = async (workspaceId) => {
+  const { data, error } = await supabase
+    .from("task_files")
+    .select(`
+      id, file_name, file_size, mime_type, public_url, storage_path, created_at,
+      task:tasks(id, title),
+      uploader:profiles(id, name)
+    `)
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data || []).map((f) => ({
+    id:           f.id,
+    fileName:     f.file_name,
+    fileSize:     f.file_size,
+    mimeType:     f.mime_type,
+    publicUrl:    f.public_url,
+    storagePath:  f.storage_path,
+    createdAt:    f.created_at,
+    taskId:       f.task?.id,
+    taskTitle:    f.task?.title,
+    uploaderName: f.uploader?.name,
+    uploaderId:   f.uploader?.id,
+  }));
+};

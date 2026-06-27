@@ -8,6 +8,7 @@ import moment from 'moment';
 import { UserContext } from '../context/userContext';
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '../services/notificationService';
 import { useRealtimeNotifications } from '../hooks/useRealtimeTasks';
+import { playUserPrefSound } from '../utils/audioSynthesizer';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NotificationBell — navbar bell icon with dropdown panel and real-time badge
@@ -60,7 +61,7 @@ const NotificationBell = () => {
   // Real-time: re-fetch when a new notification arrives
   useRealtimeNotifications(user?.id, () => {
     loadNotifications();
-    // Play a soft ping sound (optional)
+    playUserPrefSound();
   });
 
   useEffect(() => { loadNotifications(); }, [loadNotifications]);

@@ -1,6 +1,15 @@
 import { supabase } from '../utils/supabaseClient';
 import { GOOGLE_DRIVE_CONFIG } from '../config/googleDriveConfig';
 
+// Track active local object URLs created in this browser session
+export const activeBlobUrls = new Set();
+
+const createLocalBlobUrl = (file) => {
+  const url = URL.createObjectURL(file);
+  activeBlobUrls.add(url);
+  return url;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Chat Service — Phase 16
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,6 +116,29 @@ export const markRoomRead = async (roomId, userId) => {
   await supabase.rpc('mark_room_read', { p_room_id: roomId, p_user_id: userId });
 };
 
+/** Mark a specific chat message as read */
+export const markMessageAsRead = async (messageId, userId) => {
+  const { error } = await supabase
+    .from('chat_message_reads')
+    .upsert({ message_id: messageId, user_id: userId }, { onConflict: 'message_id,user_id' });
+  if (error) {
+    console.error('Failed to mark message read:', error);
+  }
+};
+
+/** Get read receipts for a specific message */
+export const getMessageReads = async (messageId) => {
+  const { data, error } = await supabase
+    .from('chat_message_reads')
+    .select('user_id, read_at, profile:profiles!user_id(name)')
+    .eq('message_id', messageId);
+  if (error) {
+    console.error('Failed to fetch message reads:', error);
+    return [];
+  }
+  return data;
+};
+
 /** Get unread counts for all rooms */
 export const getUnreadCounts = async (userId) => {
   const { data, error } = await supabase.rpc('get_unread_counts', { p_user_id: userId });
@@ -116,15 +148,22 @@ export const getUnreadCounts = async (userId) => {
 
 // ── Messages ──────────────────────────────────────────────────────────────
 
-/** Fetch recent messages for a room */
+/** Fetch recent messages for a room (excludes scheduled/draft messages) */
 export const getRoomMessages = async (roomId, limit = 100) => {
   const { data, error } = await supabase
     .from('chat_messages')
     .select(`
-      id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count,
-      sender:profiles!sender_id(name, profile_image_url)
+      id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+      sender:profiles!sender_id(name, profile_image_url),
+      reply_to:reply_to_id(
+        id, content, type, file_url,
+        sender:profiles!sender_id(name)
+      ),
+      reads:chat_message_reads(user_id),
+      chat_message_reactions(user_id, emoji)
     `)
     .eq('room_id', roomId)
+    .eq('is_draft', false)
     .is('thread_id', null)
     .order('created_at', { ascending: true })
     .limit(limit);
@@ -132,7 +171,7 @@ export const getRoomMessages = async (roomId, limit = 100) => {
   return (data || []).map(normalizeMsg);
 };
 
-export const sendChatMessage = async (roomId, senderId, content, type = 'text', fileUrl = null, threadId = null) => {
+export const sendChatMessage = async (roomId, senderId, content, type = 'text', fileUrl = null, threadId = null, replyToId = null) => {
   const dbType = type === 'image' ? 'file' : type;
   const { data, error } = await supabase
     .from('chat_messages')
@@ -142,7 +181,8 @@ export const sendChatMessage = async (roomId, senderId, content, type = 'text', 
       content: content.trim(), 
       type: dbType, 
       file_url: fileUrl,
-      thread_id: threadId
+      thread_id: threadId,
+      reply_to_id: replyToId
     })
     .select('id')
     .single();
@@ -155,8 +195,14 @@ export const getThreadReplies = async (parentMessageId) => {
   const { data, error } = await supabase
     .from('chat_messages')
     .select(`
-      id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count,
-      sender:profiles!sender_id(name, profile_image_url)
+      id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+      sender:profiles!sender_id(name, profile_image_url),
+      reply_to:reply_to_id(
+        id, content, type, file_url,
+        sender:profiles!sender_id(name)
+      ),
+      reads:chat_message_reads(user_id),
+      chat_message_reactions(user_id, emoji)
     `)
     .eq('thread_id', parentMessageId)
     .order('created_at', { ascending: true });
@@ -278,7 +324,36 @@ export const getRoomMembers = async (roomId) => {
   }));
 };
 
-// ── Normalise ────────────────────────────────────────────────────────────
+const resolveSenderName = (val) => {
+  if (!val) return null;
+  if (Array.isArray(val)) return val[0]?.name || null;
+  return val.name || null;
+};
+
+export const getReplyContentPreview = (content, type, fileUrl) => {
+  if (type === 'audio') return '🎙️ Voice Message';
+  if (type === 'poll') return '📊 Poll';
+  if (fileUrl) {
+    const parts = fileUrl.split('||');
+    const filename = parts[2] || 'File';
+    const isImage = type === 'image' || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].some(ext => filename.toLowerCase().endsWith(ext));
+    return isImage ? `📷 ${filename}` : `📁 ${filename}`;
+  }
+  return content || 'Attachment';
+};
+
+const getReplyObject = (replyToVal) => {
+  if (!replyToVal) return null;
+  const target = Array.isArray(replyToVal) ? replyToVal[0] : replyToVal;
+  if (!target || !target.id) return null;
+  return {
+    id: target.id,
+    content: getReplyContentPreview(target.content, target.type, target.file_url),
+    type: target.type || 'text',
+    fileUrl: target.file_url || null,
+    senderName: resolveSenderName(target.sender) || resolveSenderName(target.profiles) || 'User'
+  };
+};
 
 export const normalizeMsg = (row) => {
   let type = row.type || 'text';
@@ -290,8 +365,15 @@ export const normalizeMsg = (row) => {
                     lowerUrl.includes('.gif') || 
                     lowerUrl.includes('.webp') || 
                     lowerUrl.includes('.svg');
+    const isAudio = lowerUrl.includes('.mp3') ||
+                    lowerUrl.includes('.wav') ||
+                    lowerUrl.includes('.ogg') ||
+                    lowerUrl.includes('.webm') ||
+                    lowerUrl.includes('.m4a');
     if (isImage) {
       type = 'image';
+    } else if (isAudio) {
+      type = 'audio';
     }
   }
   return {
@@ -303,11 +385,15 @@ export const normalizeMsg = (row) => {
     editedAt:     row.edited_at,
     createdAt:    row.created_at,
     senderId:     row.sender_id,
-    senderName:   (row.sender || row.profiles)?.name  || 'User',
+    senderName:   resolveSenderName(row.sender) || resolveSenderName(row.profiles) || 'User',
     senderAvatar: (row.sender || row.profiles)?.profile_image_url || null,
     reactions:    row.reactions || {},
+    reactionsList: row.chat_message_reactions || row.task_message_reactions || [],
     threadId:     row.thread_id || null,
     replyCount:   row.reply_count || 0,
+    replyToId:    row.reply_to_id || null,
+    replyTo:      getReplyObject(row.reply_to),
+    reads:        row.reads || []
   };
 };
 
@@ -473,7 +559,7 @@ export const uploadFileToGoogleDrive = async (file) => {
       })
     });
 
-    const localBlobUrl = URL.createObjectURL(file);
+    const localBlobUrl = createLocalBlobUrl(file);
     const downloadUrl = `https://drive.google.com/uc?id=${fileId}&export=download`;
 
     return {
@@ -505,7 +591,7 @@ export const uploadFileToGoogleDrive = async (file) => {
       .getPublicUrl(filePath);
 
     if (publicUrl) {
-      const localBlobUrl = URL.createObjectURL(file);
+      const localBlobUrl = createLocalBlobUrl(file);
       return {
         name: file.name,
         url: `${localBlobUrl}||${publicUrl}||${file.name}||${(file.size / 1024).toFixed(1)} KB`,
@@ -531,7 +617,7 @@ export const uploadFileToGoogleDrive = async (file) => {
 
     if (result.status === 'success' && result.data?.url) {
       const uploadUrl = result.data.url.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
-      const localBlobUrl = URL.createObjectURL(file);
+      const localBlobUrl = createLocalBlobUrl(file);
       
       return {
         name: file.name,
@@ -542,7 +628,7 @@ export const uploadFileToGoogleDrive = async (file) => {
     throw new Error('Invalid response structure');
   } catch (err) {
     console.warn('Anonymous file upload failed, falling back to local simulator:', err.message);
-    const localBlobUrl = URL.createObjectURL(file);
+    const localBlobUrl = createLocalBlobUrl(file);
     const mockId = Math.random().toString(36).substring(7);
     const mockUrl = `https://tmpfiles.org/dl/mock_${mockId}`;
 
@@ -632,3 +718,219 @@ export const updateRoomDetails = async (roomId, topic, description) => {
   if (error) throw error;
   return data;
 };
+
+/** Fetch notification preferences for a specific room */
+export const getNotificationPreference = async (userId, roomId) => {
+  const { data, error } = await supabase
+    .from('chat_notification_prefs')
+    .select('level')
+    .eq('user_id', userId)
+    .eq('room_id', roomId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.level || 'all';
+};
+
+/** Update or insert notification preference for a room */
+export const updateNotificationPreference = async (userId, roomId, level) => {
+  const { error } = await supabase
+    .from('chat_notification_prefs')
+    .upsert({ user_id: userId, room_id: roomId, level }, { onConflict: 'user_id,room_id' });
+  if (error) throw error;
+};
+
+/** Fetch all notification preferences for a user */
+export const getAllNotificationPreferences = async (userId) => {
+  const { data, error } = await supabase
+    .from('chat_notification_prefs')
+    .select('room_id, level')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return data || [];
+};
+
+// ── Message Scheduling (Phase 3.4) ──────────────────────────────────────────
+
+/**
+ * Save a message as a draft with a future scheduled_at time.
+ * It will NOT appear in the message feed until published.
+ */
+export const sendScheduledMessage = async (
+  roomId, senderId, content, type = 'text', fileUrl = null,
+  replyToId = null, scheduledAt
+) => {
+  const dbType = type === 'image' ? 'file' : type;
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .insert({
+      room_id:      roomId,
+      sender_id:    senderId,
+      content:      content.trim(),
+      type:         dbType,
+      file_url:     fileUrl,
+      reply_to_id:  replyToId,
+      scheduled_at: scheduledAt,
+      is_draft:     true,
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+/**
+ * Fetch all scheduled (draft) messages for a user in a specific room.
+ * Sorted by scheduled_at ascending.
+ */
+export const getScheduledMessages = async (userId, roomId) => {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('id, content, type, file_url, scheduled_at, created_at')
+    .eq('sender_id', userId)
+    .eq('room_id', roomId)
+    .eq('is_draft', true)
+    .not('scheduled_at', 'is', null)
+    .order('scheduled_at', { ascending: true });
+  if (error) throw error;
+  return (data || []).map(row => ({
+    id:          row.id,
+    content:     row.content,
+    type:        row.type,
+    fileUrl:     row.file_url,
+    scheduledAt: row.scheduled_at,
+    createdAt:   row.created_at,
+  }));
+};
+
+/**
+ * Publish a scheduled message immediately by clearing the draft flag.
+ * This makes it appear in the room's message feed instantly.
+ */
+export const publishScheduledMessage = async (messageId) => {
+  const { error } = await supabase
+    .from('chat_messages')
+    .update({ is_draft: false, scheduled_at: null })
+    .eq('id', messageId);
+  if (error) throw error;
+};
+
+/**
+ * Hard-delete a scheduled draft (cancel the scheduled message).
+ */
+export const cancelScheduledMessage = async (messageId) => {
+  const { error } = await supabase
+    .from('chat_messages')
+    .delete()
+    .eq('id', messageId)
+    .eq('is_draft', true);
+  if (error) throw error;
+};
+
+/**
+ * Polls for all due scheduled messages for a given user and publishes them.
+ * Call this on an interval (e.g. every 60 seconds) from a global context.
+ * Returns the count of messages published.
+ */
+export const pollAndPublishDueMessages = async (userId) => {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('id')
+    .eq('sender_id', userId)
+    .eq('is_draft', true)
+    .not('scheduled_at', 'is', null)
+    .lte('scheduled_at', now);
+
+  if (error || !data?.length) return 0;
+
+  // Publish all due messages
+  const ids = data.map(m => m.id);
+  const { error: updateErr } = await supabase
+    .from('chat_messages')
+    .update({ is_draft: false, scheduled_at: null })
+    .in('id', ids);
+
+  if (updateErr) throw updateErr;
+  return ids.length;
+};
+
+/**
+ * Send automated professional onboarding messages to all other members in the workspace.
+ * Also posts a public welcome message in the #general channel.
+ */
+export const sendOnboardingDMs = async (workspaceId, newUserId, inviteInfo) => {
+  try {
+    // 1. Fetch all members of the workspace
+    const { data: members, error: memErr } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId);
+    
+    if (memErr) throw memErr;
+    if (!members || members.length === 0) return;
+
+    // 2. Map and filter out the new user
+    const teammates = members
+      .map(m => m.user_id)
+      .filter(id => id !== newUserId && id);
+
+    // 3. Job profile meta description
+    const jobLabels = {
+      company_admin: '🏢 Company Admin',
+      manager: '👔 Manager',
+      employee: '👤 Employee',
+      intern: '🎓 Intern'
+    };
+    const roleLabel = jobLabels[inviteInfo.jobProfile] || inviteInfo.jobProfile || '💼 Team Member';
+    const deptString = inviteInfo.department ? inviteInfo.department : 'General';
+    const teamString = inviteInfo.teamName ? `👥 ${inviteInfo.teamName}` : 'General';
+
+    // 4. Send a public announcement in the general channel
+    try {
+      const generalRoomId = await getOrCreateTeamRoom(workspaceId, 'general');
+      if (generalRoomId) {
+        await joinRoom(generalRoomId, newUserId);
+        
+        const generalAnnouncement = `📢 **New Team Member Joined!**
+
+Please welcome **${inviteInfo.fullName || 'a new member'}** to the team!
+
+*   **Role/Position:** ${roleLabel}
+*   **Department:** ${deptString}
+*   **Team:** ${teamString}
+
+Let's give them a warm welcome! 🎉`;
+
+        await sendChatMessage(generalRoomId, newUserId, generalAnnouncement, 'text');
+      }
+    } catch (generalErr) {
+      console.error('Failed to post onboarding announcement to #general:', generalErr);
+    }
+
+    // 5. Send DM to each teammate personally
+    const messageContent = `👋 *Hi there!*
+
+I just joined the **${inviteInfo.workspaceName || 'workspace'}** team!
+
+*   **Position:** ${roleLabel}
+*   **Department:** ${deptString}
+*   **Team:** ${teamString}
+
+Looking forward to collaborating and working together with you! 🚀`;
+
+    for (const teammateId of teammates) {
+      try {
+        const roomId = await getOrCreateDM(workspaceId, newUserId, teammateId);
+        if (roomId) {
+          await sendChatMessage(roomId, newUserId, messageContent, 'text');
+        }
+      } catch (dmErr) {
+        console.error(`Failed to send onboarding DM to user ${teammateId}:`, dmErr);
+      }
+    }
+  } catch (err) {
+    console.error('Error sending automated onboarding DMs:', err);
+  }
+};
+
+

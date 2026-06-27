@@ -7,8 +7,14 @@ const CalendarHeader = ({
   view,
   onNavigate,
   onViewChange,
+  onMonthChange,
+  onYearChange,
   onAddEventClick
 }) => {
+  const months = moment.months();
+  const currentYear = moment().year();
+  const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i); // 5 years back and 5 years forward
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 bg-white/70 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-10">
       {/* Navigation Controls */}
@@ -36,14 +42,27 @@ const CalendarHeader = ({
           </button>
         </div>
         
-        <h2 className="text-base font-extrabold text-slate-800 tracking-tight ml-2">
-          {view === 'day' 
-            ? moment(currentDate).format('MMMM D, YYYY') 
-            : view === 'week' 
-              ? `Week of ${moment(currentDate).startOf('week').format('MMM D, YYYY')}`
-              : moment(currentDate).format('MMMM YYYY')
-          }
-        </h2>
+        {/* Month & Year Select Jump Dropdowns */}
+        <div className="flex items-center gap-1.5 ml-2">
+          <select
+            value={moment(currentDate).month()}
+            onChange={(e) => onMonthChange(parseInt(e.target.value))}
+            className="bg-slate-100/85 hover:bg-slate-150/90 border border-slate-200/40 text-slate-700 text-xs font-extrabold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all"
+          >
+            {months.map((m, idx) => (
+              <option key={idx} value={idx}>{m}</option>
+            ))}
+          </select>
+          <select
+            value={moment(currentDate).year()}
+            onChange={(e) => onYearChange(parseInt(e.target.value))}
+            className="bg-slate-100/85 hover:bg-slate-150/90 border border-slate-200/40 text-slate-700 text-xs font-extrabold rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all"
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* View Switcher and Action Button */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../utils/supabaseClient';
 import { getEmployeeInviteByToken, acceptEmployeeInvitation } from '../../services/invitationService';
+import { sendOnboardingDMs } from '../../services/chatService';
 import { UserContext } from '../../context/userContext';
 import { WorkspaceContext } from '../../context/WorkspaceContext';
 import SetupExpired from './SetupExpired';
@@ -257,6 +258,13 @@ const SetupAccount = () => {
           msg.includes('already exists') ||
           msg.includes('invalid or has expired');  // re-run of already-accepted invite
         if (!isAlreadyDone) throw invErr;
+      }
+
+      // ── 5.5 Send automated Slack-style onboarding messages to general channel & teammates ──
+      try {
+        await sendOnboardingDMs(invite.workspaceId, sessionUser.id, invite);
+      } catch (chatErr) {
+        console.error('Failed to send onboarding chat messages:', chatErr);
       }
 
       // ── 6. Welcome email (fire-and-forget) ───────────────────────────────

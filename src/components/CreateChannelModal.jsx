@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LuX, LuLock, LuGlobe, LuCheck, LuSearch } from 'react-icons/lu';
+import { LuX, LuLock, LuGlobe, LuCheck, LuSearch, LuLoaderCircle } from 'react-icons/lu';
 
 const CreateChannelModal = ({ onClose, onCreate, workspaceMembers = [] }) => {
   const [name, setName] = useState('');

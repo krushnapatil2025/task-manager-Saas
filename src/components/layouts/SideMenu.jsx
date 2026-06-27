@@ -2,20 +2,25 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../context/userContext';
 import { WorkspaceContext } from '../../context/WorkspaceContext';
+import { useBrand } from '../../context/BrandContext';
 import { SIDE_MENU_DATA, SIDE_MENU_USER_DATA } from '../../utils/data';
 import { JOB_PROFILES } from '../../pages/Admin/InviteEmployee';
+import { LuPanelLeftClose, LuPanelLeftOpen } from 'react-icons/lu';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SideMenu — shows correct menu items per role, workspace role badge,
-//            and highlights the active page
+// SideMenu — Grouped, light/white aesthetic enterprise navigation sidebar
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SideMenu = ({ activeMenu }) => {
   const { user, clearUser }    = useContext(UserContext);
   const { workspace, wsRole }  = useContext(WorkspaceContext);
+  const { brand }              = useBrand();
   const navigate               = useNavigate();
 
   const [sideMenuData, setSideMenuData] = useState([]);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('sidebar-collapsed') === 'true';
+  });
   const JP_MAP = Object.fromEntries(JOB_PROFILES.map(j => [j.value, j]));
 
   useEffect(() => {
@@ -24,6 +29,15 @@ const SideMenu = ({ activeMenu }) => {
       setSideMenuData(isAdmin ? SIDE_MENU_DATA : SIDE_MENU_USER_DATA);
     }
   }, [user]);
+
+  const toggleCollapse = () => {
+    setIsCollapsed(prev => {
+      const newVal = !prev;
+      localStorage.setItem('sidebar-collapsed', String(newVal));
+      window.dispatchEvent(new Event('sidebar-collapse-change'));
+      return newVal;
+    });
+  };
 
   const handleClick = (route) => {
     if (route === 'logout') handleLogout();
@@ -41,107 +55,180 @@ const SideMenu = ({ activeMenu }) => {
     navigate('/login');
   };
 
+  // Group menu items dynamically
+  const getGroupedMenu = () => {
+    const groups = {
+      workspace: {
+        label: 'Workspace',
+        items: []
+      },
+      team: {
+        label: 'Team & Access',
+        items: []
+      },
+      operations: {
+        label: 'Operations',
+        items: []
+      },
+      communication: {
+        label: 'Collaboration',
+        items: []
+      },
+      settings: {
+        label: 'Settings',
+        items: []
+      },
+      other: {
+        label: '',
+        items: []
+      }
+    };
+
+    sideMenuData.forEach(item => {
+      const p = item.path;
+      if (p === 'logout') return;
+      
+      if (['/admin/dashboard', '/user/dashboard', '/admin/kanban', '/admin/tasks', '/admin/create-task', '/user/tasks', '/calendar', '/admin/calendar', '/admin/sprints', '/admin/goals', '/admin/files'].includes(p)) {
+        groups.workspace.items.push(item);
+      } else if (['/admin/users', '/admin/teams', '/admin/permissions', '/admin/invitations'].includes(p)) {
+        groups.team.items.push(item);
+      } else if (['/admin/analytics', '/admin/reports', '/admin/timesheets', '/user/timesheet', '/admin/automations', '/admin/leaves', '/user/leaves', '/admin/intern-logs', '/user/daily-log'].includes(p)) {
+        groups.operations.items.push(item);
+      } else if (['ai', '/chat'].includes(p)) {
+        groups.communication.items.push(item);
+      } else if (['/admin/integrations', '/admin/api-keys', '/admin/webhooks', '/admin/audit', '/settings'].includes(p)) {
+        groups.settings.items.push(item);
+      } else {
+        groups.other.items.push(item);
+      }
+    });
+
+    return Object.values(groups).filter(g => g.items.length > 0);
+  };
+
   return (
-    <div className="w-64 h-[calc(100vh-57px)] bg-white/85 backdrop-blur-lg border-r border-slate-200/50 sticky top-[57px] z-20 flex flex-col overflow-y-auto">
-
-      {/* ── Profile block ── */}
-      <div className="flex flex-col items-center pt-7 pb-5 px-4 border-b border-slate-100">
-        {/* Avatar */}
-        {user?.profile_image_url || user?.profileImageUrl ? (
-          <img
-            src={user.profile_image_url || user.profileImageUrl}
-            alt="Profile"
-            className="w-16 h-16 rounded-full object-cover border-2 border-indigo-100 shadow-sm"
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
-            <span className="text-white text-xl font-bold">
-              {user?.name?.[0]?.toUpperCase()}
-            </span>
-          </div>
-        )}
-
-        {/* Name + role badges */}
-        <h5 className="text-sm font-bold text-slate-800 mt-3 text-center leading-tight">
-          {user?.name || ''}
-        </h5>
-        <p className="text-[11px] text-slate-400 mt-1 text-center truncate w-full px-2">
-          {user?.email || ''}
-        </p>
-
-        <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
-          {/* Job profile badge — enterprise RBAC */}
-          {(() => {
-            const jp = JP_MAP[user?.job_profile] || JP_MAP[user?.role];
-            return jp ? (
-              <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-600 text-white flex items-center gap-1 shadow-sm shadow-indigo-600/10">
-                {jp.emoji} {jp.label}
-              </span>
+    <div className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[68px]' : 'w-[248px]'} h-[calc(100vh-52px)] bg-white dark:bg-zinc-950 border-r border-slate-100 dark:border-zinc-900 sticky top-[52px] z-20 flex flex-col justify-between overflow-hidden select-none`}>
+      
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* ── Compact profile block ── */}
+        <div 
+          onClick={() => navigate('/user/profile')}
+          className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-5'} py-3.5 border-b border-slate-100 dark:border-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-900/60 transition cursor-pointer flex-shrink-0`}
+        >
+          <div className="relative flex-shrink-0">
+            {user?.profile_image_url || user?.profileImageUrl ? (
+              <img
+                src={user.profile_image_url || user.profileImageUrl}
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-zinc-800"
+              />
             ) : (
-              <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${
-                user?.role === 'admin' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
-              }`}>
-                {user?.role}
-              </span>
-            );
-          })()}
+              <div 
+                style={{ backgroundColor: brand.brandColor }}
+                className="w-8 h-8 rounded-full flex items-center justify-center shadow-md text-white text-xs font-bold"
+              >
+                {user?.name?.[0]?.toUpperCase()}
+              </div>
+            )}
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-white dark:border-zinc-900 bg-emerald-500" />
+          </div>
 
-          {/* Workspace role (if different) */}
-          {wsRole && wsRole !== user?.role && wsRole !== user?.job_profile && (
-            <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-600">
-              {wsRole}
-            </span>
+          {!isCollapsed && (
+            <div className="flex flex-col min-w-0 flex-1">
+              <h5 className="text-xs font-bold text-slate-700 dark:text-zinc-300 truncate leading-tight">
+                {user?.name || ''}
+              </h5>
+              <p className="text-[10px] text-slate-400 dark:text-zinc-500 truncate mt-0.5 font-medium">
+                {user?.email || ''}
+              </p>
+            </div>
           )}
         </div>
 
-        {/* Workspace name */}
-        {workspace?.name && (
-          <p className="text-[10px] text-slate-400 mt-2 text-center flex items-center gap-1 font-medium bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
-            📁 {workspace.name}
-          </p>
-        )}
-      </div>
-
-      {/* ── Menu items ── */}
-      <nav className="flex-1 py-4 px-3">
-        {sideMenuData.map((item) => {
-          const isActive = activeMenu === item.label;
-          const isLogout = item.path === 'logout';
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleClick(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 mb-1.5 rounded-xl text-sm font-semibold transition-all duration-200 text-left ${
-                isLogout
-                  ? 'text-rose-500 hover:bg-rose-50/60 mt-2'
-                  : isActive
-                    ? 'text-indigo-600 bg-indigo-50/60 border border-indigo-100/30 shadow-sm shadow-indigo-500/5'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/40'
-              }`}
-            >
-              <item.icon
-                className={`text-[18px] flex-shrink-0 ${
-                  isLogout ? 'text-rose-400'
-                  : isActive ? 'text-indigo-500'
-                  : 'text-slate-400'
-                }`}
-              />
-              {item.label}
-
-              {/* Active indicator dot */}
-              {isActive && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500" />
+        {/* ── Grouped Navigation menu ── */}
+        <nav className={`flex-1 py-3 ${isCollapsed ? 'px-1.5' : 'px-3'} overflow-y-auto custom-scrollbar`}>
+          {getGroupedMenu().map((group, gIdx) => (
+            <div key={gIdx} className="mb-4">
+              {group.label && !isCollapsed && (
+                <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 tracking-wider uppercase px-3.5 mb-1.5">
+                  {group.label}
+                </div>
               )}
-            </button>
-          );
-        })}
-      </nav>
+              {group.label && isCollapsed && (
+                <div className="border-t border-slate-100 dark:border-zinc-900 my-2 mx-2" />
+              )}
+              {group.items.map((item) => {
+                const isActive = activeMenu === item.label;
 
-      {/* ── Bottom version tag ── */}
-      <div className="px-5 py-3 border-t border-slate-100">
-        <p className="text-[10px] text-slate-300 text-center font-semibold">TaskFlow v2.0 · Enterprise</p>
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleClick(item.path)}
+                    title={isCollapsed ? item.label : undefined}
+                    className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3.5 py-2'} mb-0.5 rounded-lg text-xs font-bold transition-all duration-150 text-left cursor-pointer ${
+                      isActive
+                        ? 'text-[var(--brand-text)] bg-[var(--brand-bg)] border-l-2 border-[var(--brand)] rounded-l-none'
+                        : 'text-slate-600 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-900/60'
+                    }`}
+                  >
+                    <item.icon
+                      className={`text-[17px] flex-shrink-0 ${
+                        isActive ? 'text-[var(--brand)]' : 'text-slate-400 dark:text-zinc-500'
+                      }`}
+                    />
+                    {!isCollapsed && <span className="truncate flex-1">{item.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
       </div>
+
+      {/* ── Bottom Section ── */}
+      <div className="flex flex-col flex-shrink-0">
+        {/* Workspace Display */}
+        {workspace?.name && (
+          <div className={`py-3 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/20 dark:bg-zinc-950/20 flex items-center justify-center ${isCollapsed ? 'px-0' : 'px-5'}`}>
+            <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-zinc-400 font-bold truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-pulse"></span>
+              {!isCollapsed && <span className="truncate">{workspace.name}</span>}
+            </div>
+          </div>
+        )}
+
+        {/* Logout Row */}
+        <button
+          onClick={() => handleClick('logout')}
+          title={isCollapsed ? "Logout" : undefined}
+          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-6'} py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/10 dark:bg-zinc-950/10 transition-all text-left cursor-pointer`}
+        >
+          {(() => {
+            const logoutItem = SIDE_MENU_DATA.find(i => i.path === 'logout');
+            const Icon = logoutItem ? logoutItem.icon : null;
+            return Icon ? <Icon className="text-[17px] text-rose-500" /> : null;
+          })()}
+          {!isCollapsed && "Logout"}
+        </button>
+
+        {/* Collapse Button Row */}
+        <button
+          onClick={toggleCollapse}
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-6'} py-2.5 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-900/60 border-t border-slate-100 dark:border-zinc-900 transition-all text-left cursor-pointer`}
+        >
+          {isCollapsed ? <LuPanelLeftOpen className="text-[17px] text-slate-400 dark:text-zinc-500" /> : <LuPanelLeftClose className="text-[17px] text-slate-400 dark:text-zinc-500" />}
+          {!isCollapsed && "Collapse"}
+        </button>
+
+        {/* Version Badge */}
+        <div className="px-2 py-2 bg-slate-50 dark:bg-zinc-950/40 border-t border-slate-100 dark:border-zinc-900">
+          <p className="text-[9px] text-slate-400 dark:text-zinc-500 text-center font-bold">
+            {isCollapsed ? 'v2.0' : `${brand.companyName} v2.0 · Enterprise`}
+          </p>
+        </div>
+      </div>
+
     </div>
   );
 };

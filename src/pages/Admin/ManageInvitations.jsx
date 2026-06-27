@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 // Route: /admin/invitations
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ROLE_OPTIONS = ['member', 'viewer', 'admin'];
+const ROLE_OPTIONS = ['employee', 'manager', 'intern', 'company_admin'];
 
 const ManageInvitations = () => {
   const { workspace } = useContext(WorkspaceContext);
@@ -26,7 +26,7 @@ const ManageInvitations = () => {
   const [invitations, setInvitations] = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [email,       setEmail]       = useState('');
-  const [role,        setRole]        = useState('member');
+  const [role,        setRole]        = useState('employee');
   const [sending,     setSending]     = useState(false);
   const [formError,   setFormError]   = useState('');
 
@@ -56,7 +56,7 @@ const ManageInvitations = () => {
       const inv = await createInvitation(workspace.id, email.trim(), role, user.id);
       toast.success(`Invitation sent to ${email}!`);
       setEmail('');
-      setRole('member');
+      setRole('employee');
       setInvitations((prev) => [{ ...inv, isPending: true }, ...prev]);
     } catch (err) {
       setFormError(err.message || 'Failed to send invitation.');
@@ -85,76 +85,78 @@ const ManageInvitations = () => {
 
   return (
     <DashboardLayout activeMenu="Invitations">
-      <div className="mt-5 max-w-3xl">
+      <div className="mt-5 max-w-3xl animate-fade-in font-sans">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Team Invitations</h2>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Invite teammates to join <strong className="text-gray-600">{workspace?.name}</strong> via email link.
+          <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight">
+            👥 Team Invitations
+          </h1>
+          <p className="text-xs text-slate-400 dark:text-zinc-550 mt-1.5 font-bold uppercase tracking-wider">
+            Invite teammates to join <strong className="text-indigo-650 dark:text-indigo-400">{workspace?.name}</strong> via email link.
           </p>
         </div>
 
         {/* ── Invite form ── */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <LuUserPlus className="text-blue-500" /> Invite a New Member
+        <div className="card mb-6">
+          <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-555 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <LuUserPlus className="text-indigo-500" size={14} /> Invite a New Member
           </h3>
 
           <form onSubmit={handleSend} className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
-              <LuMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+              <LuMail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 text-sm" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="colleague@company.com"
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+                className="field-input pl-9 dark:bg-[#121215] dark:border-zinc-800 dark:text-zinc-200"
               />
             </div>
 
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+              className="field-input py-2.5 dark:bg-[#121215] dark:border-zinc-800 dark:text-zinc-200 cursor-pointer h-auto w-auto min-w-[120px]"
             >
               {ROLE_OPTIONS.map((r) => (
-                <option key={r} value={r} className="capitalize">{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                <option key={r} value={r} className="capitalize dark:bg-zinc-900">{r.charAt(0).toUpperCase() + r.slice(1)}</option>
               ))}
             </select>
 
             <button
               type="submit"
               disabled={sending}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow hover:opacity-90 transition disabled:opacity-60 whitespace-nowrap"
+              className="card-btn-fill flex items-center justify-center gap-2 text-xs font-bold transition disabled:opacity-60 whitespace-nowrap cursor-pointer"
             >
-              {sending ? <LuLoaderCircle className="animate-spin" /> : <LuUserPlus />}
+              {sending ? <LuLoaderCircle className="animate-spin" /> : <LuUserPlus size={14} />}
               {sending ? 'Sending...' : 'Send Invite'}
             </button>
           </form>
 
           {formError && (
-            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+            <p className="text-xs text-red-500 mt-2 flex items-center gap-1 font-semibold">
               <LuCircleAlert className="text-xs" /> {formError}
             </p>
           )}
         </div>
 
         {/* ── Invitation list ── */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-700">Sent Invitations</h3>
-            <span className="text-xs text-gray-400">{invitations.length} total</span>
+        <div className="card !p-0 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-zinc-800/80 flex items-center justify-between">
+            <h3 className="text-[10px] font-bold text-slate-405 dark:text-zinc-555 uppercase tracking-wider">Sent Invitations</h3>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">{invitations.length} total</span>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <LuLoaderCircle className="text-blue-500 text-2xl animate-spin" />
+              <LuLoaderCircle className="text-indigo-500 text-2xl animate-spin" />
             </div>
           ) : invitations.length === 0 ? (
-            <div className="py-12 text-center text-gray-400 text-sm">
+            <div className="py-16 text-center text-slate-400 dark:text-zinc-550 text-xs font-bold uppercase tracking-wider">
               No invitations sent yet.
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-105 dark:divide-zinc-800/80">
               {invitations.map((inv) => (
                 <InvitationRow
                   key={inv.id}
@@ -177,32 +179,32 @@ export default ManageInvitations;
 
 const InvitationRow = ({ invitation: inv, onCopy, onRevoke }) => {
   const badge = inv.acceptedAt
-    ? { label: 'Accepted',  icon: <LuCircleCheck />, cls: 'text-lime-600  bg-lime-50  border-lime-200'   }
+    ? { label: 'Accepted',  icon: <LuCircleCheck size={11} />, cls: 'text-emerald-705 bg-emerald-50 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/30' }
     : inv.isExpired
-      ? { label: 'Expired',  icon: <LuCircleAlert />, cls: 'text-red-500   bg-red-50   border-red-200'    }
-      : { label: 'Pending',  icon: <LuClock />,       cls: 'text-amber-600 bg-amber-50 border-amber-200'  };
+      ? { label: 'Expired',  icon: <LuCircleAlert size={11} />, cls: 'text-rose-700 bg-rose-50 border-rose-200/50 dark:bg-rose-955/15 dark:text-rose-455 dark:border-rose-900/30' }
+      : { label: 'Pending',  icon: <LuClock size={11} />,       cls: 'text-amber-705 bg-amber-50 border-amber-205 dark:bg-amber-955/15 dark:text-amber-400 dark:border-amber-900/30' };
 
   return (
-    <div className="flex items-center gap-4 px-6 py-3.5 hover:bg-gray-50/60 transition group">
+    <div className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-zinc-900/10 transition group">
       {/* Avatar initial */}
-      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0">
-        <span className="text-white text-sm font-bold">{inv.email[0].toUpperCase()}</span>
+      <div className="w-8 h-8 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 flex items-center justify-center flex-shrink-0">
+        <span className="text-indigo-650 dark:text-indigo-400 text-xs font-extrabold">{inv.email[0].toUpperCase()}</span>
       </div>
 
       {/* Email + meta */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 truncate">{inv.email}</p>
-        <p className="text-[11px] text-gray-400 mt-0.5">
-          <span className="capitalize">{inv.role}</span>
+        <p className="text-xs font-bold text-slate-805 dark:text-zinc-200 truncate">{inv.email}</p>
+        <p className="text-[9px] text-slate-400 dark:text-zinc-550 mt-1 font-bold uppercase tracking-wider">
+          <span className="text-indigo-650 dark:text-indigo-400">{inv.role}</span>
           {' · '}
-          Invited by {inv.inviterName}
+          Inviter: {inv.inviterName}
           {' · '}
           {moment(inv.createdAt).fromNow()}
         </p>
       </div>
 
       {/* Status badge */}
-      <span className={`flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full border ${badge.cls}`}>
+      <span className={`flex items-center gap-1.5 text-[9px] font-extrabold px-2.5 py-0.5 rounded border uppercase tracking-wider ${badge.cls}`}>
         {badge.icon}
         {badge.label}
       </span>
@@ -213,18 +215,18 @@ const InvitationRow = ({ invitation: inv, onCopy, onRevoke }) => {
           <button
             onClick={onCopy}
             title="Copy invite link"
-            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 dark:hover:bg-zinc-800 transition cursor-pointer"
           >
-            <LuCopy className="text-sm" />
+            <LuCopy size={13} />
           </button>
         )}
         {!inv.acceptedAt && (
           <button
             onClick={onRevoke}
             title="Revoke invitation"
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-650 hover:bg-rose-50/50 dark:hover:bg-[#161619] transition cursor-pointer"
           >
-            <LuTrash2 className="text-sm" />
+            <LuTrash2 size={13} />
           </button>
         )}
       </div>

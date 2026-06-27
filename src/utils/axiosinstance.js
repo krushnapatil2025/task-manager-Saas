@@ -25,6 +25,7 @@ const normalizeTask = (task) => ({
     .map((item) => ({
       _id:       item.id,
       title:     item.title,
+      description: item.description || "",
       completed: item.completed,
     })),
   completedTodoCount: (task.todo_checklist || []).filter((i) => i.completed).length,
@@ -56,8 +57,9 @@ const syncChecklist = async (taskId, items) => {
   if (items && items.length > 0) {
     const rows = items.map((item, index) => ({
       task_id: taskId,
-      title: item.title,
-      completed: item.completed || false,
+      title: typeof item === 'string' ? item : item.title,
+      description: typeof item === 'string' ? null : item.description || null,
+      completed: typeof item === 'string' ? false : item.completed || false,
       sort_order: index,
     }));
     const { error } = await supabase.from("todo_checklist").insert(rows);
@@ -133,7 +135,7 @@ const mockAxios = {
           .select(`
             *,
             task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ),
-            todo_checklist ( id, title, completed, sort_order )
+            todo_checklist ( id, title, description, completed, sort_order )
           `)
           .order("created_at", { ascending: false });
 
@@ -205,7 +207,7 @@ const mockAxios = {
           .select(`
             *,
             task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ),
-            todo_checklist ( id, title, completed, sort_order )
+            todo_checklist ( id, title, description, completed, sort_order )
           `)
           .eq("id", taskId)
           .single();
@@ -502,7 +504,7 @@ const mockAxios = {
 
         const { data: fullTask } = await supabase
           .from("tasks")
-          .select(`*, task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ), todo_checklist ( id, title, completed, sort_order )`)
+          .select(`*, task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ), todo_checklist ( id, title, description, completed, sort_order )`)
           .eq("id", task.id)
           .single();
 
@@ -579,7 +581,7 @@ const mockAxios = {
 
         const { data: fullTask } = await supabase
           .from("tasks")
-          .select(`*, task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ), todo_checklist ( id, title, completed, sort_order )`)
+          .select(`*, task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ), todo_checklist ( id, title, description, completed, sort_order )`)
           .eq("id", taskId)
           .single();
 
@@ -608,7 +610,7 @@ const mockAxios = {
 
         const { data: fullTask } = await supabase
           .from("tasks")
-          .select(`*, task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ), todo_checklist ( id, title, completed, sort_order )`)
+          .select(`*, task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ), todo_checklist ( id, title, description, completed, sort_order )`)
           .eq("id", taskId)
           .single();
 
@@ -637,7 +639,7 @@ const mockAxios = {
 
         const { data: fullTask } = await supabase
           .from("tasks")
-          .select(`*, task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ), todo_checklist ( id, title, completed, sort_order )`)
+          .select(`*, task_assignments ( user_id, profiles ( id, name, email, profile_image_url ) ), todo_checklist ( id, title, description, completed, sort_order )`)
           .eq("id", taskId)
           .single();
 

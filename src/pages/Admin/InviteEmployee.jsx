@@ -21,11 +21,6 @@ export const JOB_PROFILES = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 // InviteEmployee Modal
-// Props:
-//   open         {boolean}
-//   onClose      {() => void}
-//   onSuccess    {() => void}
-//   teams        {Array<{id, name}>}
 // ─────────────────────────────────────────────────────────────────────────────
 const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
   const { workspace } = useContext(WorkspaceContext);
@@ -76,7 +71,6 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
         invitedByName:   user?.name || 'Your Admin',
       });
 
-      // Show success screen with setup link for admin to copy
       setSuccessData({
         email:       emailTrimmed,
         setupLink:   result.setupLink,
@@ -93,38 +87,38 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
 
   if (!open) return null;
 
-  // ── Success screen — shown after invite is created ─────────────────────────
+  // ── Success screen ─────────────────────────────────────────────────────────
   if (successData) {
     return (
       <>
-        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+        <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={handleClose} />
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[#1a1035] border border-white/10 rounded-2xl shadow-2xl p-6 animate-fade-in">
+          <div className="w-full max-w-lg bg-white dark:bg-[#161619] border border-slate-205 dark:border-zinc-800 rounded-2xl shadow-2xl p-6 animate-fade-in font-sans">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 flex items-center justify-center text-3xl mx-auto mb-3">✅</div>
-              <h3 className="text-white font-bold text-lg">Invitation Created!</h3>
-              <p className="text-white/50 text-sm mt-1">
-                Share the setup link below with <span className="text-white font-medium">{successData.email}</span>
+              <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg mx-auto mb-3 border border-emerald-100 dark:border-emerald-900/30 font-bold">✓</div>
+              <h3 className="text-slate-800 dark:text-zinc-200 font-extrabold text-base">Invitation Created!</h3>
+              <p className="text-slate-450 dark:text-zinc-450 text-xs mt-1.5 font-semibold">
+                Share the credentials below with <span className="text-slate-800 dark:text-zinc-100 font-bold">{successData.email}</span>
               </p>
               {!successData.emailSent && (
-                <p className="text-amber-400/80 text-xs mt-2 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">
-                  ⚠️ Email sending requires the Edge Function to be deployed. Share the link manually.
+                <p className="text-amber-705 dark:text-amber-400 text-xs mt-3 bg-amber-50 dark:bg-amber-955/15 border border-amber-200/50 dark:border-amber-900/30 rounded-xl px-3 py-2 font-bold uppercase tracking-wider">
+                  ⚠️ Direct email sending pending configuration. Share setup link manually below.
                 </p>
               )}
             </div>
 
             {/* Setup link */}
             <div className="mb-4">
-              <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-1.5">Setup Link</p>
+              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-1.5">Setup Link</label>
               <div className="flex items-center gap-2">
                 <input
                   readOnly value={successData.setupLink}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/80 font-mono select-all"
+                  className="flex-1 bg-slate-25 dark:bg-[#121215] border border-slate-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-slate-600 dark:text-zinc-350 font-semibold select-all outline-none"
                   onClick={e => e.target.select()}
                 />
                 <button
                   onClick={() => { navigator.clipboard.writeText(successData.setupLink); toast.success('Link copied!'); }}
-                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition flex-shrink-0"
+                  className="px-3.5 py-2 bg-indigo-650 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition cursor-pointer"
                 >
                   Copy
                 </button>
@@ -133,28 +127,28 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
 
             {/* Temp password */}
             <div className="mb-6">
-              <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-1.5">Temporary Password</p>
+              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-1.5">Temporary Password</label>
               <div className="flex items-center gap-2">
                 <input
                   readOnly value={successData.tempPassword}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-amber-300 font-mono font-bold select-all tracking-wider"
+                  className="flex-1 bg-slate-25 dark:bg-[#121215] border border-slate-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-amber-750 dark:text-amber-400 font-bold select-all outline-none"
                   onClick={e => e.target.select()}
                 />
                 <button
                   onClick={() => { navigator.clipboard.writeText(successData.tempPassword); toast.success('Password copied!'); }}
-                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition flex-shrink-0"
+                  className="px-3.5 py-2 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700 text-xs font-bold rounded-lg transition cursor-pointer"
                 >
                   Copy
                 </button>
               </div>
-              <p className="text-white/30 text-xs mt-1.5">Employee uses this to first log in. They'll be prompted to change it.</p>
+              <p className="text-slate-400 dark:text-zinc-500 text-[10px] mt-1.5 font-medium">Invited user will use this password to sign in and set up their profile.</p>
             </div>
 
             <button
               onClick={handleClose}
-              className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:opacity-90 transition text-sm"
+              className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-violet-650 hover:opacity-90 text-white font-bold rounded-xl transition text-xs cursor-pointer shadow-md shadow-indigo-150/20"
             >
-              Done
+              Close Overlay
             </button>
           </div>
         </div>
@@ -166,25 +160,27 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
         onClick={handleClose}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg bg-[#1a1035] border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
+        <div className="w-full max-w-lg bg-white dark:bg-[#161619] border border-slate-205 dark:border-zinc-800/80 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto animate-fade-in font-sans">
 
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/10">
+          <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-zinc-800/80">
             <div>
-              <h3 className="text-white font-bold text-lg">Invite Employee</h3>
-              <p className="text-white/50 text-xs mt-0.5">
-                Creates an invitation — share the setup link with the employee
+              <h3 className="text-slate-900 dark:text-zinc-200 font-extrabold text-sm uppercase tracking-wider flex items-center gap-1.5">
+                <LuUser className="text-indigo-500"/> Invite Workspace Member
+              </h3>
+              <p className="text-slate-400 dark:text-zinc-500 text-[10px] uppercase font-bold mt-1 tracking-wider">
+                Generate dynamic setup link and login credentials
               </p>
             </div>
             <button
               onClick={handleClose}
-              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition"
+              className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center justify-center text-slate-400 hover:text-slate-650 transition cursor-pointer"
             >
               <LuX size={16} />
             </button>
@@ -194,7 +190,7 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
           <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
 
             {error && (
-              <div className="text-red-300 text-xs bg-red-500/15 border border-red-400/30 rounded-xl px-3 py-2">
+              <div className="text-xs text-rose-600 font-extrabold bg-rose-50 dark:bg-rose-955/15 border border-rose-200/40 p-3 rounded-xl">
                 {error}
               </div>
             )}
@@ -208,7 +204,7 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="jane@company.com"
-                  className="inp"
+                  className="w-full px-3 py-2 text-xs font-semibold text-slate-700 dark:text-zinc-200 bg-slate-25 dark:bg-[#121215] border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-[#121215] transition-all"
                   required
                 />
               </Field>
@@ -219,38 +215,38 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
                   placeholder="Jane Smith"
-                  className="inp"
+                  className="w-full px-3 py-2 text-xs font-semibold text-slate-700 dark:text-zinc-200 bg-slate-25 dark:bg-[#121215] border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-[#121215] transition-all"
                 />
               </Field>
             </div>
 
             {/* Job Profile */}
             <div>
-              <label className="text-xs text-white/60 font-medium flex items-center gap-1 mb-2">
-                <LuBriefcase size={12}/> Job Profile *
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-zinc-500 flex items-center gap-1 mb-2">
+                <LuBriefcase size={12}/> Job Profile Selection *
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2.5">
                 {JOB_PROFILES.filter(jp => jp.value !== 'company_admin').map(jp => (
                   <button
                     key={jp.value}
                     type="button"
                     onClick={() => setJobProfile(jp.value)}
-                    className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border text-center transition-all ${
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all cursor-pointer ${
                       jobProfile === jp.value
-                        ? 'border-indigo-500 bg-indigo-500/15 shadow-lg shadow-indigo-500/20'
-                        : 'border-white/10 bg-white/3 hover:border-white/25 hover:bg-white/5'
+                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-md shadow-indigo-150/10'
+                        : 'border-slate-200 dark:border-zinc-800 bg-slate-25 dark:bg-[#121215] hover:border-slate-350 dark:hover:border-zinc-700 hover:bg-slate-50'
                     }`}
                   >
                     <span className="text-xl">{jp.emoji}</span>
-                    <span className={`text-[10px] font-semibold leading-tight ${jobProfile === jp.value ? 'text-indigo-300' : 'text-white/60'}`}>
+                    <span className={`text-[10px] font-extrabold leading-tight ${jobProfile === jp.value ? 'text-indigo-650 dark:text-indigo-400' : 'text-slate-500 dark:text-zinc-400'}`}>
                       {jp.label}
                     </span>
                   </button>
                 ))}
               </div>
               {selectedJP && (
-                <p className="text-white/40 text-[10px] mt-1.5 ml-1">
-                  {selectedJP.emoji} {selectedJP.desc}
+                <p className="text-slate-400 dark:text-zinc-500 text-[10px] mt-2 ml-1 font-semibold">
+                  {selectedJP.emoji} Scope: {selectedJP.desc}
                 </p>
               )}
             </div>
@@ -264,7 +260,7 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
                   value={department}
                   onChange={e => setDepartment(e.target.value)}
                   placeholder="Engineering"
-                  className="inp"
+                  className="w-full px-3 py-2 text-xs font-semibold text-slate-700 dark:text-zinc-200 bg-slate-25 dark:bg-[#121215] border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-[#121215] transition-all"
                 />
               </Field>
               <Field label="Assign to Team" icon={<LuUsers size={12}/>}>
@@ -273,14 +269,14 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
                     id="invite-team"
                     value={teamId}
                     onChange={e => setTeamId(e.target.value)}
-                    className="inp appearance-none pr-7"
+                    className="w-full pl-3 pr-8 py-2 text-xs font-bold text-slate-650 dark:text-zinc-300 bg-slate-25 dark:bg-[#121215] border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-[#121215] transition-all appearance-none cursor-pointer"
                   >
-                    <option value="" className="bg-gray-900">No team</option>
+                    <option value="" className="dark:bg-zinc-900">No team assignment</option>
                     {teams.map(t => (
-                      <option key={t.id} value={t.id} className="bg-gray-900">{t.name}</option>
+                      <option key={t.id} value={t.id} className="dark:bg-zinc-900">{t.name}</option>
                     ))}
                   </select>
-                  <LuChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"/>
+                  <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
                 </div>
               </Field>
             </div>
@@ -291,19 +287,21 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
                 id="invite-msg"
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                placeholder="Add a welcome note that will appear in their invite email…"
+                placeholder="Include a welcome note in their invite credentials summary..."
                 rows={3}
-                className="inp resize-none"
+                className="w-full px-3 py-2 text-xs font-semibold text-slate-700 dark:text-zinc-200 bg-slate-25 dark:bg-[#121215] border border-slate-200 dark:border-zinc-800 rounded-xl outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-[#121215] transition-all resize-none"
               />
             </Field>
 
             {/* Preview badge */}
-            <div className="rounded-xl bg-indigo-500/10 border border-indigo-400/20 p-3">
-              <p className="text-indigo-300 text-xs font-medium mb-1">📧 Email preview</p>
-              <p className="text-white/50 text-xs leading-relaxed">
-                <strong className="text-white/70">{email || 'employee@company.com'}</strong> will receive a
-                Brevo email from <strong className="text-white/70">{workspace?.name}</strong> with their
-                role (<strong className="text-indigo-300">{selectedJP?.emoji} {selectedJP?.label}</strong>),
+            <div className="rounded-xl bg-indigo-50/50 dark:bg-indigo-950/15 border border-indigo-150/30 dark:border-indigo-900/30 p-3.5">
+              <p className="text-indigo-650 dark:text-indigo-400 text-[10px] font-extrabold uppercase tracking-wider mb-1 flex items-center gap-1">
+                <LuMail size={12}/> Email Preview
+              </p>
+              <p className="text-slate-500 dark:text-zinc-400 text-[11px] font-semibold leading-relaxed">
+                <strong className="text-slate-805 dark:text-zinc-200">{email || 'employee@company.com'}</strong> will receive a
+                Brevo email from <strong className="text-slate-805 dark:text-zinc-200">{workspace?.name}</strong> with their
+                role (<strong className="text-indigo-650 dark:text-indigo-400">{selectedJP?.emoji} {selectedJP?.label}</strong>),
                 temporary password, and a setup link valid for 7 days.
               </p>
             </div>
@@ -311,48 +309,25 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
             {/* Footer */}
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={handleClose} disabled={loading}
-                className="btn-ghost flex-shrink-0 px-5">
+                className="card-btn px-5 py-2.5 cursor-pointer text-xs">
                 Cancel
               </button>
               <button type="submit" disabled={loading}
-                className="btn-primary flex-1 flex items-center justify-center gap-2">
+                className="card-btn-fill flex-1 flex items-center justify-center gap-2 cursor-pointer text-xs font-bold transition">
                 {loading ? <LuLoaderCircle className="animate-spin" size={15}/> : <LuSend size={15}/>}
-                {loading ? 'Sending…' : 'Send Invitation'}
+                {loading ? 'Sending invite...' : 'Send Invitation'}
               </button>
             </div>
           </form>
         </div>
       </div>
-
-      <style>{`
-        .inp {
-          width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
-          border-radius:0.65rem;padding:0.45rem 0.65rem;color:white;font-size:0.8rem;outline:none;
-          transition:border-color .2s;
-        }
-        .inp::placeholder{color:rgba(255,255,255,.28);}
-        .inp:focus{border-color:rgba(99,102,241,.6);}
-        .inp option{background:#1a1035;}
-        .btn-primary{
-          background:linear-gradient(to right,#4f46e5,#7c3aed);color:white;font-weight:600;
-          font-size:.875rem;padding:.55rem 1.1rem;border-radius:.65rem;transition:opacity .2s;
-          cursor:pointer;border:none;
-        }
-        .btn-primary:hover{opacity:.9;} .btn-primary:disabled{opacity:.55;cursor:not-allowed;}
-        .btn-ghost{
-          background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-weight:600;
-          font-size:.875rem;padding:.55rem 1rem;border-radius:.65rem;
-          border:1px solid rgba(255,255,255,.1);transition:background .2s;cursor:pointer;
-        }
-        .btn-ghost:hover{background:rgba(255,255,255,.1);}
-      `}</style>
     </>
   );
 };
 
 const Field = ({ label, icon, children }) => (
   <div className="flex flex-col gap-1">
-    <label className="text-xs text-white/60 font-medium flex items-center gap-1">
+    <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-450 dark:text-zinc-500 flex items-center gap-1 mb-1">
       {icon}{label}
     </label>
     {children}

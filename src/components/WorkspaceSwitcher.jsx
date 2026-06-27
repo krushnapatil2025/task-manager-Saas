@@ -65,7 +65,7 @@ const WorkspaceSwitcher = () => {
       {/* Trigger */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50/50 border border-slate-200/60 transition-all duration-200 group"
+        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50/50 border border-slate-200/60 dark:bg-zinc-900/60 dark:hover:bg-zinc-800 dark:border-zinc-800/80 transition-all duration-200 group"
       >
         {workspace?.logo_url ? (
           <img
@@ -74,13 +74,13 @@ const WorkspaceSwitcher = () => {
             alt={workspace.name}
           />
         ) : (
-          <LuBuilding2 className="text-indigo-600 text-base" />
+          <LuBuilding2 className="text-indigo-600 dark:text-indigo-400 text-base" />
         )}
-        <span className="text-xs font-bold text-slate-700 max-w-[120px] truncate">
+        <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 max-w-[120px] truncate">
           {workspace?.name || "No Workspace"}
         </span>
         <LuChevronDown
-          className={`text-slate-400 group-hover:text-indigo-500 text-sm transition-transform duration-200 ${
+          className={`text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-405 text-sm transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
         />
@@ -88,9 +88,9 @@ const WorkspaceSwitcher = () => {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute top-full left-0 mt-2 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/40 py-2 z-50 animate-fade-in">
+        <div className="absolute top-full left-0 mt-2 w-64 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/40 dark:border-zinc-800/80 py-2 z-50 animate-fade-in">
           {/* Header */}
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2">
+          <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest px-4 py-2">
             Your Workspaces
           </p>
 
@@ -101,8 +101,8 @@ const WorkspaceSwitcher = () => {
                 key={ws.id}
                 onClick={() => handleSwitch(ws.id)}
                 disabled={switching}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left ${
-                  ws.id === workspace?.id ? "bg-indigo-50/30" : ""
+                className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-colors text-left ${
+                  ws.id === workspace?.id ? "bg-indigo-50/30 dark:bg-indigo-950/20" : ""
                 }`}
               >
                 {ws.logo_url ? (
@@ -119,15 +119,15 @@ const WorkspaceSwitcher = () => {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">
+                  <p className="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate">
                     {ws.name}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-semibold capitalize mt-0.5">
+                  <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-semibold capitalize mt-0.5">
                     {ws.myRole} · {ws.plan}
                   </p>
                 </div>
                 {ws.id === workspace?.id && (
-                  <LuCheck className="text-indigo-600 text-sm flex-shrink-0" />
+                  <LuCheck className="text-indigo-600 dark:text-indigo-400 text-sm flex-shrink-0" />
                 )}
               </button>
             ))}
@@ -136,13 +136,13 @@ const WorkspaceSwitcher = () => {
           {/* Create new — only company admins can create workspaces */}
           {canCreateWorkspace && (
             <>
-              <div className="border-t border-slate-100 my-1.5" />
+              <div className="border-t border-slate-100 dark:border-zinc-800/80 my-1.5" />
               <button
                 onClick={() => { setOpen(false); navigate("/onboarding/workspace"); }}
-                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition text-left text-xs text-indigo-600 font-bold"
+                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-900 transition text-left text-xs text-indigo-600 dark:text-indigo-400 font-bold"
               >
-                <div className="w-7 h-7 rounded-lg border-2 border-dashed border-indigo-300 flex items-center justify-center flex-shrink-0">
-                  <LuPlus className="text-indigo-400 text-sm" />
+                <div className="w-7 h-7 rounded-lg border-2 border-dashed border-indigo-300 dark:border-zinc-700 flex items-center justify-center flex-shrink-0">
+                  <LuPlus className="text-indigo-400 dark:text-indigo-500 text-sm" />
                 </div>
                 Create new workspace
               </button>

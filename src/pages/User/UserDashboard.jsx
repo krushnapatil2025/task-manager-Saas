@@ -63,11 +63,11 @@ const UserDashboard = () => {
 
   return (
     <DashboardLayout activeMenu="Dashboard">
-      <div className="card my-5 bg-white/90 border border-slate-200/50 shadow-sm">
+      <div className="bg-white border border-slate-200/60 shadow-md shadow-slate-100/40 rounded-2xl p-6 md:p-8 mb-6 mt-4 animate-fade-in">
         <div>
-          <h2 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">Good Morning! {user?.name}</h2>
-          <p className="text-xs md:text-[13px] text-slate-400 mt-1.5 font-bold uppercase tracking-wider">
-            {moment().format('dddd Do MMMM YYYY')}
+          <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">Good Morning, {user?.name}!</h2>
+          <p className="text-xs text-slate-400 mt-1.5 font-semibold uppercase tracking-wider">
+            {moment().format('dddd, Do MMMM YYYY')}
           </p>
         </div>
 
@@ -75,7 +75,7 @@ const UserDashboard = () => {
           <InfoCard
             label="Total Tasks"
             value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.All || 0)}
-            color="bg-indigo-600"
+            color="bg-indigo-650"
             icon={LuClipboardList}
           />
           <InfoCard
@@ -99,32 +99,36 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-4 md:my-6">
-        <div className="card bg-white/90 border border-slate-200/50">
-          <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Task Distribution</h5>
-          <CustomPieChart data={pieChartData} colors={COLORS} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-4 md:my-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+        <div>
+          <div className="bg-white border border-slate-200/60 shadow-md shadow-slate-100/40 rounded-2xl p-5 md:p-6 transition-all duration-200">
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Task Distribution</h5>
+            <CustomPieChart data={pieChartData} colors={COLORS} />
+          </div>
         </div>
 
-        <div className="card bg-white/90 border border-slate-200/50">
-          <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Task Priority Levels</h5>
-          <CustomBarChart data={barChartData} />
+        <div>
+          <div className="bg-white border border-slate-200/60 shadow-md shadow-slate-100/40 rounded-2xl p-5 md:p-6 transition-all duration-200">
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Task Priority Levels</h5>
+            <CustomBarChart data={barChartData} />
+          </div>
         </div>
 
         <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="card lg:col-span-2 bg-white rounded-2xl border border-slate-200/50 p-5 shadow-sm">
+          <div className="bg-white border border-slate-200/60 shadow-md shadow-slate-100/40 rounded-2xl p-5 md:p-6 transition-all duration-200 lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent Tasks</h5>
-              <button className="card-btn" onClick={() => navigate('/user/tasks')}>
-                See All <LuArrowRight className="text-base" />
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500">Recent Tasks</h5>
+              <button className="text-xs font-bold text-indigo-650 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors" onClick={() => navigate('/user/tasks')}>
+                See All <LuArrowRight size={14} />
               </button>
             </div>
             <TaskListTable tableData={dashboardData?.recentTasks || []} />
           </div>
 
-          <div className="card bg-white rounded-2xl border border-slate-200/50 p-5 shadow-sm flex flex-col">
+          <div className="bg-white border border-slate-200/60 shadow-md shadow-slate-100/40 rounded-2xl p-5 md:p-6 transition-all duration-200 flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">📅 Upcoming Events</h5>
-              <button className="card-btn text-xs font-bold text-indigo-655 flex items-center gap-1 hover:text-indigo-800 cursor-pointer" onClick={() => navigate('/calendar')}>
+              <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">📅 Upcoming Events</h5>
+              <button className="text-xs font-bold text-indigo-650 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors" onClick={() => navigate('/calendar')}>
                 Calendar <LuArrowRight size={14} />
               </button>
             </div>

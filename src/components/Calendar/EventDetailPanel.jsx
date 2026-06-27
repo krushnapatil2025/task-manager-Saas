@@ -1,6 +1,7 @@
 import React from 'react';
-import { LuX, LuCalendar, LuClock, LuMapPin, LuVideo, LuTrash, LuPencil } from 'react-icons/lu';
+import { LuX, LuCalendar, LuClock, LuMapPin, LuVideo, LuTrash, LuPencil, LuCopy } from 'react-icons/lu';
 import moment from 'moment';
+import toast from 'react-hot-toast';
 
 const CheckIcon = (props) => (
   <svg stroke="currentColor" fill="none" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" {...props}>
@@ -121,19 +122,33 @@ const EventDetailPanel = ({
           )}
 
           {event.meeting_url && (
-            <div className="flex items-start gap-3 text-xs">
-              <LuVideo className="text-indigo-500 mt-0.5 flex-shrink-0" size={14} />
-              <div>
-                <p className="font-extrabold text-slate-700">Video Link</p>
-                <a 
-                  href={event.meeting_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="font-bold text-indigo-600 hover:text-indigo-800 transition-colors underline break-all"
+            <div className="mt-4 p-4 bg-indigo-50/70 border border-indigo-100/60 rounded-2xl flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-700">
+                  <LuVideo size={15} className="text-indigo-500 fill-indigo-500/10" />
+                  <span>Virtual Video Meeting</span>
+                </div>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(event.meeting_url);
+                    toast.success('Meeting link copied!');
+                  }}
+                  className="p-1 hover:bg-indigo-100/80 rounded text-indigo-600 transition-colors cursor-pointer"
+                  title="Copy Meeting Link"
                 >
-                  Join Meeting
-                </a>
+                  <LuCopy size={13} />
+                </button>
               </div>
+              
+              <button 
+                onClick={() => {
+                  window.open(event.meeting_url, '_blank', 'noopener,noreferrer');
+                }}
+                className="w-full bg-indigo-650 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-bold shadow-sm shadow-indigo-650/15 cursor-pointer transition-all text-center flex items-center justify-center gap-1.5"
+              >
+                <LuVideo size={13} />
+                <span>Join Video Meeting</span>
+              </button>
             </div>
           )}
         </div>

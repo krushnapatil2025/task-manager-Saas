@@ -35,7 +35,16 @@ const UserProvider = ({ children }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Handle custom user status updates
+    const handleProfileUpdate = () => {
+      updateUser();
+    };
+    window.addEventListener('user-profile-updated', handleProfileUpdate);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('user-profile-updated', handleProfileUpdate);
+    };
   }, []);
 
   /**

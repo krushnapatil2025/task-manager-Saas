@@ -78,6 +78,8 @@ const ChatMessage = ({ message, onDelete, onReact }) => {
         <ReactionBar
           messageId={message.id}
           reactions={message.reactions}
+          reactionsList={message.reactionsList}
+          currentUserId={user?.id}
           onReact={onReact}
         />
       </div>

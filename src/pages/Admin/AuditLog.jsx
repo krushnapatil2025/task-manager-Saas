@@ -11,24 +11,24 @@ import moment from 'moment';
 import toast from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AuditLog — admin page showing workspace activity trail
+// AuditLog — admin page showing workspace activity trail in a timeline view
 // Route: /admin/audit
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ACTION_META = {
-  'task.created':        { icon: <LuClipboard  />, color: 'text-blue-500  bg-blue-50'   },
-  'task.deleted':        { icon: <LuTrash2     />, color: 'text-red-500   bg-red-50'    },
-  'task.status_changed': { icon: <LuActivity   />, color: 'text-amber-500 bg-amber-50'  },
-  'task.title_updated':  { icon: <LuPencil     />, color: 'text-violet-500 bg-violet-50' },
-  'member.added':        { icon: <LuUserPlus   />, color: 'text-lime-500  bg-lime-50'   },
-  'member.removed':      { icon: <LuUserMinus  />, color: 'text-red-500   bg-red-50'    },
-  'member.invited':      { icon: <LuUserPlus   />, color: 'text-cyan-500  bg-cyan-50'   },
-  'member.joined':       { icon: <LuUserPlus   />, color: 'text-lime-500  bg-lime-50'   },
-  'auth.login':          { icon: <LuLogIn      />, color: 'text-gray-500  bg-gray-100'  },
+  'task.created':        { icon: <LuClipboard  />, color: 'text-indigo-600 bg-indigo-50 dark:text-indigo-450 dark:bg-indigo-950/20 ring-indigo-100 dark:ring-indigo-900/30 border border-indigo-205/30' },
+  'task.deleted':        { icon: <LuTrash2     />, color: 'text-rose-600 bg-rose-50 dark:text-rose-455 dark:bg-rose-955/15 ring-rose-100 dark:ring-rose-900/30 border border-rose-205/30' },
+  'task.status_changed': { icon: <LuActivity   />, color: 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-955/15 ring-amber-100 dark:ring-amber-900/30 border border-amber-205/30' },
+  'task.title_updated':  { icon: <LuPencil     />, color: 'text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-950/20 ring-violet-100 dark:ring-violet-900/30 border border-violet-205/30' },
+  'member.added':        { icon: <LuUserPlus   />, color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-455 dark:bg-emerald-950/20 ring-emerald-100 dark:ring-emerald-900/30 border border-emerald-205/30' },
+  'member.removed':      { icon: <LuUserMinus  />, color: 'text-rose-600 bg-rose-50 dark:text-rose-455 dark:bg-rose-955/15 ring-rose-100 dark:ring-rose-900/30 border border-rose-205/30' },
+  'member.invited':      { icon: <LuUserPlus   />, color: 'text-cyan-600 bg-cyan-50 dark:text-cyan-450 dark:bg-cyan-950/20 ring-cyan-100 dark:ring-cyan-900/30 border border-cyan-205/30' },
+  'member.joined':       { icon: <LuUserPlus   />, color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-455 dark:bg-emerald-950/20 ring-emerald-100 dark:ring-emerald-900/30 border border-emerald-205/30' },
+  'auth.login':          { icon: <LuLogIn      />, color: 'text-slate-600 bg-slate-50 dark:text-zinc-400 dark:bg-zinc-800/40 ring-slate-100 dark:ring-zinc-700/50 border border-slate-205/30' },
 };
 
 const getActionMeta = (action) => ACTION_META[action] || {
-  icon: <LuActivity />, color: 'text-gray-500 bg-gray-100',
+  icon: <LuActivity />, color: 'text-slate-600 bg-slate-50 dark:text-zinc-400 dark:bg-zinc-800/40 ring-slate-100 dark:ring-zinc-700/50 border border-slate-205/30',
 };
 
 const formatAction = (action) =>
@@ -45,10 +45,10 @@ const formatMeta = (metadata) => {
 };
 
 const ACTION_FILTERS = [
-  { label: 'All',     value: null      },
-  { label: 'Tasks',   value: 'task.'   },
-  { label: 'Members', value: 'member.' },
-  { label: 'Auth',    value: 'auth.'   },
+  { label: 'All Activities', value: null      },
+  { label: 'Tasks',          value: 'task.'   },
+  { label: 'Members',        value: 'member.' },
+  { label: 'Auth Logins',    value: 'auth.'   },
 ];
 
 const AuditLog = () => {
@@ -84,105 +84,111 @@ const AuditLog = () => {
 
   return (
     <DashboardLayout activeMenu="Audit Log">
-      <div className="mt-5">
+      <div className="mt-4 pb-12 animate-fade-in font-sans">
+        
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <LuShield className="text-blue-500" /> Audit Log
-            </h2>
-            <p className="text-sm text-gray-400 mt-0.5">
-              Complete activity trail for <strong className="text-gray-600">{workspace?.name}</strong>
+            <h1 className="text-xl md:text-2xl font-extrabold text-slate-905 dark:text-zinc-105 tracking-tight flex items-center gap-2">
+              🛡️ Audit Activity Trail
+            </h1>
+            <p className="text-xs text-slate-400 dark:text-zinc-550 mt-1.5 font-bold uppercase tracking-wider">
+              Complete security trail for <strong className="text-indigo-650 dark:text-indigo-400">{workspace?.name}</strong>
             </p>
           </div>
 
-          {/* Search */}
+          {/* Search Input */}
           <div className="relative">
-            <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+            <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search logs..."
-              className="pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition w-56"
+              placeholder="Search event type or user..."
+              className="field-input pl-9 w-full sm:w-64 dark:bg-[#121215] dark:border-zinc-800/80 dark:text-zinc-200"
             />
           </div>
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-5">
+        {/* Filter Toolbar */}
+        <div className="flex flex-wrap gap-1 bg-slate-100/60 dark:bg-zinc-900/40 p-1 rounded-xl w-fit border border-slate-205 dark:border-zinc-800/80 mb-6">
           {ACTION_FILTERS.map((f) => (
             <button
               key={f.label}
               onClick={() => setFilterAction(f.value)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-full border transition ${
+              className={`flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-lg border border-transparent transition-all cursor-pointer ${
                 filterAction === f.value
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                  ? 'bg-white dark:bg-zinc-805 text-indigo-650 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-500 dark:text-zinc-400 hover:text-slate-705 dark:hover:text-zinc-200'
               }`}
             >
-              <LuFilter className="text-[10px]" />
+              <LuFilter size={12} />
               {f.label}
             </button>
           ))}
         </div>
 
-        {/* Log table */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        {/* Timeline Log View */}
+        <div className="card overflow-hidden !p-6">
           {loading ? (
-            <div className="flex justify-center py-16">
-              <LuLoaderCircle className="text-blue-500 text-2xl animate-spin" />
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <LuLoaderCircle className="animate-spin text-indigo-655" size={28} />
+              <p className="text-xs text-slate-400 dark:text-zinc-550 font-bold uppercase tracking-wider">Loading system logs...</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-16 text-center text-gray-400 text-sm">
-              No audit events found.
+            <div className="text-center py-16 text-slate-400 dark:text-zinc-500 font-bold text-xs flex flex-col items-center gap-2 uppercase tracking-wider">
+              <LuActivity size={32} className="opacity-30" />
+              No audit activities matching query.
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="relative border-l border-slate-100 dark:border-zinc-800/80 ml-4 pl-6 space-y-6">
               {filtered.map((log) => {
                 const meta = getActionMeta(log.action);
                 const detail = formatMeta(log.metadata);
 
                 return (
-                  <div key={log.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-gray-50/60 transition">
-                    {/* Action icon */}
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm mt-0.5 ${meta.color}`}>
-                      {meta.icon}
+                  <div key={log.id} className="relative group animate-fade-in">
+                    
+                    {/* Timeline Node Point with Icon */}
+                    <div className={`absolute -left-[38px] top-0.5 w-8 h-8 rounded-xl flex items-center justify-center ring-4 ring-white dark:ring-[#121215] ${meta.color} transition-transform duration-250 group-hover:scale-105`}>
+                      {React.cloneElement(meta.icon, { size: 14 })}
                     </div>
 
-                    {/* Details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-gray-800">
-                          {formatAction(log.action)}
-                        </span>
-                        {detail && (
-                          <span className="text-[11px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[200px]">
-                            {detail}
+                    {/* Timeline Log Box */}
+                    <div className="bg-slate-50/40 dark:bg-[#121215]/30 hover:bg-slate-50 dark:hover:bg-[#121215]/80 border border-slate-100 dark:border-zinc-800/80 rounded-xl p-4 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-extrabold text-slate-805 dark:text-zinc-200">
+                            {formatAction(log.action)}
                           </span>
-                        )}
+                          {detail && (
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-slate-200/40 dark:border-zinc-700/50">
+                              {detail}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Timestamp */}
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-550 font-bold uppercase tracking-wider">
+                          {moment(log.createdAt).format('DD MMM, hh:mm A')} · <span className="font-semibold text-slate-400/85 dark:text-zinc-600">{moment(log.createdAt).fromNow()}</span>
+                        </span>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {/* User */}
-                        <span className="flex items-center gap-1 text-[11px] text-gray-400">
-                          {log.userAvatar ? (
-                            <img src={log.userAvatar} className="w-3.5 h-3.5 rounded-full" alt="" />
-                          ) : (
-                            <LuUser className="text-[10px]" />
-                          )}
-                          {log.userName}
-                        </span>
-
-                        <span className="text-gray-200">·</span>
-
-                        {/* Time */}
-                        <span className="text-[11px] text-gray-400">
-                          {moment(log.createdAt).format('DD MMM YYYY, HH:mm')}
-                          <span className="text-gray-300 ml-1">({moment(log.createdAt).fromNow()})</span>
+                      {/* Actor Badge */}
+                      <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100/50 dark:border-zinc-800/50">
+                        {log.userAvatar ? (
+                          <img src={log.userAvatar} className="w-4 h-4 rounded-full object-cover" alt="" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-slate-205 dark:bg-zinc-800 flex items-center justify-center text-[8px] font-extrabold text-slate-600 dark:text-zinc-300">
+                            <LuUser size={9} />
+                          </div>
+                        )}
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">
+                          {log.userName || 'System Agent'}
                         </span>
                       </div>
                     </div>
+
                   </div>
                 );
               })}
@@ -190,10 +196,10 @@ const AuditLog = () => {
           )}
         </div>
 
-        {/* Count footer */}
+        {/* Timeline Footer count */}
         {!loading && (
-          <p className="text-xs text-gray-400 text-center mt-3">
-            Showing {filtered.length} of {logs.length} events · Last 100 entries
+          <p className="text-[10px] text-slate-400 dark:text-zinc-550 text-center mt-4 font-bold uppercase tracking-wider">
+            Showing {filtered.length} of {logs.length} system events · Max logs display limit: 100
           </p>
         )}
       </div>

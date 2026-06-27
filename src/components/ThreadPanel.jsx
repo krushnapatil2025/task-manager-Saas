@@ -5,9 +5,11 @@ import { getThreadReplies, sendChatMessage, normalizeMsg } from '../services/cha
 import { parseMarkdownAndMentions } from '../utils/markdown';
 import ChatInput from './ChatInput';
 import ReactionBar from './ReactionBar';
+import VoiceMessageBubble from './VoiceMessageBubble';
+import UserAvatarWithCard from './UserAvatarWithCard';
 import moment from 'moment';
 
-const ThreadPanel = ({ roomId, parentMessage, onClose, user, members = [] }) => {
+const ThreadPanel = ({ roomId, parentMessage, onClose, user, members = [], onlineUsers = {} }) => {
   const [replies, setReplies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -42,8 +44,12 @@ const ThreadPanel = ({ roomId, parentMessage, onClose, user, members = [] }) => 
       }, async (payload) => {
         const { data } = await supabase
           .from('chat_messages')
-          .select(`id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count,
-                   sender:profiles!sender_id(name, profile_image_url)`)
+          .select(`id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+                   sender:profiles!sender_id(name, profile_image_url),
+                   reply_to:reply_to_id(
+                     id, content, type, file_url,
+                     sender:profiles!sender_id(name)
+                   )`)
           .eq('id', payload.new.id)
           .single();
         if (data) {
@@ -61,8 +67,12 @@ const ThreadPanel = ({ roomId, parentMessage, onClose, user, members = [] }) => 
       }, async (payload) => {
         const { data } = await supabase
           .from('chat_messages')
-          .select(`id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count,
-                   sender:profiles!sender_id(name, profile_image_url)`)
+          .select(`id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+                   sender:profiles!sender_id(name, profile_image_url),
+                   reply_to:reply_to_id(
+                     id, content, type, file_url,
+                     sender:profiles!sender_id(name)
+                   )`)
           .eq('id', payload.new.id)
           .single();
         if (data) {
@@ -112,29 +122,36 @@ const ThreadPanel = ({ roomId, parentMessage, onClose, user, members = [] }) => 
         {/* Parent Message Card */}
         <div className="p-3 bg-indigo-50/40 border border-indigo-100/50 rounded-2xl">
           <div className="flex items-center gap-2.5 mb-2">
-            {parentMessage.senderAvatar ? (
-              <img src={parentMessage.senderAvatar} alt="" className="w-8 h-8 rounded-full object-cover border border-white shadow-sm" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
-                {parentMessage.senderName?.substring(0, 2).toUpperCase()}
-              </div>
-            )}
+            <UserAvatarWithCard 
+              userId={parentMessage.senderId}
+              userName={parentMessage.senderName}
+              userAvatar={parentMessage.senderAvatar}
+              onlineUsers={onlineUsers}
+              avatarClass="w-8 h-8 rounded-full object-cover border border-white shadow-sm"
+              fallbackClass="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center"
+            />
             <div>
               <div className="text-xs font-bold text-slate-700">{parentMessage.senderName}</div>
               <div className="text-[10px] text-slate-400">{moment(parentMessage.createdAt).fromNow()}</div>
             </div>
           </div>
-          <div 
-            className="text-xs text-slate-650 leading-relaxed break-words"
-            dangerouslySetInnerHTML={{ __html: parseMarkdownAndMentions(parentMessage.content) }}
-          />
-          {parentMessage.fileUrl && (
-            <div className="mt-2 text-xs text-indigo-600 font-semibold flex items-center gap-1.5 bg-white/60 p-2 rounded-lg border border-slate-100">
-              <LuFileText size={14} />
-              <a href={parentMessage.fileUrl.split('||')[1]} target="_blank" rel="noreferrer" className="hover:underline truncate">
-                {parentMessage.fileUrl.split('||')[2] || 'Attachment'}
-              </a>
-            </div>
+          {parentMessage.type === 'audio' ? (
+            <VoiceMessageBubble fileUrl={parentMessage.fileUrl} isOwn={parentMessage.senderId === user?.id} />
+          ) : (
+            <>
+              <div 
+                className="text-xs text-slate-650 leading-relaxed break-words"
+                dangerouslySetInnerHTML={{ __html: parseMarkdownAndMentions(parentMessage.content) }}
+              />
+              {parentMessage.fileUrl && (
+                <div className="mt-2 text-xs text-indigo-600 font-semibold flex items-center gap-1.5 bg-white/60 p-2 rounded-lg border border-slate-100">
+                  <LuFileText size={14} />
+                  <a href={parentMessage.fileUrl.split('||')[1]} target="_blank" rel="noreferrer" className="hover:underline truncate">
+                    {parentMessage.fileUrl.split('||')[2] || 'Attachment'}
+                  </a>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -159,13 +176,14 @@ const ThreadPanel = ({ roomId, parentMessage, onClose, user, members = [] }) => 
               const isOwn = reply.senderId === user?.id;
               return (
                 <div key={reply.id} className={`flex items-start gap-2.5 group relative ${isOwn ? 'flex-row-reverse' : ''}`}>
-                  {reply.senderAvatar ? (
-                    <img src={reply.senderAvatar} alt="" className="w-7 h-7 rounded-full object-cover shadow-sm flex-shrink-0" />
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
-                      {reply.senderName?.substring(0, 2).toUpperCase()}
-                    </div>
-                  )}
+                  <UserAvatarWithCard 
+                    userId={reply.senderId}
+                    userName={reply.senderName}
+                    userAvatar={reply.senderAvatar}
+                    onlineUsers={onlineUsers}
+                    avatarClass="w-7 h-7 rounded-full object-cover shadow-sm flex-shrink-0"
+                    fallbackClass="w-7 h-7 rounded-full bg-slate-200 text-slate-750 font-bold text-[10px] flex items-center justify-center flex-shrink-0"
+                  />
                   <div className={`max-w-[75%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : ''}`}>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-bold text-slate-600">{reply.senderName}</span>
@@ -176,16 +194,35 @@ const ThreadPanel = ({ roomId, parentMessage, onClose, user, members = [] }) => 
                         ? 'bg-indigo-600 text-white rounded-tr-none shadow-md' 
                         : 'bg-slate-50 text-slate-700 rounded-tl-none border border-slate-100'
                     }`}>
-                      <div dangerouslySetInnerHTML={{ __html: parseMarkdownAndMentions(reply.content) }} />
-                      {reply.fileUrl && (
-                        <div className={`mt-1.5 p-1.5 rounded-lg text-[10px] flex items-center gap-1 ${
-                          isOwn ? 'bg-indigo-700 text-indigo-100' : 'bg-white text-slate-600 border border-slate-100'
-                        }`}>
-                          <LuFileText size={12} />
-                          <a href={reply.fileUrl.split('||')[1]} target="_blank" rel="noreferrer" className="hover:underline truncate">
-                            {reply.fileUrl.split('||')[2] || 'Attachment'}
-                          </a>
+                      {reply.replyTo && (
+                        <div 
+                          className="text-[9px] p-1.5 rounded bg-black/5 mb-1.5 cursor-pointer max-w-xs hover:bg-black/10 transition-colors border-l-2 border-indigo-500"
+                        >
+                          <span className="font-bold block text-[8px] uppercase tracking-wider mb-0.5 text-indigo-700">
+                            {reply.replyTo.senderName}
+                          </span>
+                          <span className="truncate block text-slate-500">
+                            {reply.replyTo.content}
+                          </span>
                         </div>
+                      )}
+                      
+                      {reply.type === 'audio' ? (
+                        <VoiceMessageBubble fileUrl={reply.fileUrl} isOwn={isOwn} />
+                      ) : (
+                        <>
+                          <div dangerouslySetInnerHTML={{ __html: parseMarkdownAndMentions(reply.content) }} />
+                          {reply.fileUrl && (
+                            <div className={`mt-1.5 p-1.5 rounded-lg text-[10px] flex items-center gap-1 ${
+                              isOwn ? 'bg-indigo-700 text-indigo-100' : 'bg-white text-slate-600 border border-slate-100'
+                            }`}>
+                              <LuFileText size={12} />
+                              <a href={reply.fileUrl.split('||')[1]} target="_blank" rel="noreferrer" className="hover:underline truncate">
+                                {reply.fileUrl.split('||')[2] || 'Attachment'}
+                              </a>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

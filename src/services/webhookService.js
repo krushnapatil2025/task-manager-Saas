@@ -5,12 +5,20 @@ import { supabase } from "../utils/supabaseClient";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const WEBHOOK_EVENTS = [
+  // ── Task events ──────────────────────────────────
   "task.created",
   "task.status_changed",
   "task.deleted",
+  // ── Member events ────────────────────────────────
   "member.added",
   "member.removed",
   "member.invited",
+  // ── Leave events ─────────────────────────────────
+  "leave.created",
+  "leave.status_changed",
+  // ── Public Holiday events ─────────────────────────
+  "holiday.created",
+  "holiday.deleted",
 ];
 
 /**

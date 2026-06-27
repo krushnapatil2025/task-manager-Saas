@@ -106,3 +106,54 @@ export const exportTasksICal = async (workspaceId, workspaceName = "workspace") 
 /** Format a Date as iCal timestamp: YYYYMMDDTHHMMSSZ */
 const formatICalDate = (date) =>
   date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+// ── Chat History export ────────────────────────────────────────────────────────
+import { getRoomMessages } from "./chatService";
+
+/** Export chat room/direct message history as a JSON file. */
+export const exportChatHistoryJSON = async (roomId, roomName = "chat") => {
+  const cleanName = roomName.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_');
+  try {
+    const messages = await getRoomMessages(roomId, 1000);
+    const json = JSON.stringify({
+      room_id: roomId,
+      room_name: roomName,
+      exported_at: new Date().toISOString(),
+      messages: messages.map(m => ({
+        id: m.id,
+        sender: m.senderName,
+        content: m.content,
+        type: m.type,
+        fileUrl: m.fileUrl,
+        createdAt: m.createdAt
+      }))
+    }, null, 2);
+    downloadFile(json, `${cleanName}_history_${Date.now()}.json`, "application/json");
+  } catch (err) {
+    console.error("Failed to export chat history JSON:", err);
+    throw err;
+  }
+};
+
+/** Export chat room/direct message history as a CSV file. */
+export const exportChatHistoryCSV = async (roomId, roomName = "chat") => {
+  const cleanName = roomName.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_');
+  try {
+    const messages = await getRoomMessages(roomId, 1000);
+    const header = ["Message ID", "Sender", "Content", "Type", "File URL", "Created At"];
+    const rows = messages.map(m => [
+      m.id,
+      `"${(m.senderName || "").replace(/"/g, '""')}"`,
+      `"${(m.content || "").replace(/"/g, '""')}"`,
+      m.type,
+      m.fileUrl || "",
+      m.createdAt
+    ]);
+
+    const csv = [header.join(","), ...rows.map(r => r.join(","))].join("\n");
+    downloadFile(csv, `${cleanName}_history_${Date.now()}.csv`, "text/csv;charset=utf-8;");
+  } catch (err) {
+    console.error("Failed to export chat history CSV:", err);
+    throw err;
+  }
+};

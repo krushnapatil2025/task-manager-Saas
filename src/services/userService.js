@@ -14,7 +14,7 @@ export const getAllUsers = async (workspaceId) => {
     // Fallback: return all profiles (used in Phase 0 compatibility paths)
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, name, profile_image_url, role, created_at")
+      .select("id, name, profile_image_url, role, created_at, status_emoji, status_text, status_expires_at, dnd_until")
       .order("name");
     if (error) throw error;
     return (data || []).map(normalizeProfile);
@@ -24,7 +24,7 @@ export const getAllUsers = async (workspaceId) => {
     .from("workspace_members")
     .select(`
       role,
-      profile:profiles(id, name, profile_image_url, role, created_at)
+      profile:profiles(id, name, profile_image_url, role, created_at, status_emoji, status_text, status_expires_at, dnd_until)
     `)
     .eq("workspace_id", workspaceId)
     .order("profile(name)");
@@ -88,4 +88,8 @@ const normalizeProfile = (u) => ({
   role:            u.role,
   profileImageUrl: u.profile_image_url,
   createdAt:       u.created_at,
+  statusEmoji:     u.status_emoji,
+  statusText:      u.status_text,
+  statusExpiresAt: u.status_expires_at,
+  dndUntil:        u.dnd_until,
 });

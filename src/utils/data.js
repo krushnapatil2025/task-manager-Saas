@@ -4,7 +4,7 @@ import {
   LuUserPlus, LuShield, LuKey, LuWebhook, LuPuzzle,
   LuUsersRound, LuShieldCheck, LuSparkles,
   LuChartLine, LuFileText, LuTimer, LuGitBranch,
-  LuMessageSquare, LuZap, LuCalendar,
+  LuMessageSquare, LuZap, LuCalendar, LuPhone, LuSettings, LuTarget, LuFolder
 } from 'react-icons/lu';
 
 // ─── Admin sidebar ────────────────────────────────────────────────────────────
@@ -112,6 +112,30 @@ export const SIDE_MENU_DATA = [
     path: '/admin/automations',
   },
   {
+    id: '10g',
+    label: 'Goals',
+    icon: LuTarget,
+    path: '/admin/goals',
+  },
+  {
+    id: '10h',
+    label: 'Files',
+    icon: LuFolder,
+    path: '/admin/files',
+  },
+  {
+    id: '10i',
+    label: 'Leave Management',
+    icon: LuCalendar,
+    path: '/admin/leaves',
+  },
+  {
+    id: '10j',
+    label: 'Intern Logs',
+    icon: LuFileText,
+    path: '/admin/intern-logs',
+  },
+  {
     id: '11',
     label: 'AI Assistant',
     icon: LuSparkles,
@@ -128,6 +152,12 @@ export const SIDE_MENU_DATA = [
     label: 'Calendar',
     icon: LuCalendar,
     path: '/calendar',
+  },
+  {
+    id: '12d',
+    label: 'Settings',
+    icon: LuSettings,
+    path: '/settings',
   },
   {
     id: '99',
@@ -158,6 +188,30 @@ export const SIDE_MENU_USER_DATA = [
     path: '/user/timesheet',
   },
   {
+    id: '02h',
+    label: 'Goals',
+    icon: LuTarget,
+    path: '/admin/goals',
+  },
+  {
+    id: '02j',
+    label: 'Files',
+    icon: LuFolder,
+    path: '/admin/files',
+  },
+  {
+    id: '02i',
+    label: 'My Leaves',
+    icon: LuCalendar,
+    path: '/user/leaves',
+  },
+  {
+    id: '02k',
+    label: 'My Daily Log',
+    icon: LuFileText,
+    path: '/user/daily-log',
+  },
+  {
     id: '02b',
     label: 'AI Assistant',
     icon: LuSparkles,
@@ -174,6 +228,12 @@ export const SIDE_MENU_USER_DATA = [
     label: 'Calendar',
     icon: LuCalendar,
     path: '/calendar',
+  },
+  {
+    id: '02g',
+    label: 'Settings',
+    icon: LuSettings,
+    path: '/settings',
   },
   {
     id: '03',

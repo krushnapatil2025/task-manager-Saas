@@ -13,14 +13,16 @@ import DayView from '../../components/Calendar/DayView';
 import AgendaView from '../../components/Calendar/AgendaView';
 import EventFormModal from '../../components/Calendar/EventFormModal';
 import EventDetailPanel from '../../components/Calendar/EventDetailPanel';
+import MiniCalendar from '../../components/Calendar/MiniCalendar';
 import { calendarService } from '../../services/calendarService';
-import { getAllTasks } from '../../services/taskService';
+import { getAllTasks, getMyTasks } from '../../services/taskService';
 import { createNotification } from '../../services/notificationService';
+import { getLeaveHolidays } from '../../services/leaveService';
 import { LuCalendar, LuClock, LuMapPin, LuVideo, LuClipboardCheck } from 'react-icons/lu';
 
 const CalendarPage = () => {
   const { user } = useContext(UserContext);
-  const { workspace } = useContext(WorkspaceContext);
+  const { workspace, wsRole } = useContext(WorkspaceContext);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL Prefill states
@@ -34,6 +36,7 @@ const CalendarPage = () => {
   // Data states
   const [events, setEvents] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,6 +44,11 @@ const CalendarPage = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+
+  // Filter Layer states
+  const [filterEvents, setFilterEvents] = useState(true);
+  const [filterTasks, setFilterTasks] = useState(true);
+  const [filterHolidays, setFilterHolidays] = useState(true);
 
   // Prefill check on mount / search params change
   useEffect(() => {
@@ -70,7 +78,7 @@ const CalendarPage = () => {
       loadData();
       loadWorkspaceMembers();
     }
-  }, [workspace?.id, currentDate, view]);
+  }, [workspace?.id, currentDate, view, wsRole, user?.id]);
 
   const loadData = async () => {
     try {
@@ -83,9 +91,16 @@ const CalendarPage = () => {
       const evts = await calendarService.fetchEvents(workspace.id, startOfRange, endOfRange);
       setEvents(evts);
 
-      // 2. Fetch Tasks (to show due dates on calendar)
-      const tsks = await getAllTasks(workspace.id);
+      // 2. Fetch Tasks (only the current user's assigned tasks for non-admins/managers)
+      const isAdminOrManager = wsRole === 'admin' || wsRole === 'manager';
+      const tsks = isAdminOrManager
+        ? await getAllTasks(workspace.id)
+        : await getMyTasks(user.id, workspace.id);
       setTasks(tsks || []);
+
+      // 3. Fetch Public Holidays
+      const hols = await getLeaveHolidays(workspace.id);
+      setHolidays(hols || []);
 
     } catch (err) {
       console.error('Failed to load calendar data:', err);
@@ -253,55 +268,142 @@ const CalendarPage = () => {
           view={view}
           onNavigate={handleNavigate}
           onViewChange={setView}
+          onMonthChange={(m) => setCurrentDate(moment(currentDate).month(m))}
+          onYearChange={(y) => setCurrentDate(moment(currentDate).year(y))}
           onAddEventClick={() => {
             setEditingEvent(null);
             setIsFormOpen(true);
           }}
         />
 
-        {/* Loading Spinner overlay */}
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
-            <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+          {/* Left Sidebar - Enterprise Calendar Panel */}
+          <div className="w-full lg:w-[260px] border-r border-slate-200/50 bg-white/90 backdrop-blur-md p-4 flex flex-col gap-5 flex-shrink-0 select-none">
+            
+            {/* Quick date picker */}
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Quick Navigation</p>
+              <div className="flex justify-center">
+                <MiniCalendar 
+                  currentDate={currentDate} 
+                  onChangeDate={setCurrentDate} 
+                />
+              </div>
+            </div>
+
+            {/* Filter Legend / Toggle Switches */}
+            <div className="flex flex-col gap-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calendar Layers</p>
+              
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm animate-pulse" />
+                    <span className="text-xs font-bold text-slate-700">Team Meetings</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={filterEvents} 
+                    onChange={(e) => setFilterEvents(e.target.checked)}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-350 cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm" />
+                    <span className="text-xs font-bold text-slate-700">Tasks Due</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={filterTasks} 
+                    onChange={(e) => setFilterTasks(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-indigo-500 border-slate-350 cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm" />
+                    <span className="text-xs font-bold text-slate-700">Public Holidays</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={filterHolidays} 
+                    onChange={(e) => setFilterHolidays(e.target.checked)}
+                    className="w-4 h-4 rounded text-rose-600 focus:ring-indigo-500 border-slate-350 cursor-pointer"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Upcoming Summary Card */}
+            <div className="mt-auto p-4 bg-gradient-to-br from-indigo-50 to-indigo-100/20 rounded-2xl border border-indigo-100/40">
+              <p className="text-[10px] font-black text-indigo-650 uppercase tracking-widest">Workspace summary</p>
+              <div className="mt-2.5 flex flex-col gap-2">
+                <div className="flex justify-between text-xs font-bold text-slate-550">
+                  <span>Meetings this month</span>
+                  <span className="text-slate-800">{events.length}</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold text-slate-550">
+                  <span>Public holidays</span>
+                  <span className="text-slate-800">{holidays.length}</span>
+                </div>
+              </div>
+            </div>
+
           </div>
-        ) : (
-          /* Main view content body */
-          <div className="flex-1 flex flex-col min-h-0">
-            {view === 'month' && (
-              <MonthView
-                currentDate={currentDate}
-                events={events}
-                tasks={tasks}
-                onEventClick={handleEventClick}
-                onTaskClick={handleTaskClick}
-              />
-            )}
-            {view === 'week' && (
-              <WeekView
-                currentDate={currentDate}
-                events={events}
-                onEventClick={handleEventClick}
-              />
-            )}
-            {view === 'day' && (
-              <DayView
-                currentDate={currentDate}
-                events={events}
-                onEventClick={handleEventClick}
-              />
-            )}
-            {view === 'agenda' && (
-              <AgendaView
-                currentDate={currentDate}
-                events={events}
-                tasks={tasks}
-                view="week"
-                onEventClick={handleEventClick}
-                onTaskClick={handleTaskClick}
-              />
+
+          {/* Right Main Calendar Body */}
+          <div className="flex-1 flex flex-col min-h-0 bg-white relative">
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+                <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              /* Main view content body */
+              <div className="flex-1 flex flex-col min-h-0">
+                {view === 'month' && (
+                  <MonthView
+                    currentDate={currentDate}
+                    events={filterEvents ? events : []}
+                    tasks={filterTasks ? tasks : []}
+                    holidays={filterHolidays ? holidays : []}
+                    onEventClick={handleEventClick}
+                    onTaskClick={handleTaskClick}
+                  />
+                )}
+                {view === 'week' && (
+                  <WeekView
+                    currentDate={currentDate}
+                    events={filterEvents ? events : []}
+                    holidays={filterHolidays ? holidays : []}
+                    onEventClick={handleEventClick}
+                  />
+                )}
+                {view === 'day' && (
+                  <DayView
+                    currentDate={currentDate}
+                    events={filterEvents ? events : []}
+                    holidays={filterHolidays ? holidays : []}
+                    onEventClick={handleEventClick}
+                  />
+                )}
+                {view === 'agenda' && (
+                  <AgendaView
+                    currentDate={currentDate}
+                    events={filterEvents ? events : []}
+                    tasks={filterTasks ? tasks : []}
+                    holidays={filterHolidays ? holidays : []}
+                    view="week"
+                    onEventClick={handleEventClick}
+                    onTaskClick={handleTaskClick}
+                  />
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
 
         {/* Event detail side panel */}
         {selectedEvent && (

@@ -123,6 +123,191 @@ async function buildSlackPayload(
   payload: Record<string, unknown>,
   sb: SupabaseClient,
 ) {
+  if (event.startsWith("holiday.")) {
+    const holiday     = (payload?.holiday ?? {}) as Record<string, unknown>;
+    const holidayName = (holiday.name        as string)  || "Public Holiday";
+    const holidayDate = holiday.date          as string;
+    const isOptional  = holiday.is_optional   as boolean;
+    const description = holiday.description   as string | null;
+
+    // ── Dates ────────────────────────────────────────────────────────────────
+    const dateObj = holidayDate ? new Date(holidayDate) : null;
+
+    const fullDateStr = dateObj
+      ? dateObj.toLocaleDateString("en-US", {
+          weekday: "long", day: "numeric", month: "long", year: "numeric",
+        })
+      : "—";
+
+    const dayOfWeek = dateObj
+      ? dateObj.toLocaleDateString("en-US", { weekday: "long" })
+      : "—";
+
+    // ── Config per action ────────────────────────────────────────────────────
+    const isAdded = event === "holiday.created";
+    const cfg = isAdded
+      ? { label: "Public Holiday Added",   emoji: "🌴", color: "#10b981", action: "A new public holiday has been added to the workspace calendar." }
+      : { label: "Public Holiday Removed", emoji: "🗑️",  color: "#ef4444", action: "A public holiday has been removed from the workspace calendar." };
+
+    const holidayTypeBadge = isOptional ? "🟡  Optional Holiday" : "🟢  Public Holiday";
+
+    // ── Blocks ───────────────────────────────────────────────────────────────
+    const blocks: unknown[] = [];
+
+    // 1. Header
+    blocks.push({
+      type: "header",
+      text: { type: "plain_text", text: `${cfg.emoji}  ${cfg.label}  ·  TaskFlow HR`, emoji: true },
+    });
+
+    // 2. Intro context
+    blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: cfg.action },
+    });
+
+    blocks.push({ type: "divider" });
+
+    // 3. Holiday name
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: isAdded
+          ? `*📅  ${holidayName}*\n_Team members may plan their schedules accordingly._`
+          : `*📅  ~~${holidayName}~~*\n_This holiday has been removed from the workspace._`,
+      },
+    });
+
+    // 4. Details fields
+    blocks.push({
+      type: "section",
+      fields: [
+        { type: "mrkdwn", text: `*📆  Date*\n${fullDateStr}` },
+        { type: "mrkdwn", text: `*📋  Type*\n${holidayTypeBadge}` },
+        { type: "mrkdwn", text: `*🗓️  Day of Week*\n${dayOfWeek}` },
+        { type: "mrkdwn", text: `*⏱️  Recorded At*\n${new Date().toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}` },
+      ],
+    });
+
+    // 5. Description (if any)
+    if (description && description.trim()) {
+      blocks.push({ type: "divider" });
+      blocks.push({
+        type: "section",
+        text: { type: "mrkdwn", text: `*📝  Note*\n>${description.trim().replace(/\n/g, "\n>")}` },
+      });
+    }
+
+    // 6. Optional / Deleted advisory
+    if (isAdded && isOptional) {
+      blocks.push({
+        type: "context",
+        elements: [
+          { type: "mrkdwn", text: "ℹ️  *Optional Holiday* — employees may choose to take this day off at their own discretion." },
+        ],
+      });
+    } else if (!isAdded) {
+      blocks.push({
+        type: "context",
+        elements: [
+          { type: "mrkdwn", text: "⚠️  If you had planned leave around this date, please consult your manager." },
+        ],
+      });
+    }
+
+    blocks.push({ type: "divider" });
+
+    // 7. Footer
+    blocks.push({
+      type: "context",
+      elements: [
+        { type: "mrkdwn", text: `🏢 *TaskFlow Enterprise HR*  ·  Leave & Holiday Management  ·  Workspace Calendar` },
+      ],
+    });
+
+    return {
+      text: `[TaskFlow HR] ${cfg.label}: ${holidayName} — ${fullDateStr}`,
+      blocks,
+      attachments: [{ color: cfg.color, fallback: `${cfg.label}: ${holidayName} on ${fullDateStr}` }],
+    };
+  }
+
+
+  if (event.startsWith("leave.")) {
+    const leave = (payload?.leave ?? {}) as Record<string, unknown>;
+    const applicantName = (payload?.applicant_name as string) || "Unknown Employee";
+    const leaveType = (payload?.leave_type as string) || "Leave";
+    const startDate = leave.start_date as string;
+    const endDate = leave.end_date as string;
+    const totalDays = leave.total_days as number;
+    const reason = (leave.reason as string) || "No reason provided";
+    const status = (leave.status as string) || "pending";
+    const isHalfDay = leave.is_half_day as boolean;
+    const session = leave.half_day_session as string | null;
+
+    const dateStr = startDate && endDate
+      ? (startDate === endDate
+          ? new Date(startDate).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+          : `${new Date(startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${new Date(endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`)
+      : "—";
+
+    const durationStr = `${totalDays} Day${totalDays !== 1 ? "s" : ""}${isHalfDay ? ` (Half-day ${session ?? ""})` : ""}`;
+
+    const cfg = event === "leave.created"
+      ? { label: "New Leave Application", emoji: "🌴", color: "#6366f1" }
+      : { label: `Leave Application ${status.toUpperCase()}`, emoji: status === "approved" ? "✅" : "❌", color: status === "approved" ? "#10b981" : "#ef4444" };
+
+    const blocks: unknown[] = [
+      {
+        type: "header",
+        text: { type: "plain_text", text: `${cfg.emoji}  ${cfg.label}  ·  TaskFlow`, emoji: true },
+      },
+      { type: "divider" },
+      {
+        type: "section",
+        text: { type: "mrkdwn", text: `*Employee:* ${applicantName}\n*Leave Type:* ${leaveType}` },
+        fields: [
+          { type: "mrkdwn", text: `*Duration*\n${durationStr}` },
+          { type: "mrkdwn", text: `*Dates*\n${dateStr}` },
+        ],
+      },
+      {
+        type: "section",
+        text: { type: "mrkdwn", text: `*Reason:*\n>${reason.replace(/\n/g, "\n>")}` },
+      },
+    ];
+
+    if (event === "leave.status_changed") {
+      const comment = leave.review_comment as string | null;
+      if (comment && comment.trim()) {
+        blocks.push({
+          type: "section",
+          text: { type: "mrkdwn", text: `*Manager Comment:*\n>${comment.replace(/\n/g, "\n>")}` },
+        });
+      }
+    }
+
+    blocks.push(
+      { type: "divider" },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `🏢 *TaskFlow Enterprise*  ·  ${new Date().toLocaleString("en-US")}`,
+          },
+        ],
+      }
+    );
+
+    return {
+      text: `[TaskFlow] ${cfg.label}: ${applicantName} - ${leaveType} (${durationStr})`,
+      blocks,
+      attachments: [{ color: cfg.color, fallback: `${cfg.label}: ${applicantName} - ${leaveType}` }],
+    };
+  }
+
   const task        = (payload?.task       ?? {}) as Record<string, unknown>;
   const taskId      = task.id      as string | undefined;
   const title       = (task.title       as string) || "Untitled Task";
@@ -166,12 +351,16 @@ async function buildSlackPayload(
 
   // ── Event config ──────────────────────────────────────────────────────────
   const eventConfig: Record<string, { label: string; emoji: string; color: string }> = {
-    "task.created":        { label: "Task Created",        emoji: "🆕", color: "#22c55e" },
-    "task.deleted":        { label: "Task Deleted",        emoji: "🗑️",  color: "#ef4444" },
-    "task.status_changed": { label: "Task Status Updated", emoji: "🔄", color: "#3b82f6" },
-    "member.added":        { label: "Member Added",        emoji: "👤", color: "#8b5cf6" },
-    "member.removed":      { label: "Member Removed",      emoji: "👤", color: "#f97316" },
-    "member.invited":      { label: "Member Invited",      emoji: "📧", color: "#06b6d4" },
+    "task.created":          { label: "Task Created",            emoji: "🆕", color: "#22c55e" },
+    "task.deleted":          { label: "Task Deleted",            emoji: "🗑️",  color: "#ef4444" },
+    "task.status_changed":   { label: "Task Status Updated",     emoji: "🔄", color: "#3b82f6" },
+    "member.added":          { label: "Member Added",            emoji: "👤", color: "#8b5cf6" },
+    "member.removed":        { label: "Member Removed",          emoji: "👤", color: "#f97316" },
+    "member.invited":        { label: "Member Invited",          emoji: "📧", color: "#06b6d4" },
+    "leave.created":         { label: "New Leave Application",   emoji: "🌴", color: "#6366f1" },
+    "leave.status_changed":  { label: "Leave Status Updated",    emoji: "📋", color: "#10b981" },
+    "holiday.created":       { label: "Public Holiday Added",    emoji: "🎉", color: "#10b981" },
+    "holiday.deleted":       { label: "Public Holiday Deleted",  emoji: "🗑️", color: "#ef4444" },
   };
   const cfg = eventConfig[event] ?? { label: event, emoji: "📌", color: "#6b7280" };
 

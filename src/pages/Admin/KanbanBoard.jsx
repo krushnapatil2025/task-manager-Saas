@@ -10,23 +10,25 @@ import moment from 'moment';
 import toast from 'react-hot-toast';
 import {
   LuCalendar, LuFlag, LuPaperclip, LuSquareCheck,
-  LuMessageSquare, LuLoaderCircle, LuPlus,
+  LuMessageSquare, LuLoaderCircle, LuPlus, LuShare2
 } from 'react-icons/lu';
+import TaskSlidePanel from '../../components/TaskSlidePanel';
+import ShareBoardModal from '../../components/ShareBoardModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Kanban Board — drag-and-drop task board for the Admin
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COLUMNS = [
-  { id: 'Pending',     label: 'Pending',     color: 'bg-violet-500', light: 'bg-violet-50 border-violet-200'   },
-  { id: 'In Progress', label: 'In Progress', color: 'bg-cyan-500',   light: 'bg-cyan-50 border-cyan-200'       },
-  { id: 'Completed',   label: 'Completed',   color: 'bg-lime-500',   light: 'bg-lime-50 border-lime-200'       },
+  { id: 'Pending',     label: 'Pending',     color: 'bg-indigo-500',  light: 'bg-white border-slate-200 shadow-sm shadow-slate-100/30'   },
+  { id: 'In Progress', label: 'In Progress', color: 'bg-amber-500',   light: 'bg-white border-slate-200 shadow-sm shadow-slate-100/30'   },
+  { id: 'Completed',   label: 'Completed',   color: 'bg-emerald-500', light: 'bg-white border-slate-200 shadow-sm shadow-slate-100/30'   },
 ];
 
 const PRIORITY_COLOR = {
-  high:   'text-red-600 bg-red-50 border border-red-200',
-  medium: 'text-amber-600 bg-amber-50 border border-amber-200',
-  low:    'text-blue-600 bg-blue-50 border border-blue-200',
+  high:   'text-red-700 bg-red-50 border border-red-200/50',
+  medium: 'text-amber-700 bg-amber-50 border border-amber-250/60',
+  low:    'text-indigo-700 bg-indigo-50 border border-indigo-200/40',
 };
 
 const KanbanBoard = () => {
@@ -40,6 +42,9 @@ const KanbanBoard = () => {
     'Completed':   [],
   });
   const [loading, setLoading] = useState(true);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [isSlidePanelOpen, setIsSlidePanelOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // ── Load & distribute tasks into columns ──────────────────────────────────
   const loadTasks = useCallback(async () => {
@@ -111,24 +116,33 @@ const KanbanBoard = () => {
 
   return (
     <DashboardLayout activeMenu="Kanban Board">
-      <div className="mt-5">
+      <div className="mt-4 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Kanban Board</h2>
-            <p className="text-sm text-gray-400 mt-0.5">Drag cards across columns to update status</p>
+            <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">Kanban Board</h2>
+            <p className="text-xs text-slate-400 mt-1 font-semibold uppercase tracking-wider">Drag cards across columns to update status</p>
           </div>
-          <button
-            onClick={() => navigate('/admin/create-task')}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow hover:opacity-90 transition"
-          >
-            <LuPlus /> New Task
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition cursor-pointer"
+            >
+              <LuShare2 size={14} /> Share Board
+            </button>
+            <button
+              onClick={() => { setSelectedTaskId(null); setIsSlidePanelOpen(true); }}
+              className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-150 transition cursor-pointer"
+            >
+              <LuPlus /> New Task
+            </button>
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <LuLoaderCircle className="text-blue-600 text-3xl animate-spin" />
+          <div className="flex flex-col items-center justify-center h-72 gap-3">
+            <LuLoaderCircle className="text-indigo-500 text-3xl animate-spin" />
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Syncing board state...</p>
           </div>
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
@@ -138,13 +152,28 @@ const KanbanBoard = () => {
                   key={col.id}
                   col={col}
                   tasks={columns[col.id] || []}
-                  onTaskClick={(id) => navigate('/admin/create-task', { state: { taskId: id } })}
+                  onTaskClick={(id) => { setSelectedTaskId(id); setIsSlidePanelOpen(true); }}
                 />
               ))}
             </div>
           </DragDropContext>
         )}
       </div>
+
+      {/* Slide-over task editor */}
+      <TaskSlidePanel
+        taskId={selectedTaskId}
+        isOpen={isSlidePanelOpen}
+        onClose={() => setIsSlidePanelOpen(false)}
+        onSuccess={loadTasks}
+      />
+
+      {/* Share Board Modal */}
+      <ShareBoardModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        workspaceId={workspace?.id}
+      />
     </DashboardLayout>
   );
 };
@@ -154,14 +183,14 @@ export default KanbanBoard;
 // ─────────────────────────────── Column ─────────────────────────────────────
 
 const KanbanColumn = ({ col, tasks, onTaskClick }) => (
-  <div className="flex flex-col min-h-[200px]">
+  <div className="flex flex-col min-h-[300px]">
     {/* Column header */}
-    <div className={`flex items-center justify-between px-4 py-3 rounded-xl ${col.light} border mb-3`}>
+    <div className={`flex items-center justify-between px-4 py-3 rounded-2xl ${col.light} border border-slate-200/60 mb-3`}>
       <div className="flex items-center gap-2">
-        <div className={`w-2.5 h-2.5 rounded-full ${col.color}`} />
-        <span className="font-semibold text-sm text-gray-700">{col.label}</span>
+        <div className={`w-2.5 h-2.5 rounded-full ${col.color} shadow-sm`} />
+        <span className="font-extrabold text-sm text-slate-800 tracking-tight">{col.label}</span>
       </div>
-      <span className="text-xs font-bold text-gray-500 bg-white rounded-full px-2.5 py-0.5 border border-gray-200">
+      <span className="text-xs font-extrabold text-slate-500 bg-slate-50 border border-slate-200/50 rounded-full px-2.5 py-0.5">
         {tasks.length}
       </span>
     </div>
@@ -171,8 +200,8 @@ const KanbanColumn = ({ col, tasks, onTaskClick }) => (
         <div
           ref={provided.innerRef}
           {...provided.droppableProps}
-          className={`flex-1 flex flex-col gap-3 min-h-[80px] p-2 rounded-xl transition-colors ${
-            snapshot.isDraggingOver ? 'bg-blue-50/60' : 'bg-gray-50/40'
+          className={`flex-1 flex flex-col gap-3 min-h-[120px] p-2.5 rounded-2xl transition-all duration-200 ${
+            snapshot.isDraggingOver ? 'bg-indigo-50/45 border border-dashed border-indigo-200/50 shadow-inner' : 'bg-slate-25/40 border border-transparent'
           }`}
         >
           {tasks.map((task, index) => (
@@ -186,8 +215,8 @@ const KanbanColumn = ({ col, tasks, onTaskClick }) => (
           {provided.placeholder}
 
           {tasks.length === 0 && !snapshot.isDraggingOver && (
-            <div className="flex items-center justify-center h-16 rounded-xl border-2 border-dashed border-gray-200">
-              <p className="text-xs text-gray-400">Drop tasks here</p>
+            <div className="flex flex-col items-center justify-center py-12 rounded-2xl border-2 border-dashed border-slate-200 bg-white/50">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">No Tasks Here</p>
             </div>
           )}
         </div>
@@ -212,43 +241,50 @@ const KanbanCard = ({ task, index, onClick }) => {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={onClick}
-          className={`bg-white rounded-2xl border p-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 ${
+          className={`bg-white rounded-2xl border p-4 cursor-pointer transition-all duration-200 ${
             snapshot.isDragging
-              ? 'shadow-xl rotate-1 scale-105 border-blue-300'
-              : 'border-gray-200 hover:border-blue-200'
+              ? 'shadow-xl rotate-1 scale-[1.02] border-indigo-400 ring-4 ring-indigo-500/5 bg-slate-25'
+              : 'border-slate-200/70 hover:border-indigo-400/50 hover:shadow-md hover:shadow-slate-150/40'
           }`}
         >
           {/* Priority badge */}
           <div className="flex items-center justify-between mb-2">
-            <span
-              className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${PRIORITY_COLOR[task.priority]}`}
-            >
-              <LuFlag className="inline mr-1 text-[10px]" />
-              {task.priority}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md capitalize flex items-center gap-1 ${PRIORITY_COLOR[task.priority]}`}
+              >
+                <LuFlag size={10} />
+                {task.priority}
+              </span>
+              {task.recurrenceRule && (
+                <span className="text-[9px] font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/40 flex items-center gap-0.5 uppercase tracking-wider">
+                  🔁 {task.recurrenceRule}
+                </span>
+              )}
+            </div>
             {isOverdue && (
-              <span className="text-[10px] font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+              <span className="text-[9px] font-extrabold text-red-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-200/50">
                 Overdue
               </span>
             )}
           </div>
 
           {/* Title */}
-          <h4 className="font-semibold text-sm text-gray-800 mb-1 leading-snug line-clamp-2">
+          <h4 className="font-extrabold text-sm text-slate-800 mb-1 leading-snug line-clamp-2 hover:text-indigo-600 transition-colors">
             {task.title}
           </h4>
-          <p className="text-xs text-gray-400 line-clamp-2 mb-3">{task.description}</p>
+          <p className="text-xs text-slate-400 line-clamp-2 mb-3 font-medium">{task.description}</p>
 
           {/* Progress bar */}
           {totalCount > 0 && (
             <div className="mb-3">
-              <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-                <span>{completedCount}/{totalCount} todos</span>
+              <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                <span>{completedCount}/{totalCount} tasks</span>
                 <span>{progress}%</span>
               </div>
-              <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all"
+                  className="h-full bg-gradient-to-r from-indigo-500 to-violet-650 rounded-full transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -256,38 +292,38 @@ const KanbanCard = ({ task, index, onClick }) => {
           )}
 
           {/* Footer */}
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
               {task.dueDate && (
-                <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-400' : ''}`}>
-                  <LuCalendar className="text-xs" />
+                <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-500 font-extrabold' : ''}`}>
+                  <LuCalendar size={11} />
                   {moment(task.dueDate).format('MMM D')}
                 </span>
               )}
               {task.attachments?.length > 0 && (
                 <span className="flex items-center gap-1">
-                  <LuPaperclip className="text-xs" />
+                  <LuPaperclip size={11} />
                   {task.attachments.length}
                 </span>
               )}
             </div>
 
             {/* Assignee avatars */}
-            <div className="flex -space-x-2">
+            <div className="flex -space-x-1.5">
               {task.assignedTo?.slice(0, 3).map((u, i) =>
                 u.profileImageUrl ? (
                   <img
                     key={i}
                     src={u.profileImageUrl}
                     alt={u.name}
-                    className="w-6 h-6 rounded-full border-2 border-white object-cover"
+                    className="w-5.5 h-5.5 rounded-full border border-white object-cover shadow-sm"
                   />
                 ) : (
                   <div
                     key={i}
-                    className="w-6 h-6 rounded-full border-2 border-white bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center"
+                    className="w-5.5 h-5.5 rounded-full border border-white bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm"
                   >
-                    <span className="text-white text-[8px] font-bold">
+                    <span className="text-white text-[8px] font-extrabold">
                       {u.name?.[0]?.toUpperCase()}
                     </span>
                   </div>

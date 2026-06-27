@@ -209,9 +209,21 @@ const EventFormModal = ({
               </div>
             </div>
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
-                Meeting URL
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                  Meeting URL
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const roomName = `taskflow-mtg-${Math.random().toString(36).substring(2, 10)}-${Date.now()}`;
+                    setMeetingUrl(`https://meet.jit.si/${roomName}`);
+                  }}
+                  className="text-[9px] font-extrabold text-indigo-650 hover:text-indigo-850 uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  ✨ Auto-Gen Link
+                </button>
+              </div>
               <div className="relative">
                 <input
                   type="url"

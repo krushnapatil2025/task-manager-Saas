@@ -13,6 +13,7 @@ const SetupExpired    = lazy(() => import('./pages/Auth/SetupExpired'));
 
 // ── Public (lazy) ────────────────────────────────────────────────────────────
 const LandingPage    = lazy(() => import('./pages/LandingPage'));
+const PublicBoard    = lazy(() => import('./pages/PublicBoard'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const Dashboard        = lazy(() => import('./pages/Admin/Dashboard'));
@@ -33,12 +34,20 @@ const Reports          = lazy(() => import('./pages/Admin/Reports'));
 const AdminTimesheets  = lazy(() => import('./pages/Admin/AdminTimesheets'));
 const SprintBoard      = lazy(() => import('./pages/Admin/SprintBoard'));
 const AutomationRules  = lazy(() => import('./pages/Admin/AutomationRules'));
+const LeaveManagement  = lazy(() => import('./pages/Admin/LeaveManagement'));
+const InternLogDashboard = lazy(() => import('./pages/Admin/InternLogDashboard'));
 
 // ── Member pages (lazy) ──────────────────────────────────────────────────────
 const UserDashboard   = lazy(() => import('./pages/User/UserDashboard'));
 const MyTasks         = lazy(() => import('./pages/User/MyTasks'));
 const ViewTaskDetails = lazy(() => import('./pages/User/ViewTaskDetails'));
 const MyTimesheet     = lazy(() => import('./pages/User/MyTimesheet'));
+const UserProfile     = lazy(() => import('./pages/User/UserProfile'));
+const MyLeaves         = lazy(() => import('./pages/User/MyLeaves'));
+const InternDailyLog   = lazy(() => import('./pages/User/InternDailyLog'));
+const Goals            = lazy(() => import('./pages/Admin/Goals'));
+const GoalDetail       = lazy(() => import('./pages/Admin/GoalDetail'));
+const FilesHub         = lazy(() => import('./pages/Admin/FilesHub'));
 
 // ── Chat pages (lazy) ───────────────────────────────────────────────────
 const TeamChat        = lazy(() => import('./pages/Chat/TeamChat'));
@@ -46,6 +55,7 @@ const DirectMessages  = lazy(() => import('./pages/Chat/DirectMessages'));
 
 // ── Calendar pages (lazy) ────────────────────────────────────────────────
 const CalendarPage    = lazy(() => import('./pages/Calendar/CalendarPage'));
+const Settings        = lazy(() => import('./pages/Settings'));
 
 // ── Onboarding (lazy) ────────────────────────────────────────────────────────
 const CreateWorkspace = lazy(() => import('./pages/Onboarding/CreateWorkspace'));
@@ -64,8 +74,11 @@ import SuperAdminRoute   from './routes/SuperAdminRoute';
 // ── Providers ─────────────────────────────────────────────────────────────────
 import UserProvider,      { UserContext }      from './context/userContext';
 import WorkspaceProvider, { WorkspaceContext } from './context/WorkspaceContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { BrandProvider } from './context/BrandContext';
 import { Toaster }   from 'react-hot-toast';
 import { supabase }  from './utils/supabaseClient';
+import ConnectionStatusBanner from './components/ConnectionStatusBanner';
 
 // ── Page loader fallback ──────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -151,95 +164,111 @@ const OnboardingGuard = () => {
 // App
 // ─────────────────────────────────────────────────────────────────────────────
 const App = () => (
-  <UserProvider>
-    <WorkspaceProvider>
-      <Router>
-        <Suspense fallback={<PageLoader />}>
-        <Routes>
-          {/* ── Public ──────────────────────────────────────────────────── */}
+  <ThemeProvider>
+    <BrandProvider>
+      <UserProvider>
+        <WorkspaceProvider>
+          <Router>
+          <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* ── Public ──────────────────────────────────────────────────── */}
 
-          <Route path="/"               element={<LandingPage    />} />
-          <Route path="/login"          element={<Login           />} />
-          <Route path="/admin/register" element={<AdminRegister   />} />
-          <Route path="/setup-account"  element={<SetupAccount    />} />
-          <Route path="/setup-expired"  element={<SetupExpired    />} />
-          <Route path="/auth/callback"  element={<OAuthCallback   />} />
-          <Route path="/invite/:token"  element={<AcceptInvite    />} />
+            <Route path="/"               element={<LandingPage    />} />
+            <Route path="/login"          element={<Login           />} />
+            <Route path="/admin/register" element={<AdminRegister   />} />
+            <Route path="/setup-account"  element={<SetupAccount    />} />
+            <Route path="/setup-expired"  element={<SetupExpired    />} />
+            <Route path="/auth/callback"  element={<OAuthCallback   />} />
+            <Route path="/invite/:token"  element={<AcceptInvite    />} />
+            <Route path="/public-board/:token" element={<PublicBoard />} />
 
-          {/* ── Onboarding — admin + manager only (page guard rejects others) ── */}
-          <Route element={<PrivateRoute allowedRoles={['admin', 'member']} />}>
-            <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
-          </Route>
-
-          {/* ── Admin ───────────────────────────────────────────────────── */}
-          <Route element={<PrivateRoute allowedRoles={['admin']} />}>
-            <Route element={<OnboardingGuard />}>
-              <Route path="/admin/dashboard"   element={<Dashboard         />} />
-              <Route path="/admin/kanban"      element={<KanbanBoard       />} />
-              <Route path="/admin/tasks"       element={<ManageTasks       />} />
-              <Route path="/admin/users"       element={<ManageUsers       />} />
-              <Route path="/admin/invitations" element={<ManageInvitations />} />
-              <Route path="/admin/teams"        element={<ManageTeams       />} />
-              <Route path="/admin/permissions"   element={<PermissionMatrix  />} />
-              <Route path="/admin/audit"         element={<AuditLog          />} />
-              <Route path="/admin/api-keys"    element={<ApiKeys           />} />
-              <Route path="/admin/webhooks"    element={<Webhooks          />} />
-              <Route path="/admin/integrations" element={<Integrations     />} />
-              <Route path="/admin/create-task" element={<CreateTask        />} />
-              <Route path="/admin/analytics"    element={<Analytics         />} />
-              <Route path="/admin/reports"      element={<Reports           />} />
-              <Route path="/admin/timesheets"   element={<AdminTimesheets   />} />
-              <Route path="/admin/sprints"      element={<SprintBoard       />} />
-              <Route path="/admin/automations"  element={<AutomationRules   />} />
-              <Route path="/admin/calendar"     element={<CalendarPage adminView />} />
+            {/* ── Onboarding — admin + manager only (page guard rejects others) ── */}
+            <Route element={<PrivateRoute allowedRoles={['admin', 'member']} />}>
+              <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
             </Route>
-          </Route>
 
-          {/* ── Chat routes (shared — any logged-in user) ───────────────── */}
-          <Route element={<PrivateRoute />}>
-            <Route path="/chat"            element={<TeamChat        />} />
-            <Route path="/chat/dm"         element={<DirectMessages  />} />
-            <Route path="/chat/dm/:userId" element={<DirectMessages  />} />
-            <Route path="/calendar"            element={<CalendarPage    />} />
-            <Route path="/calendar/event/:id"  element={<CalendarPage    />} />
-          </Route>
-
-          {/* ── Member (also accessible by admin) ───────────────────── */}
-          <Route element={<PrivateRoute allowedRoles={['member', 'admin']} />}>
-            <Route element={<OnboardingGuard />}>
-              <Route path="/user/dashboard"        element={<UserDashboard   />} />
-              <Route path="/user/tasks"            element={<MyTasks         />} />
-              <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
-              <Route path="/user/timesheet"         element={<MyTimesheet    />} />
+            {/* ── Admin ───────────────────────────────────────────────────── */}
+            <Route element={<PrivateRoute allowedRoles={['admin']} />}>
+              <Route element={<OnboardingGuard />}>
+                <Route path="/admin/dashboard"   element={<Dashboard         />} />
+                <Route path="/admin/kanban"      element={<KanbanBoard       />} />
+                <Route path="/admin/tasks"       element={<ManageTasks       />} />
+                <Route path="/admin/users"       element={<ManageUsers       />} />
+                <Route path="/admin/invitations" element={<ManageInvitations />} />
+                <Route path="/admin/teams"        element={<ManageTeams       />} />
+                <Route path="/admin/permissions"   element={<PermissionMatrix  />} />
+                <Route path="/admin/audit"         element={<AuditLog          />} />
+                <Route path="/admin/api-keys"    element={<ApiKeys           />} />
+                <Route path="/admin/webhooks"    element={<Webhooks          />} />
+                <Route path="/admin/integrations" element={<Integrations     />} />
+                <Route path="/admin/create-task" element={<CreateTask        />} />
+                <Route path="/admin/analytics"    element={<Analytics         />} />
+                <Route path="/admin/reports"      element={<Reports           />} />
+                <Route path="/admin/timesheets"   element={<AdminTimesheets   />} />
+                <Route path="/admin/sprints"      element={<SprintBoard       />} />
+                <Route path="/admin/automations"  element={<AutomationRules   />} />
+                <Route path="/admin/calendar"     element={<CalendarPage adminView />} />
+                <Route path="/admin/leaves"       element={<LeaveManagement   />} />
+                <Route path="/admin/intern-logs"  element={<InternLogDashboard />} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* ── Super Admin ─────────────────────────────────────────────── */}
-          <Route element={<SuperAdminRoute />}>
-            <Route element={<SuperAdminLayout />}>
-              <Route path="/super-admin/dashboard"  element={<SuperDashboard   />} />
-              <Route path="/super-admin/workspaces" element={<AllWorkspaces    />} />
-              <Route path="/super-admin/users"      element={<AllUsers         />} />
-              <Route path="/super-admin/activity"   element={<PlatformActivity />} />
+            {/* ── Chat routes (shared — any logged-in user) ───────────────── */}
+            <Route element={<PrivateRoute />}>
+              <Route path="/chat"            element={<TeamChat        />} />
+              <Route path="/chat/dm"         element={<DirectMessages  />} />
+              <Route path="/chat/dm/:userId" element={<DirectMessages  />} />
+              <Route path="/calendar"            element={<CalendarPage    />} />
+              <Route path="/calendar/event/:id"  element={<CalendarPage    />} />
+              <Route path="/settings"            element={<Settings        />} />
             </Route>
-          </Route>
 
-          {/* ── Fallback ────────────────────────────────────────────────── */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        </Suspense>
-      </Router>
+            {/* ── Member (also accessible by admin) ───────────────────── */}
+            <Route element={<PrivateRoute allowedRoles={['member', 'admin']} />}>
+              <Route element={<OnboardingGuard />}>
+                <Route path="/user/dashboard"        element={<UserDashboard   />} />
+                <Route path="/user/tasks"            element={<MyTasks         />} />
+                <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
+                <Route path="/user/timesheet"         element={<MyTimesheet    />} />
+                <Route path="/user/profile"           element={<UserProfile    />} />
+                <Route path="/user/leaves"            element={<MyLeaves       />} />
+                <Route path="/user/daily-log"         element={<InternDailyLog />} />
+                <Route path="/admin/goals"            element={<Goals             />} />
+                <Route path="/admin/goals/:id"        element={<GoalDetail        />} />
+                <Route path="/admin/files"            element={<FilesHub          />} />
+              </Route>
+            </Route>
 
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style:   { fontSize: '13px' },
-          success: { duration: 3000  },
-          error:   { duration: 5000  },
-        }}
-      />
-    </WorkspaceProvider>
-  </UserProvider>
+            {/* ── Super Admin ─────────────────────────────────────────────── */}
+            <Route element={<SuperAdminRoute />}>
+              <Route element={<SuperAdminLayout />}>
+                <Route path="/super-admin/dashboard"  element={<SuperDashboard   />} />
+                <Route path="/super-admin/workspaces" element={<AllWorkspaces    />} />
+                <Route path="/super-admin/users"      element={<AllUsers         />} />
+                <Route path="/super-admin/activity"   element={<PlatformActivity />} />
+              </Route>
+            </Route>
+
+            {/* ── Fallback ────────────────────────────────────────────────── */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          </Suspense>
+        </Router>
+
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style:   { fontSize: '13px' },
+            success: { duration: 3000  },
+            error:   { duration: 5000  },
+          }}
+        />
+        
+        <ConnectionStatusBanner />
+      </WorkspaceProvider>
+    </UserProvider>
+    </BrandProvider>
+  </ThemeProvider>
 );
 
 export default App;

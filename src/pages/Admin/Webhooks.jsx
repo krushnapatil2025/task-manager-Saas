@@ -8,8 +8,8 @@ import {
 } from '../../services/webhookService';
 import {
   LuWebhook, LuPlus, LuTrash2, LuLoaderCircle, LuToggleLeft,
-  LuToggleRight, LuChevronDown, LuChevronRight, LuCopy,
-  LuCircleCheck, LuCircleX, LuCircleAlert,
+  LuToggleRight, LuChevronDown, LuChevronRight,
+  LuCircleCheck, LuCircleX,
 } from 'react-icons/lu';
 import moment from 'moment';
 import toast from 'react-hot-toast';
@@ -80,73 +80,97 @@ const Webhooks = () => {
 
   return (
     <DashboardLayout activeMenu="Webhooks">
-      <div className="mt-5 max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
+      <div className="mt-4 pb-12 max-w-3xl animate-fade-in font-sans">
+        
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <LuWebhook className="text-purple-500" /> Webhooks
-            </h2>
-            <p className="text-sm text-gray-400 mt-0.5">
-              Push events from <strong className="text-gray-600">{workspace?.name}</strong> to external URLs.
+            <h1 className="text-xl md:text-2xl font-extrabold text-slate-905 dark:text-zinc-105 tracking-tight flex items-center gap-2">
+              🔗 Event Webhooks
+            </h1>
+            <p className="text-xs text-slate-400 dark:text-zinc-550 mt-1.5 font-bold uppercase tracking-wider">
+              Subscribe external listeners to real-time events in <strong className="text-indigo-655 dark:text-indigo-400">{workspace?.name}</strong>
             </p>
           </div>
           <button
             onClick={() => setShowForm((o) => !o)}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow hover:opacity-90 transition"
+            className="card-btn-fill flex items-center justify-center gap-1.5 text-xs self-start sm:self-center"
           >
-            <LuPlus /> Add Webhook
+            <LuPlus size={14} /> Add Webhook
           </button>
         </div>
 
         {/* ── Create form ── */}
         {showForm && (
-          <form onSubmit={handleCreate} className="bg-white border border-gray-200 rounded-2xl p-6 mb-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">New Webhook</h3>
+          <form onSubmit={handleCreate} className="card p-6 mb-6">
+            <h3 className="text-xs font-extrabold text-slate-800 dark:text-zinc-200 uppercase tracking-wider mb-4">Register New Webhook</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest block mb-1.5">Name</label>
-                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Slack Notifications"
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition" />
+                  <label className="field-label">Friendly Name</label>
+                  <input 
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)} 
+                    placeholder="e.g. Slack Sync Bot"
+                    className="field-input dark:bg-[#121215] dark:border-zinc-800/80 dark:text-zinc-200" 
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest block mb-1.5">Endpoint URL</label>
-                  <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.slack.com/..."
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition" />
+                  <label className="field-label">Target Endpoint URL</label>
+                  <input 
+                    value={url} 
+                    onChange={(e) => setUrl(e.target.value)} 
+                    placeholder="https://hooks.yourdomain.com/webhooks"
+                    className="field-input dark:bg-[#121215] dark:border-zinc-800/80 dark:text-zinc-200" 
+                  />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest block mb-1.5">Events to subscribe</label>
+                <label className="field-label">Subscribe to Events</label>
                 <div className="flex flex-wrap gap-2">
                   {WEBHOOK_EVENTS.map((ev) => (
-                    <button key={ev} type="button" onClick={() => toggleEvent(ev)}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition ${
-                        events.includes(ev) ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+                    <button 
+                      key={ev} 
+                      type="button" 
+                      onClick={() => toggleEvent(ev)}
+                      className={`text-xs font-bold px-3.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                        events.includes(ev) 
+                          ? 'bg-indigo-650 text-white border-transparent shadow-sm' 
+                          : 'bg-slate-100/60 dark:bg-zinc-900/60 text-slate-505 dark:text-zinc-400 border-slate-205 dark:border-zinc-800/80 hover:text-slate-705 dark:hover:text-zinc-200'
                       }`}
                     >{ev}</button>
                   ))}
                 </div>
               </div>
-              <div className="flex gap-3">
-                <button type="submit" disabled={saving}
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition disabled:opacity-60"
+              <div className="flex items-center gap-3 pt-2">
+                <button 
+                  type="submit" 
+                  disabled={saving}
+                  className="card-btn-fill flex items-center justify-center gap-1.5 text-xs py-2 px-5"
                 >
-                  {saving ? <LuLoaderCircle className="animate-spin" /> : <LuWebhook />}
-                  {saving ? 'Creating...' : 'Create Webhook'}
+                  {saving ? <LuLoaderCircle className="animate-spin" size={14} /> : <LuWebhook size={14} />}
+                  {saving ? 'Creating Webhook...' : 'Register Webhook'}
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2.5">Cancel</button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowForm(false)} 
+                  className="card-btn text-xs px-4"
+                >Cancel</button>
               </div>
             </div>
           </form>
         )}
 
         {/* ── Webhook list ── */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {loading ? (
-            <div className="flex justify-center py-10"><LuLoaderCircle className="text-blue-500 text-2xl animate-spin" /></div>
+            <div className="flex justify-center py-10">
+              <LuLoaderCircle className="text-indigo-655 text-2xl animate-spin" />
+            </div>
           ) : hooks.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center text-gray-400 text-sm">
-              No webhooks configured yet.
+            <div className="card py-16 text-center text-slate-400 dark:text-zinc-550 font-bold text-xs flex flex-col items-center gap-2 uppercase tracking-wider">
+              <LuWebhook size={28} className="opacity-30" />
+              No active webhooks configured for this workspace.
             </div>
           ) : (
             hooks.map((h) => (
@@ -184,52 +208,79 @@ const WebhookCard = ({ hook, isExpanded, onToggle, onDelete, onExpand }) => {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="card !p-0 overflow-hidden transition-all duration-200">
       <div className="flex items-center gap-4 px-5 py-4">
-        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${hook.is_active ? 'bg-lime-400 animate-pulse' : 'bg-gray-300'}`} />
+        
+        {/* Status dot */}
+        <div className="relative flex-shrink-0">
+          <div className={`w-2.5 h-2.5 rounded-full ${hook.is_active ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-zinc-700'}`} />
+          {hook.is_active && (
+            <div className="absolute top-0 left-0 w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping opacity-75" />
+          )}
+        </div>
+
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-800">{hook.name}</p>
-          <p className="text-xs text-gray-400 truncate font-mono">{hook.url}</p>
-          <div className="flex flex-wrap gap-1 mt-1.5">
+          <p className="text-xs font-bold text-slate-855 dark:text-zinc-200">{hook.name}</p>
+          <p className="text-[10px] text-slate-400 dark:text-zinc-500 truncate font-mono mt-0.5 select-all">{hook.url}</p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
             {hook.events?.map((ev) => (
-              <span key={ev} className="text-[10px] font-semibold text-purple-600 bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full">{ev}</span>
+              <span key={ev} className="text-[9px] font-extrabold text-indigo-650 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 px-2 py-0.5 rounded-full uppercase tracking-wider">{ev}</span>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onToggle} title={hook.is_active ? 'Disable' : 'Enable'} className="text-gray-400 hover:text-blue-600 transition text-xl">
-            {hook.is_active ? <LuToggleRight className="text-blue-500 text-2xl" /> : <LuToggleLeft className="text-2xl" />}
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-1.5">
+          <button 
+            onClick={onToggle} 
+            title={hook.is_active ? 'Disable Webhook' : 'Enable Webhook'} 
+            className="text-slate-400 dark:text-slate-555 hover:text-indigo-650 dark:hover:text-indigo-400 transition-colors text-xl cursor-pointer p-1"
+          >
+            {hook.is_active ? <LuToggleRight className="text-indigo-650 dark:text-indigo-500 text-2xl" /> : <LuToggleLeft className="text-2xl" />}
           </button>
-          <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-            <LuTrash2 className="text-sm" />
+          
+          <button 
+            onClick={onDelete} 
+            title="Delete Webhook"
+            className="p-1.5 text-slate-400 dark:text-slate-555 hover:text-rose-600 dark:hover:text-rose-455 hover:bg-rose-50 dark:hover:bg-[#161619] rounded-lg transition-all cursor-pointer"
+          >
+            <LuTrash2 size={15} />
           </button>
-          <button onClick={handleExpand} className="p-1.5 text-gray-400 hover:text-gray-700 transition">
-            {isExpanded ? <LuChevronDown className="text-sm" /> : <LuChevronRight className="text-sm" />}
+          
+          <button 
+            onClick={handleExpand} 
+            title="Toggle delivery history"
+            className="p-1.5 text-slate-400 dark:text-slate-555 hover:text-slate-705 dark:hover:text-zinc-300 transition-colors cursor-pointer"
+          >
+            {isExpanded ? <LuChevronDown size={15} /> : <LuChevronRight size={15} />}
           </button>
         </div>
       </div>
 
-      {/* Delivery log */}
+      {/* Delivery Log Section */}
       {isExpanded && (
-        <div className="border-t border-gray-100 px-5 py-4 bg-gray-50/60">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Recent Deliveries</p>
+        <div className="border-t border-slate-100 dark:border-zinc-800/80 px-5 py-4 bg-slate-50/40 dark:bg-[#121215]/30 animate-fade-in">
+          <p className="text-[9px] font-extrabold text-slate-450 dark:text-zinc-550 uppercase tracking-widest mb-3">Recent Dispatch History</p>
+          
           {loadingD ? (
-            <div className="flex justify-center py-4"><LuLoaderCircle className="animate-spin text-blue-500" /></div>
+            <div className="flex justify-center py-4">
+              <LuLoaderCircle className="animate-spin text-indigo-650" size={18} />
+            </div>
           ) : deliveries.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-3">No deliveries yet.</p>
+            <p className="text-[9px] text-slate-405 dark:text-zinc-550 text-center py-3 font-bold uppercase tracking-wider">No dispatches recorded yet.</p>
           ) : (
             <div className="space-y-2">
               {deliveries.map((d) => (
-                <div key={d.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-3 py-2">
+                <div key={d.id} className="flex items-center gap-3 bg-white dark:bg-[#0c0c0e] border border-slate-100 dark:border-zinc-800/85 rounded-xl px-3 py-2.5">
                   {d.success
-                    ? <LuCircleCheck className="text-lime-500 text-sm flex-shrink-0" />
-                    : <LuCircleX    className="text-red-400 text-sm flex-shrink-0" />
+                    ? <LuCircleCheck className="text-emerald-500 text-sm flex-shrink-0" />
+                    : <LuCircleX    className="text-rose-500 text-sm flex-shrink-0" />
                   }
-                  <span className="text-[10px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">{d.event}</span>
-                  <span className={`text-[10px] font-mono ${d.success ? 'text-lime-600' : 'text-red-500'}`}>
-                    HTTP {d.status_code || '—'}
+                  <span className="text-[9px] font-extrabold text-slate-500 dark:text-zinc-400 bg-slate-150/50 dark:bg-zinc-800 px-2 py-0.5 rounded-full uppercase tracking-wider">{d.event}</span>
+                  <span className={`text-[10px] font-mono font-bold ${d.success ? 'text-emerald-600 dark:text-emerald-450' : 'text-rose-500'}`}>
+                    HTTP {d.status_code || 'Error'}
                   </span>
-                  <span className="text-[10px] text-gray-400 ml-auto">{moment(d.delivered_at).fromNow()}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-zinc-550 font-bold uppercase tracking-wider ml-auto">{moment(d.delivered_at).fromNow()}</span>
                 </div>
               ))}
             </div>

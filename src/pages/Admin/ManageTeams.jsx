@@ -157,35 +157,37 @@ const ManageTeams = () => {
   const memberIds  = teamMembers.map(m => m.userId);
   const nonMembers = allMembers.filter(m => !memberIds.includes(m.id));
 
-  // ── render ────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout activeMenu="Teams">
-      <div className="mt-5 mb-10">
+      <div className="mt-5 mb-10 animate-fade-in font-sans">
 
         {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Team Management</h2>
-            <p className="text-sm text-gray-400 mt-0.5">
-              {workspace?.name} · <span className="font-medium text-gray-600">{teams.length} team{teams.length !== 1 ? 's' : ''}</span>
+            <h1 className="text-xl md:text-2xl font-extrabold text-slate-905 dark:text-zinc-105 tracking-tight">
+              👥 Team Management
+            </h1>
+            <p className="text-xs text-slate-400 dark:text-zinc-550 mt-1.5 font-bold uppercase tracking-wider">
+              {workspace?.name} · <span className="font-bold text-indigo-650 dark:text-indigo-400">{teams.length} team{teams.length !== 1 ? 's' : ''}</span>
             </p>
           </div>
-          <button onClick={openCreate} className="btn-primary flex items-center gap-2 text-sm">
-            <LuPlus size={16}/> New Team
+          <button onClick={openCreate} className="card-btn-fill flex items-center gap-1.5 text-xs font-bold transition cursor-pointer">
+            <LuPlus size={14}/> New Team
           </button>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <LuLoaderCircle className="animate-spin text-blue-500" size={28}/>
+          <div className="flex flex-col items-center justify-center min-h-[300px] gap-3">
+            <LuLoaderCircle className="animate-spin text-indigo-505 text-3xl" />
+            <p className="text-xs text-slate-400 dark:text-zinc-550 font-bold uppercase tracking-wider">Loading team hierarchy...</p>
           </div>
         ) : teams.length === 0 ? (
           <EmptyState onCreateClick={openCreate}/>
         ) : (
-          <div className="flex gap-5">
+          <div className="flex flex-col lg:flex-row gap-6">
 
             {/* ── Left: Team list ── */}
-            <div className="w-64 flex-shrink-0 flex flex-col gap-2">
+            <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-3">
               {teams.map(team => (
                 <TeamCard
                   key={team.id}
@@ -201,19 +203,19 @@ const ManageTeams = () => {
             {/* ── Right: Team detail ── */}
             <div className="flex-1 min-w-0">
               {activeTeam && (
-                <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                <div className="card overflow-hidden !p-0">
 
                   {/* Team header */}
-                  <div className="flex items-center justify-between p-5 border-b border-gray-100"
+                  <div className="flex items-center justify-between p-5 border-b border-slate-105 dark:border-zinc-800/80"
                     style={{ background: activeTeam.color + '0d' }}>
                     <div className="flex items-center gap-3">
                       <span className="text-3xl">{activeTeam.icon}</span>
                       <div>
-                        <h3 className="font-bold text-gray-800 text-lg leading-tight">{activeTeam.name}</h3>
+                        <h3 className="font-extrabold text-slate-805 dark:text-zinc-150 text-base leading-tight">{activeTeam.name}</h3>
                         {activeTeam.description && (
-                          <p className="text-gray-500 text-sm mt-0.5">{activeTeam.description}</p>
+                          <p className="text-slate-500 dark:text-zinc-400 text-xs mt-1 font-semibold">{activeTeam.description}</p>
                         )}
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-550 mt-1 uppercase font-bold tracking-wider">
                           {activeTeam.memberCount} member{activeTeam.memberCount !== 1 ? 's' : ''} ·
                           Created by {activeTeam.createdByName}
                         </p>
@@ -221,7 +223,7 @@ const ManageTeams = () => {
                     </div>
                     <button
                       onClick={() => setShowAddMem(true)}
-                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border transition-all hover:shadow-sm"
+                      className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-lg border transition-all cursor-pointer hover:shadow-sm"
                       style={{ borderColor: activeTeam.color + '60', color: activeTeam.color, background: activeTeam.color + '12' }}
                     >
                       <LuUserPlus size={13}/> Add Member
@@ -230,85 +232,87 @@ const ManageTeams = () => {
 
                   {/* Members table */}
                   {teamLoading ? (
-                    <div className="flex justify-center py-10">
-                      <LuLoaderCircle className="animate-spin text-blue-400" size={22}/>
+                    <div className="flex justify-center py-12">
+                      <LuLoaderCircle className="animate-spin text-indigo-505" size={24}/>
                     </div>
                   ) : teamMembers.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
-                      <LuUsers size={32} className="mx-auto mb-2 opacity-30"/>
-                      <p className="text-sm">No members yet.</p>
+                    <div className="text-center py-16 text-slate-400 dark:text-zinc-500">
+                      <LuUsers size={36} className="mx-auto mb-3 opacity-30"/>
+                      <p className="text-xs font-bold uppercase tracking-wider">No members yet.</p>
                       <button onClick={() => setShowAddMem(true)}
-                        className="mt-3 text-xs text-blue-500 hover:underline">
+                        className="mt-3 text-xs text-indigo-550 dark:text-indigo-400 font-bold hover:underline">
                         Add the first member →
                       </button>
                     </div>
                   ) : (
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide border-b border-gray-100">
-                          <th className="text-left px-5 py-3">Member</th>
-                          <th className="text-left px-5 py-3">Job Profile</th>
-                          <th className="text-left px-5 py-3">Department</th>
-                          <th className="text-left px-5 py-3">Team Role</th>
-                          <th className="text-right px-5 py-3">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {teamMembers.map(m => {
-                          const jp = JP_MAP[m.jobProfile] || JP_MAP.employee;
-                          return (
-                            <tr key={m.userId} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-5 py-3">
-                                <div className="flex items-center gap-2.5">
-                                  {m.profileImageUrl ? (
-                                    <img src={m.profileImageUrl} alt={m.name}
-                                      className="w-8 h-8 rounded-lg object-cover"/>
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-                                      style={{ background: (jp?.color || '#6366f1') + '20' }}>
-                                      {jp?.emoji || '👤'}
-                                    </div>
-                                  )}
-                                  <span className="font-medium text-gray-800">{m.name}</span>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3">
-                                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-                                  style={{ background: (jp?.color || '#64748b') + '18', color: jp?.color || '#64748b' }}>
-                                  {jp?.emoji} {jp?.label || m.jobProfile}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3 text-xs text-gray-500">
-                                {m.department || <span className="text-gray-300">—</span>}
-                              </td>
-                              <td className="px-5 py-3">
-                                <button
-                                  onClick={() => handleRoleToggle(m.userId, m.teamRole)}
-                                  className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full border cursor-pointer transition-all hover:shadow-sm ${
-                                    m.teamRole === 'lead'
-                                      ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
-                                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                                  }`}
-                                  title="Click to toggle role"
-                                >
-                                  {m.teamRole === 'lead' ? <LuShield size={10}/> : <LuUser size={10}/>}
-                                  {m.teamRole === 'lead' ? 'Team Lead' : 'Member'}
-                                </button>
-                              </td>
-                              <td className="px-5 py-3 text-right">
-                                <button
-                                  onClick={() => handleRemoveMember(m.userId)}
-                                  className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition"
-                                  title="Remove from team"
-                                >
-                                  <LuX size={14}/>
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="premium-table min-w-full">
+                        <thead>
+                          <tr className="border-b border-slate-100 dark:border-zinc-800/80 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                            <th className="px-5 py-3 text-left">Member</th>
+                            <th className="px-5 py-3 text-left">Job Profile</th>
+                            <th className="px-5 py-3 text-left">Department</th>
+                            <th className="px-5 py-3 text-left">Team Role</th>
+                            <th className="px-5 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-105 dark:divide-zinc-800/80">
+                          {teamMembers.map(m => {
+                            const jp = JP_MAP[m.jobProfile] || JP_MAP.employee;
+                            return (
+                              <tr key={m.userId} className="hover:bg-slate-25/50 dark:hover:bg-zinc-900/10 transition">
+                                <td className="px-5 py-3.5">
+                                  <div className="flex items-center gap-2.5">
+                                    {m.profileImageUrl ? (
+                                      <img src={m.profileImageUrl} alt={m.name}
+                                        className="w-7 h-7 rounded-lg object-cover border border-slate-100 dark:border-zinc-800"/>
+                                    ) : (
+                                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+                                        style={{ background: (jp?.color || '#6366f1') + '20', color: jp?.color || '#6366f1' }}>
+                                        {jp?.emoji || '👤'}
+                                      </div>
+                                    )}
+                                    <span className="font-bold text-slate-805 dark:text-zinc-200 text-xs">{m.name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded uppercase border"
+                                    style={{ background: (jp?.color || '#64748b') + '12', color: jp?.color || '#64748b', borderColor: (jp?.color || '#64748b') + '25' }}>
+                                    {jp?.emoji} {jp?.label || m.jobProfile}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-zinc-450 font-semibold">
+                                  {m.department || <span className="text-slate-300 dark:text-zinc-700">—</span>}
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <button
+                                    onClick={() => handleRoleToggle(m.userId, m.teamRole)}
+                                    className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border cursor-pointer transition-all hover:shadow-sm ${
+                                      m.teamRole === 'lead'
+                                        ? 'bg-amber-50 dark:bg-amber-955/15 text-amber-600 dark:text-amber-400 border-amber-200/50 dark:border-amber-900/30'
+                                        : 'bg-slate-50 dark:bg-zinc-900/40 text-slate-500 dark:text-zinc-450 border-slate-200 dark:border-zinc-800'
+                                    }`}
+                                    title="Click to toggle role"
+                                  >
+                                    {m.teamRole === 'lead' ? <LuShield size={10}/> : <LuUser size={10}/>}
+                                    {m.teamRole === 'lead' ? 'Team Lead' : 'Member'}
+                                  </button>
+                                </td>
+                                <td className="px-5 py-3.5 text-right">
+                                  <button
+                                    onClick={() => handleRemoveMember(m.userId)}
+                                    className="text-slate-400 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-zinc-800 p-1.5 rounded-lg transition cursor-pointer"
+                                    title="Remove from team"
+                                  >
+                                    <LuX size={14}/>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               )}
@@ -322,24 +326,24 @@ const ManageTeams = () => {
         <Modal title={editTeam ? 'Edit Team' : 'Create Team'} onClose={() => setShowCreate(false)}>
           <form onSubmit={handleSaveTeam} className="flex flex-col gap-4">
             <div>
-              <label className="field-label">Team Name *</label>
+              <label className="field-label text-slate-500 dark:text-zinc-400">Team Name *</label>
               <input value={fName} onChange={e => setFName(e.target.value)}
-                placeholder="e.g. Frontend Team" className="field-input" required/>
+                placeholder="e.g. Frontend Team" className="field-input dark:bg-[#121215] dark:border-zinc-805 dark:text-zinc-200" required/>
             </div>
             <div>
-              <label className="field-label">Description</label>
+              <label className="field-label text-slate-500 dark:text-zinc-400">Description</label>
               <textarea value={fDesc} onChange={e => setFDesc(e.target.value)}
-                placeholder="What does this team work on?" rows={2} className="field-input resize-none"/>
+                placeholder="What does this team work on?" rows={2} className="field-input dark:bg-[#121215] dark:border-zinc-805 dark:text-zinc-200 resize-none"/>
             </div>
 
             {/* Icon picker */}
             <div>
-              <label className="field-label">Icon</label>
+              <label className="field-label text-slate-500 dark:text-zinc-400">Icon</label>
               <div className="flex flex-wrap gap-2">
                 {TEAM_ICONS.map(ic => (
                   <button key={ic} type="button" onClick={() => setFIcon(ic)}
-                    className={`w-9 h-9 rounded-lg text-xl flex items-center justify-center border-2 transition ${
-                      fIcon === ic ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    className={`w-9 h-9 rounded-lg text-xl flex items-center justify-center border-2 transition cursor-pointer ${
+                      fIcon === ic ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 dark:border-indigo-800' : 'border-slate-200 dark:border-zinc-800 hover:border-slate-350 dark:hover:border-zinc-700'}`}>
                     {ic}
                   </button>
                 ))}
@@ -348,33 +352,33 @@ const ManageTeams = () => {
 
             {/* Color picker */}
             <div>
-              <label className="field-label">Colour</label>
+              <label className="field-label text-slate-500 dark:text-zinc-400">Colour</label>
               <div className="flex flex-wrap gap-2">
                 {TEAM_COLORS.map(c => (
                   <button key={c} type="button" onClick={() => setFColor(c)}
-                    className="w-7 h-7 rounded-full border-2 transition-all"
-                    style={{ background: c, borderColor: fColor === c ? '#1e1b4b' : 'transparent' }}>
-                    {fColor === c && <LuCheck size={12} className="text-white mx-auto"/>}
+                    className="w-7 h-7 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center"
+                    style={{ background: c, borderColor: fColor === c ? 'currentColor' : 'transparent' }}>
+                    {fColor === c && <LuCheck size={12} className="text-white"/>}
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Preview */}
-            <div className="rounded-xl p-3 flex items-center gap-3"
-              style={{ background: fColor + '15', border: `1px solid ${fColor}40` }}>
+            <div className="rounded-xl p-3 flex items-center gap-3 border"
+              style={{ background: fColor + '12', borderColor: fColor + '30' }}>
               <span className="text-2xl">{fIcon}</span>
               <div>
-                <p className="font-bold text-sm text-gray-800">{fName || 'Team Name'}</p>
-                <p className="text-xs text-gray-500">{fDesc || 'Team description'}</p>
+                <p className="font-bold text-sm text-slate-800 dark:text-zinc-200">{fName || 'Team Name'}</p>
+                <p className="text-xs text-slate-500 dark:text-zinc-450 font-semibold">{fDesc || 'Team description'}</p>
               </div>
             </div>
 
             <div className="flex gap-3 pt-1">
-              <button type="button" onClick={() => setShowCreate(false)} className="btn-ghost flex-shrink-0 px-5">
+              <button type="button" onClick={() => setShowCreate(false)} className="card-btn flex-shrink-0 px-5 cursor-pointer">
                 Cancel
               </button>
-              <button type="submit" disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">
+              <button type="submit" disabled={saving} className="card-btn-fill flex-1 flex items-center justify-center gap-2 cursor-pointer">
                 {saving ? <LuLoaderCircle size={15} className="animate-spin"/> : <LuSave size={15}/>}
                 {saving ? 'Saving…' : (editTeam ? 'Save Changes' : 'Create Team')}
               </button>
@@ -403,29 +407,19 @@ const ManageTeams = () => {
       {/* ── Delete Confirm ── */}
       {delConfirm && (
         <Modal title="Delete Team" onClose={() => setDelConfirm(null)}>
-          <p className="text-gray-600 text-sm mb-6">
+          <p className="text-slate-600 dark:text-zinc-350 text-sm mb-6">
             Are you sure you want to delete <strong>{teams.find(t => t.id === delConfirm)?.name}</strong>?
             All team memberships will be removed. Tasks assigned to this team will remain.
           </p>
           <div className="flex gap-3">
-            <button onClick={() => setDelConfirm(null)} className="btn-ghost flex-1">Cancel</button>
+            <button onClick={() => setDelConfirm(null)} className="card-btn flex-1 cursor-pointer">Cancel</button>
             <button onClick={handleDeleteTeam}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-xl transition text-sm">
+              className="flex-1 bg-red-650 hover:bg-red-755 text-white font-bold py-2 rounded-xl transition text-xs uppercase tracking-wider cursor-pointer">
               Delete Team
             </button>
           </div>
         </Modal>
       )}
-
-      <style>{`
-        .btn-primary{background:linear-gradient(to right,#2563eb,#7c3aed);color:white;font-weight:600;padding:.5rem 1.1rem;border-radius:.75rem;border:none;cursor:pointer;transition:opacity .2s;}
-        .btn-primary:hover{opacity:.9;} .btn-primary:disabled{opacity:.55;cursor:not-allowed;}
-        .btn-ghost{background:#f9fafb;color:#374151;font-weight:600;padding:.5rem 1rem;border-radius:.75rem;border:1px solid #e5e7eb;cursor:pointer;transition:background .15s;}
-        .btn-ghost:hover{background:#f3f4f6;}
-        .field-label{display:block;font-size:.75rem;font-weight:500;color:#6b7280;margin-bottom:.25rem;}
-        .field-input{width:100%;border:1px solid #e5e7eb;border-radius:.65rem;padding:.45rem .75rem;font-size:.875rem;outline:none;color:#111827;transition:border-color .2s;}
-        .field-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1);}
-      `}</style>
     </DashboardLayout>
   );
 };
@@ -436,7 +430,7 @@ const TeamCard = ({ team, active, onClick, onEdit, onDelete }) => (
   <div
     onClick={onClick}
     className={`rounded-xl border p-4 cursor-pointer transition-all select-none ${
-      active ? 'shadow-md' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'
+      active ? 'shadow-md border-indigo-500/50' : 'border-slate-205 dark:border-zinc-800 bg-white dark:bg-[#151518]/30 hover:border-slate-300 dark:hover:border-zinc-700 hover:shadow-sm'
     }`}
     style={active ? { borderColor: team.color, background: team.color + '0a' } : {}}
   >
@@ -444,18 +438,18 @@ const TeamCard = ({ team, active, onClick, onEdit, onDelete }) => (
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="text-xl flex-shrink-0">{team.icon}</span>
         <div className="min-w-0">
-          <p className="font-semibold text-gray-800 text-sm truncate">{team.name}</p>
-          <p className="text-xs text-gray-400">{team.memberCount} member{team.memberCount !== 1 ? 's' : ''}</p>
+          <p className="font-bold text-slate-805 dark:text-zinc-200 text-sm truncate">{team.name}</p>
+          <p className="text-xs text-slate-400 dark:text-zinc-550 font-semibold">{team.memberCount} member{team.memberCount !== 1 ? 's' : ''}</p>
         </div>
       </div>
       {active && (
         <div className="flex gap-1 flex-shrink-0">
           <button onClick={e => { e.stopPropagation(); onEdit(); }}
-            className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition">
+            className="p-1 rounded text-slate-450 hover:text-indigo-650 hover:bg-indigo-50/50 dark:hover:bg-zinc-800 transition cursor-pointer">
             <LuPencil size={12}/>
           </button>
           <button onClick={e => { e.stopPropagation(); onDelete(); }}
-            className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition">
+            className="p-1 rounded text-slate-455 hover:text-rose-650 hover:bg-rose-50/50 dark:hover:bg-zinc-800 transition cursor-pointer">
             <LuTrash2 size={12}/>
           </button>
         </div>
@@ -471,10 +465,10 @@ const Modal = ({ title, onClose, children }) => (
   <>
     <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose}/>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl animate-fade-in">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+      <div className="w-full max-w-md bg-white dark:bg-[#121215] border border-slate-200/60 dark:border-zinc-800 rounded-2xl shadow-2xl animate-fade-in">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-zinc-800/80">
+          <h3 className="font-extrabold text-slate-805 dark:text-zinc-200 text-sm uppercase tracking-wider">{title}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition cursor-pointer">
             <LuX size={18}/>
           </button>
         </div>
@@ -500,16 +494,16 @@ const AddMemberModal = ({ team, candidates, onClose, onAdd }) => {
   return (
     <Modal title={`Add to ${team.name}`} onClose={onClose}>
       {candidates.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-4">
+        <p className="text-slate-500 dark:text-zinc-500 text-sm text-center py-4 font-semibold">
           All workspace members are already in this team.
         </p>
       ) : (
         <div className="flex flex-col gap-4">
           <div>
-            <label className="field-label">Select Member</label>
+            <label className="field-label text-slate-500 dark:text-zinc-400">Select Member</label>
             <div className="relative">
               <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)}
-                className="field-input appearance-none pr-7">
+                className="field-input appearance-none pr-7 dark:bg-[#121215] dark:border-zinc-800 dark:text-zinc-200 cursor-pointer">
                 <option value="">Choose a member…</option>
                 {candidates.map(m => (
                   <option key={m.id} value={m.id}>
@@ -517,16 +511,16 @@ const AddMemberModal = ({ team, candidates, onClose, onAdd }) => {
                   </option>
                 ))}
               </select>
-              <LuChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+              <LuChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-450 pointer-events-none"/>
             </div>
           </div>
           <div>
-            <label className="field-label">Team Role</label>
+            <label className="field-label text-slate-500 dark:text-zinc-400">Team Role</label>
             <div className="flex gap-2">
               {['member', 'lead'].map(r => (
                 <button key={r} type="button" onClick={() => setRole(r)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-sm font-semibold transition ${
-                    role === r ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-sm font-semibold transition cursor-pointer ${
+                    role === r ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400' : 'border-slate-200 dark:border-zinc-800 text-slate-500 hover:border-slate-300 dark:hover:border-zinc-700'}`}>
                   {r === 'lead' ? <LuShield size={14}/> : <LuUser size={14}/>}
                   {r === 'lead' ? 'Team Lead' : 'Member'}
                 </button>
@@ -534,9 +528,9 @@ const AddMemberModal = ({ team, candidates, onClose, onAdd }) => {
             </div>
           </div>
           <div className="flex gap-3 pt-1">
-            <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
+            <button onClick={onClose} className="card-btn flex-1 cursor-pointer">Cancel</button>
             <button onClick={handleAdd} disabled={adding}
-              className="btn-primary flex-1 flex items-center justify-center gap-2">
+              className="card-btn-fill flex-1 flex items-center justify-center gap-2 cursor-pointer">
               {adding ? <LuLoaderCircle size={14} className="animate-spin"/> : <LuUserPlus size={14}/>}
               {adding ? 'Adding…' : 'Add to Team'}
             </button>
@@ -550,11 +544,11 @@ const AddMemberModal = ({ team, candidates, onClose, onAdd }) => {
 const EmptyState = ({ onCreateClick }) => (
   <div className="text-center py-20">
     <div className="text-5xl mb-4">👥</div>
-    <h3 className="text-lg font-bold text-gray-700 mb-2">No teams yet</h3>
-    <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
+    <h3 className="text-lg font-bold text-slate-805 dark:text-zinc-200 mb-2">No teams yet</h3>
+    <p className="text-slate-400 dark:text-zinc-500 text-sm mb-6 max-w-xs mx-auto font-medium">
       Organise your workspace by creating functional teams — Engineering, Design, Marketing, and more.
     </p>
-    <button onClick={onCreateClick} className="btn-primary inline-flex items-center gap-2">
+    <button onClick={onCreateClick} className="card-btn-fill inline-flex items-center gap-2 cursor-pointer">
       <LuPlus size={16}/> Create First Team
     </button>
   </div>

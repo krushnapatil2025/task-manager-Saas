@@ -139,6 +139,89 @@ const WorkspaceProvider = ({ children }) => {
     return data;
   };
 
+  const [onlineUsers, setOnlineUsers] = useState({});
+
+  // ── Real-time workspace user presence tracking ──────────────────────────────
+  useEffect(() => {
+    if (!workspace?.id || !user?.id) {
+      setOnlineUsers({});
+      return;
+    }
+
+    const presenceChannel = supabase.channel(`presence-workspace-${workspace.id}`);
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const onlineIds = {};
+        Object.values(state).forEach((presenceInfo) => {
+          presenceInfo.forEach((item) => {
+            if (item.user_id) {
+              onlineIds[item.user_id] = item.status || 'active';
+            }
+          });
+        });
+        setOnlineUsers(onlineIds);
+      });
+
+    let idleTimeout = null;
+    let isIdle = false;
+
+    const resetIdleTimer = async () => {
+      if (isIdle) {
+        isIdle = false;
+        try {
+          await presenceChannel.track({
+            user_id: user.id,
+            name: user.name || 'User',
+            status: 'active',
+            online_at: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error('Failed to track active status:', err);
+        }
+      }
+      clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(async () => {
+        isIdle = true;
+        try {
+          await presenceChannel.track({
+            user_id: user.id,
+            name: user.name || 'User',
+            status: 'idle',
+            online_at: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error('Failed to track idle status:', err);
+        }
+      }, 120000); // 2 minutes
+    };
+
+    presenceChannel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        try {
+          await presenceChannel.track({
+            user_id: user.id,
+            name: user.name || 'User',
+            status: 'active',
+            online_at: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error('Failed to track initial active status:', err);
+        }
+        window.addEventListener('mousemove', resetIdleTimer);
+        window.addEventListener('keydown', resetIdleTimer);
+      }
+    });
+
+    return () => {
+      clearTimeout(idleTimeout);
+      window.removeEventListener('mousemove', resetIdleTimer);
+      window.removeEventListener('keydown', resetIdleTimer);
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [workspace?.id, user?.id]);
+
   // ── Reload after membership changes ─────────────────────────────────────────
   const refreshWorkspace = () => loadWorkspaces();
 
@@ -155,6 +238,7 @@ const WorkspaceProvider = ({ children }) => {
         wsRole,             // current user's role in the active workspace
         wsLoading,          // loading state
         needsOnboarding,    // true when user has no workspace yet
+        onlineUsers,        // online users in workspace (presence map)
         switchWorkspace,
         createWorkspace,
         refreshWorkspace,

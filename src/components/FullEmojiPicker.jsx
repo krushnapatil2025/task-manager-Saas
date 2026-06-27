@@ -50,7 +50,7 @@ const EMOJI_CATEGORIES = [
     name: 'Travel & Places',
     icon: <LuCompass size={14} />,
     emojis: [
-      '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🏎️', '🏍️', '🛵', '🛺', 
+      '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🏍️', '🛵', '🛺', 
       '🚲', '🛴', '🛹', '🛞', '🚏', '🛣️', '🛤️', '🛢️', '⛽', '🚨', '🚥', '🚦', '🛑', '🚧', '⚓', '🛟', '⛵', '🛶', 
       '🚤', '🛳️', '⛴️', '🚢', '✈️', '🛩️', '🛫', '🛬', '🪂', '💺', '🚁', '🚟', '🚠', '🚡', '🛰️', '🚀', '🛸', '🎈'
     ]
@@ -62,7 +62,7 @@ const EMOJI_CATEGORIES = [
     emojis: [
       '💘', '💝', '💖', '💗', '💓', '💞', '💕', '💟', '❣️', '💔', '❤️‍🔥', '❤️‍🩹', '❤️', '🧡', '💛', '💚', '💙', '🩵', 
       '💜', '🤎', '🖤', '🩶', '🤍', '💋', '💯', '💢', '💥', '💫', '💦', '💨', '🕳️', '💣', '💬', '👁️‍🗨️', '🗨️', '🗯️', 
-      '💭', '💤', '🌐', '🌀', '🌊', '⚡', '✨', '🌟', '⭐', '🪐', '💫', '🌠', '☄️', '🔥', '🌈', '☀️', '🌤️', '⛅'
+      '💭', '💤', '🌐', '🌀', '🌊', '⚡', '✨', '🌟', '⭐', '🪐', '🌠', '☄️', '🔥', '🌈', '☀️', '🌤️', '⛅'
     ]
   }
 ];
@@ -139,7 +139,7 @@ const FullEmojiPicker = ({ onSelect, onClose }) => {
   };
 
   return (
-    <div className="full-emoji-picker-panel shadow-2xl border border-slate-200/80 bg-white/95 backdrop-blur-md rounded-2xl flex flex-col overflow-hidden animate-scale-in">
+    <div className="full-emoji-picker-panel w-72 shadow-2xl border border-slate-200/80 bg-white/95 backdrop-blur-md rounded-2xl flex flex-col overflow-hidden animate-scale-in">
       {/* Search Bar */}
       <div className="p-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
         <LuSearch size={14} className="text-slate-400" />

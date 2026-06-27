@@ -7,7 +7,7 @@ import { supabase } from '../../utils/supabaseClient';
 import { UserContext } from '../../context/userContext';
 import { superAdminLogin } from '../../utils/superAdminSession';
 import toast from 'react-hot-toast';
-import { LuLoaderCircle, LuMail } from 'react-icons/lu';
+import { LuLoaderCircle, LuMail, LuLock, LuSparkles } from 'react-icons/lu';
 
 // Google "G" logo SVG (inline — no external dependency)
 const GoogleIcon = () => (
@@ -29,6 +29,8 @@ const Login = () => {
 
   const { updateUser } = useContext(UserContext);
   const navigate       = useNavigate();
+
+  const companyName = 'TaskFlow';
 
   // ── Email/password login ──────────────────────────────────────────────────
   const handleLogin = async (e) => {
@@ -69,7 +71,6 @@ const Login = () => {
     }
   };
 
-
   // ── Google OAuth ──────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     setError('');
@@ -83,7 +84,6 @@ const Login = () => {
         },
       });
       if (error) throw error;
-      // Browser will redirect — no navigation needed
     } catch (err) {
       setError(err.message || 'Google login failed.');
       setLoading(false);
@@ -116,134 +116,133 @@ const Login = () => {
   };
 
   return (
-    <AuthLayout>
-      <div className="w-full max-w-md mx-auto p-8 rounded-2xl bg-white/15 shadow-2xl backdrop-blur-xl border border-white/20 animate-fade-in">
-        <h3 className="text-2xl font-bold text-white mb-1 text-center tracking-wide">
-          Welcome Back
-        </h3>
-        <p className="text-xs text-white/60 mb-6 text-center">
-          Sign in to your TaskFlow workspace
-        </p>
-
-        {/* ── Tab switcher ── */}
-        <div className="flex gap-2 bg-white/10 rounded-xl p-1 mb-6">
-          {['password', 'magic'].map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setError(''); setMagicSent(false); }}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
-                tab === t
-                  ? 'bg-white text-indigo-700 shadow'
-                  : 'text-white/70 hover:text-white'
-              }`}
-            >
-              {t === 'password' ? '🔒 Password' : '✉️ Magic Link'}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Error ── */}
-        {error && (
-          <div className="text-red-300 text-xs mb-4 text-center bg-red-500/15 border border-red-400/30 rounded-xl px-3 py-2">
-            {error}
-          </div>
-        )}
-
-        {/* ── Password form ── */}
-        {tab === 'password' && (
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            <Input
-              value={email}
-              onChange={({ target }) => setEmail(target.value)}
-              label="Email Address"
-              placeholder="you@company.com"
-              type="text"
-              autoComplete="email"
-            />
-            <Input
-              value={password}
-              onChange={({ target }) => setPassword(target.value)}
-              label="Password"
-              placeholder="••••••••"
-              type="password"
-              autoComplete="current-password"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold py-2.5 rounded-xl shadow-lg hover:opacity-90 transition disabled:opacity-60 mt-1"
-            >
-              {loading ? <LuLoaderCircle className="animate-spin" /> : null}
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-        )}
-
-        {/* ── Magic link form ── */}
-        {tab === 'magic' && (
-          <>
-            {magicSent ? (
-              <div className="text-center py-4">
-                <LuMail className="text-5xl text-indigo-300 mx-auto mb-3" />
-                <p className="text-white font-semibold">Check your inbox!</p>
-                <p className="text-white/60 text-xs mt-1">
-                  A magic link was sent to <strong>{email}</strong>.<br/>
-                  Click it to sign in instantly.
-                </p>
-                <button
-                  onClick={() => setMagicSent(false)}
-                  className="text-xs text-indigo-300 hover:text-indigo-200 mt-4 underline"
-                >
-                  Send again
-                </button>
-              </div>
+    <AuthLayout title="Welcome Back" subtitle={`Sign in to your ${companyName} workspace`}>
+      {/* ── Tab switcher ── */}
+      <div className="flex gap-2 bg-slate-50 border border-slate-200/50 rounded-xl p-1 mb-6">
+        {['password', 'magic'].map((t) => (
+          <button
+            key={t}
+            onClick={() => { setTab(t); setError(''); setMagicSent(false); }}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all duration-155 cursor-pointer flex items-center justify-center gap-1.5 ${
+              tab === t
+                ? 'bg-white shadow-sm border border-slate-100 text-indigo-600'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {t === 'password' ? (
+              <>
+                <LuLock size={12} /> Password
+              </>
             ) : (
-              <form onSubmit={handleMagicLink} className="flex flex-col gap-4">
-                <Input
-                  value={email}
-                  onChange={({ target }) => setEmail(target.value)}
-                  label="Email Address"
-                  placeholder="you@company.com"
-                  type="text"
-                  autoComplete="email"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold py-2.5 rounded-xl shadow-lg hover:opacity-90 transition disabled:opacity-60"
-                >
-                  {loading ? <LuLoaderCircle className="animate-spin" /> : <LuMail className="text-base" />}
-                  {loading ? 'Sending...' : 'Send Magic Link'}
-                </button>
-              </form>
+              <>
+                <LuSparkles size={12} /> Magic Link
+              </>
             )}
-          </>
-        )}
-
-        {/* ── Divider ── */}
-        <div className="flex items-center gap-3 my-5">
-          <div className="flex-1 h-px bg-white/20" />
-          <span className="text-white/40 text-xs">or continue with</span>
-          <div className="flex-1 h-px bg-white/20" />
-        </div>
-
-        {/* ── Google OAuth ── */}
-        <button
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2.5 rounded-xl shadow transition disabled:opacity-60"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </button>
-
-        <p className="text-xs text-white/50 mt-6 text-center">
-          Company admin?{' '}
-          <Link to="/admin/register" className="text-indigo-300 hover:underline font-medium">
-            Register your company
-          </Link>
-        </p>
+          </button>
+        ))}
       </div>
+
+      {/* ── Error ── */}
+      {error && (
+        <div className="text-red-650 text-xs mb-4 text-center bg-red-50 border border-red-200 rounded-xl px-3 py-2 font-bold">
+          {error}
+        </div>
+      )}
+
+      {/* ── Password form ── */}
+      {tab === 'password' && (
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <Input
+            value={email}
+            onChange={({ target }) => setEmail(target.value)}
+            label="Email Address"
+            placeholder="you@company.com"
+            type="text"
+            autoComplete="email"
+          />
+          <Input
+            value={password}
+            onChange={({ target }) => setPassword(target.value)}
+            label="Password"
+            placeholder="••••••••"
+            type="password"
+            autoComplete="current-password"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex items-center justify-center gap-2 text-white bg-indigo-600 hover:bg-indigo-700 font-bold py-2.5 rounded-xl shadow-lg transition disabled:opacity-60 mt-1 cursor-pointer"
+          >
+            {loading ? <LuLoaderCircle className="animate-spin" size={16} /> : null}
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+      )}
+
+      {/* ── Magic link form ── */}
+      {tab === 'magic' && (
+        <>
+          {magicSent ? (
+            <div className="text-center py-4">
+              <LuMail className="text-5xl text-indigo-650 mx-auto mb-3" />
+              <p className="text-slate-900 font-black">Check your inbox!</p>
+              <p className="text-slate-500 text-xs mt-1.5 font-semibold">
+                A magic link was sent to <strong>{email}</strong>.<br/>
+                Click the link to sign in instantly.
+              </p>
+              <button
+                onClick={() => setMagicSent(false)}
+                className="text-xs text-indigo-650 hover:text-indigo-700 hover:underline mt-4 font-bold cursor-pointer"
+              >
+                Send again
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleMagicLink} className="flex flex-col gap-4">
+              <Input
+                value={email}
+                onChange={({ target }) => setEmail(target.value)}
+                label="Email Address"
+                placeholder="you@company.com"
+                type="text"
+                autoComplete="email"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex items-center justify-center gap-2 text-white bg-indigo-600 hover:bg-indigo-700 font-bold py-2.5 rounded-xl shadow-lg transition disabled:opacity-60 cursor-pointer"
+              >
+                {loading ? <LuLoaderCircle className="animate-spin" size={16} /> : <LuMail className="text-base" />}
+                {loading ? 'Sending...' : 'Send Magic Link'}
+              </button>
+            </form>
+          )}
+        </>
+      )}
+
+      {/* ── Divider ── */}
+      <div className="flex items-center gap-3 my-5">
+        <div className="flex-1 h-px bg-slate-200" />
+        <span className="text-slate-400 text-xs font-semibold">or continue with</span>
+        <div className="flex-1 h-px bg-slate-200" />
+      </div>
+
+      {/* ── Google OAuth ── */}
+      <button
+        onClick={handleGoogleLogin}
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-xl shadow border border-slate-200 transition disabled:opacity-60 cursor-pointer"
+      >
+        <GoogleIcon />
+        Continue with Google
+      </button>
+
+      <p className="text-xs text-slate-500 mt-6 text-center font-bold">
+        Company admin?{' '}
+        <Link to="/admin/register" className="text-indigo-600 hover:text-indigo-700 hover:underline font-extrabold">
+          Register your company
+        </Link>
+      </p>
     </AuthLayout>
   );
 };

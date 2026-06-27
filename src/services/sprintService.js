@@ -45,6 +45,22 @@ export const updateSprintStatus = async (sprintId, status) => {
   return data;
 };
 
+export const updateSprintDetails = async (sprintId, { name, goal, startDate, endDate }) => {
+  const { data, error } = await supabase
+    .from('sprints')
+    .update({
+      name,
+      goal:       goal      || null,
+      start_date: startDate || null,
+      end_date:   endDate   || null,
+    })
+    .eq('id', sprintId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
 export const deleteSprint = async (sprintId) => {
   const { error } = await supabase.from('sprints').delete().eq('id', sprintId);
   if (error) throw error;
