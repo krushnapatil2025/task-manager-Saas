@@ -95,7 +95,7 @@ const SelectUsers = ({ selectedUsers, setSelectedUsers }) => {
                 type="checkbox"
                 checked={tempSelectedUsers.includes(user.id)}
                 onChange={() => toggleUserSelection(user.id)}
-                className="w-5 h-5 accent-blue-600 rounded border border-gray-300 focus:ring-2 focus:ring-blue-500 transition"
+                className="w-5 h-5 accent-[var(--brand)] rounded border border-gray-300 focus:ring-2 focus:ring-[var(--brand)] transition"
               />
             </div>
           ))}
@@ -109,7 +109,7 @@ const SelectUsers = ({ selectedUsers, setSelectedUsers }) => {
             CANCEL
           </button>
           <button
-            className="px-5 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow hover:opacity-90 transition"
+            className="px-5 py-2 rounded-lg bg-brand text-white font-semibold shadow hover:opacity-90 transition"
             onClick={handleAssign}
           >
             DONE

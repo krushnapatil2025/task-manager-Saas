@@ -626,7 +626,7 @@ const InternLogDashboard = () => {
                       No reviewed logs for this date.
                     </div>
                   ) : (
-                    <div className="card dark:bg-[#151518]/90 dark:border-zinc-800/80 p-0 overflow-hidden">
+                    <div className="card dark:bg-[#151518]/90 dark:border-zinc-800/80 p-0 overflow-x-auto">
                       <table className="premium-table min-w-full">
                         <thead>
                           <tr>
@@ -840,7 +840,7 @@ const InternLogDashboard = () => {
                       <LuFlame className="text-amber-500 animate-pulse" size={13} /> Active Streaks & Participation (30 Days)
                     </h3>
                     
-                    <div className="card dark:bg-[#151518]/90 dark:border-zinc-800/80 p-0 overflow-hidden">
+                    <div className="card dark:bg-[#151518]/90 dark:border-zinc-800/80 p-0 overflow-x-auto">
                       <table className="premium-table min-w-full">
                         <thead>
                           <tr>

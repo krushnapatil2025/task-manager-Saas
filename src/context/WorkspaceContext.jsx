@@ -81,7 +81,7 @@ const WorkspaceProvider = ({ children }) => {
         .select(`
           role,
           joined_at,
-          profile:profiles(id, name, profile_image_url, role)
+          profile:profiles(id, name, profile_image_url, job_profile)
         `)
         .eq("workspace_id", ws.id);
 
@@ -92,7 +92,7 @@ const WorkspaceProvider = ({ children }) => {
           id: m.profile?.id,
           name: m.profile?.name,
           profileImageUrl: m.profile?.profile_image_url,
-          systemRole: m.profile?.role,
+          systemRole: m.profile?.job_profile,
           wsRole: m.role,
           joinedAt: m.joined_at,
         }))

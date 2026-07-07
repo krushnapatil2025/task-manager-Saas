@@ -1100,11 +1100,11 @@ const SprintBoard = () => {
                     </div>
 
                     {/* Columns Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div className="flex flex-row overflow-x-auto md:grid md:grid-cols-3 gap-5 pb-4 md:pb-0 scrollbar-none snap-x snap-mandatory">
                       {COLUMN_CONFIGS.map(col => {
                         const tasksInCol = (sprintTasks[activeSprint.id] || []).filter(t => t.status === col.id);
                         return (
-                          <div key={col.id} className="flex flex-col min-h-[300px]">
+                          <div key={col.id} className="flex flex-col min-h-[300px] w-[280px] shrink-0 md:w-auto md:shrink snap-center">
                             {/* Column Header */}
                             <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-white dark:bg-[#121215] border border-slate-200/60 dark:border-zinc-800/80 mb-3 shadow-sm">
                               <div className="flex items-center gap-2">

@@ -393,6 +393,35 @@
   --tw-shadow-color: var(--brand-ring) !important;
 }
 
+/* 4b. Brand Accents for Indigo-650 (Works in both modes) */
+[class*="bg-indigo-650"]:not([class*="dark:bg-indigo-650"]) {
+  background-color: var(--brand) !important;
+}
+:root.dark [class*="dark:bg-indigo-650"] {
+  background-color: var(--brand) !important;
+}
+
+[class*="text-indigo-650"]:not([class*="dark:text-indigo-650"]) {
+  color: var(--brand) !important;
+}
+:root.dark [class*="dark:text-indigo-650"] {
+  color: var(--brand) !important;
+}
+
+[class*="border-indigo-650"]:not([class*="dark:border-indigo-650"]) {
+  border-color: var(--brand) !important;
+}
+:root.dark [class*="dark:border-indigo-650"] {
+  border-color: var(--brand) !important;
+}
+
+[class*="ring-indigo-650"]:not([class*="dark:ring-indigo-650"]) {
+  --tw-ring-color: var(--brand-ring) !important;
+}
+:root.dark [class*="dark:ring-indigo-650"] {
+  --tw-ring-color: var(--brand-ring) !important;
+}
+
 /* Focus visible ring override for inputs */
 [class*="focus:border-indigo-500"]:not([class*="dark:focus:border-indigo-500"]):focus {
   border-color: var(--brand) !important;

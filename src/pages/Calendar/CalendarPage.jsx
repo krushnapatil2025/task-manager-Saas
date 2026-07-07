@@ -190,7 +190,8 @@ const CalendarPage = () => {
               type: 'calendar_event',
               title: 'Meeting Details Updated 📅',
               body: `Meeting: "${supabaseFormData.title}" details have been updated.`,
-              link: '/calendar'
+              link: '/calendar',
+              workspaceId: workspace.id
             }).catch(e => console.error('Failed to notify updated attendee:', uid, e)));
           await Promise.all(notificationPromises);
         }
@@ -218,8 +219,9 @@ const CalendarPage = () => {
               userId: uid,
               type: 'calendar_event',
               title: 'New Meeting Scheduled 📅',
-              body: `Meeting: "${updatedFormData.title}" scheduled for ${moment(updatedFormData.start_at).format('MMM D, h:mm A')}`,
-              link: '/calendar'
+              body: `Meeting: "${supabaseFormData.title}" scheduled for ${moment(supabaseFormData.start_at).format('MMM D, h:mm A')}`,
+              link: '/calendar',
+              workspaceId: workspace.id
             }).catch(e => console.error('Failed to notify attendee:', uid, e)));
           await Promise.all(notificationPromises);
         }
@@ -305,10 +307,10 @@ const CalendarPage = () => {
 
         <div className="flex-1 flex flex-col lg:flex-row min-h-0">
           {/* Left Sidebar - Enterprise Calendar Panel */}
-          <div className="w-full lg:w-[260px] border-r border-slate-200/50 bg-white/90 backdrop-blur-md p-4 flex flex-col gap-5 flex-shrink-0 select-none">
+          <div className="w-full lg:w-[260px] border-b lg:border-b-0 lg:border-r border-slate-200/50 bg-white/90 backdrop-blur-md p-4 flex flex-col lg:gap-5 flex-shrink-0 select-none">
 
             {/* Quick date picker */}
-            <div>
+            <div className="hidden lg:block">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Quick Navigation</p>
               <div className="flex justify-center">
                 <MiniCalendar
@@ -320,10 +322,10 @@ const CalendarPage = () => {
 
             {/* Filter Legend / Toggle Switches */}
             <div className="flex flex-col gap-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calendar Layers</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:block">Calendar Layers</p>
 
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
+              <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
+                <label className="flex-1 flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm animate-pulse" />
                     <span className="text-xs font-bold text-slate-700">Team Meetings</span>
@@ -336,7 +338,7 @@ const CalendarPage = () => {
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
+                <label className="flex-1 flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm" />
                     <span className="text-xs font-bold text-slate-700">Tasks Due</span>
@@ -349,7 +351,7 @@ const CalendarPage = () => {
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
+                <label className="flex-1 flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm" />
                     <span className="text-xs font-bold text-slate-700">Public Holidays</span>
@@ -365,7 +367,7 @@ const CalendarPage = () => {
             </div>
 
             {/* Upcoming Summary Card */}
-            <div className="mt-auto p-4 bg-gradient-to-br from-indigo-50 to-indigo-100/20 rounded-2xl border border-indigo-100/40">
+            <div className="hidden lg:block mt-auto p-4 bg-gradient-to-br from-indigo-50 to-indigo-100/20 rounded-2xl border border-indigo-100/40">
               <p className="text-[10px] font-black text-indigo-650 uppercase tracking-widest">Workspace summary</p>
               <div className="mt-2.5 flex flex-col gap-2">
                 <div className="flex justify-between text-xs font-bold text-slate-550">

@@ -11,7 +11,7 @@ import { LuPanelLeftClose, LuPanelLeftOpen } from 'react-icons/lu';
 // SideMenu — Grouped, light/white aesthetic enterprise navigation sidebar
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SideMenu = ({ activeMenu }) => {
+const SideMenu = ({ activeMenu, onItemClick, isMobile = false }) => {
   const { user, clearUser }    = useContext(UserContext);
   const { workspace, wsRole }  = useContext(WorkspaceContext);
   const { brand }              = useBrand();
@@ -19,9 +19,12 @@ const SideMenu = ({ activeMenu }) => {
 
   const [sideMenuData, setSideMenuData] = useState([]);
   const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (isMobile) return false;
     return localStorage.getItem('sidebar-collapsed') === 'true';
   });
   const JP_MAP = Object.fromEntries(JOB_PROFILES.map(j => [j.value, j]));
+
+  const collapsed = isMobile ? false : isCollapsed;
 
   useEffect(() => {
     if (user) {
@@ -48,6 +51,8 @@ const SideMenu = ({ activeMenu }) => {
       }));
     }
     else navigate(route);
+
+    if (onItemClick) onItemClick();
   };
 
   const handleLogout = async () => {
@@ -107,13 +112,19 @@ const SideMenu = ({ activeMenu }) => {
   };
 
   return (
-    <div className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[68px]' : 'w-[248px]'} h-[calc(100vh-52px)] bg-white dark:bg-zinc-950 border-r border-slate-100 dark:border-zinc-900 sticky top-[52px] z-20 flex flex-col justify-between overflow-hidden select-none`}>
+    <div className={isMobile
+      ? "w-full h-full bg-white dark:bg-zinc-950 flex flex-col justify-between overflow-y-auto select-none"
+      : `transition-all duration-300 ease-in-out ${collapsed ? 'w-[68px]' : 'w-[248px]'} h-[calc(100vh-52px)] bg-white dark:bg-zinc-950 border-r border-slate-100 dark:border-zinc-900 sticky top-[52px] z-20 flex flex-col justify-between overflow-hidden select-none`
+    }>
       
       <div className="flex flex-col flex-1 min-h-0">
         {/* ── Compact profile block ── */}
         <div 
-          onClick={() => navigate('/user/profile')}
-          className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-5'} py-3.5 border-b border-slate-100 dark:border-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-900/60 transition cursor-pointer flex-shrink-0`}
+          onClick={() => {
+            navigate('/user/profile');
+            if (onItemClick) onItemClick();
+          }}
+          className={`flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-5'} py-3.5 border-b border-slate-100 dark:border-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-900/60 transition cursor-pointer flex-shrink-0`}
         >
           <div className="relative flex-shrink-0">
             {user?.profile_image_url || user?.profileImageUrl ? (
@@ -133,7 +144,7 @@ const SideMenu = ({ activeMenu }) => {
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-white dark:border-zinc-900 bg-emerald-500" />
           </div>
 
-          {!isCollapsed && (
+          {!collapsed && (
             <div className="flex flex-col min-w-0 flex-1">
               <h5 className="text-xs font-bold text-slate-700 dark:text-zinc-300 truncate leading-tight">
                 {user?.name || ''}
@@ -146,15 +157,15 @@ const SideMenu = ({ activeMenu }) => {
         </div>
 
         {/* ── Grouped Navigation menu ── */}
-        <nav className={`flex-1 py-3 ${isCollapsed ? 'px-1.5' : 'px-3'} overflow-y-auto custom-scrollbar`}>
+        <nav className={`flex-1 py-3 ${collapsed ? 'px-1.5' : 'px-3'} overflow-y-auto custom-scrollbar`}>
           {getGroupedMenu().map((group, gIdx) => (
             <div key={gIdx} className="mb-4">
-              {group.label && !isCollapsed && (
+              {group.label && !collapsed && (
                 <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 tracking-wider uppercase px-3.5 mb-1.5">
                   {group.label}
                 </div>
               )}
-              {group.label && isCollapsed && (
+              {group.label && collapsed && (
                 <div className="border-t border-slate-100 dark:border-zinc-900 my-2 mx-2" />
               )}
               {group.items.map((item) => {
@@ -164,8 +175,8 @@ const SideMenu = ({ activeMenu }) => {
                   <button
                     key={item.id}
                     onClick={() => handleClick(item.path)}
-                    title={isCollapsed ? item.label : undefined}
-                    className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3.5 py-2'} mb-0.5 rounded-lg text-xs font-bold transition-all duration-150 text-left cursor-pointer ${
+                    title={collapsed ? item.label : undefined}
+                    className={`w-full flex items-center ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3.5 py-2'} mb-0.5 rounded-lg text-xs font-bold transition-all duration-150 text-left cursor-pointer ${
                       isActive
                         ? 'text-[var(--brand-text)] bg-[var(--brand-bg)] border-l-2 border-[var(--brand)] rounded-l-none'
                         : 'text-slate-600 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-900/60'
@@ -176,7 +187,7 @@ const SideMenu = ({ activeMenu }) => {
                         isActive ? 'text-[var(--brand)]' : 'text-slate-400 dark:text-zinc-500'
                       }`}
                     />
-                    {!isCollapsed && <span className="truncate flex-1">{item.label}</span>}
+                    {!collapsed && <span className="truncate flex-1">{item.label}</span>}
                   </button>
                 );
               })}
@@ -189,10 +200,10 @@ const SideMenu = ({ activeMenu }) => {
       <div className="flex flex-col flex-shrink-0">
         {/* Workspace Display */}
         {workspace?.name && (
-          <div className={`py-3 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/20 dark:bg-zinc-950/20 flex items-center justify-center ${isCollapsed ? 'px-0' : 'px-5'}`}>
+          <div className={`py-3 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/20 dark:bg-zinc-950/20 flex items-center justify-center ${collapsed ? 'px-0' : 'px-5'}`}>
             <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-zinc-400 font-bold truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-pulse"></span>
-              {!isCollapsed && <span className="truncate">{workspace.name}</span>}
+              {!collapsed && <span className="truncate">{workspace.name}</span>}
             </div>
           </div>
         )}
@@ -200,31 +211,33 @@ const SideMenu = ({ activeMenu }) => {
         {/* Logout Row */}
         <button
           onClick={() => handleClick('logout')}
-          title={isCollapsed ? "Logout" : undefined}
-          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-6'} py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/10 dark:bg-zinc-950/10 transition-all text-left cursor-pointer`}
+          title={collapsed ? "Logout" : undefined}
+          className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-2.5 px-6'} py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-955/20 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/10 dark:bg-zinc-950/10 transition-all text-left cursor-pointer`}
         >
           {(() => {
             const logoutItem = SIDE_MENU_DATA.find(i => i.path === 'logout');
             const Icon = logoutItem ? logoutItem.icon : null;
             return Icon ? <Icon className="text-[17px] text-rose-500" /> : null;
           })()}
-          {!isCollapsed && "Logout"}
+          {!collapsed && "Logout"}
         </button>
 
         {/* Collapse Button Row */}
-        <button
-          onClick={toggleCollapse}
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-6'} py-2.5 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-900/60 border-t border-slate-100 dark:border-zinc-900 transition-all text-left cursor-pointer`}
-        >
-          {isCollapsed ? <LuPanelLeftOpen className="text-[17px] text-slate-400 dark:text-zinc-500" /> : <LuPanelLeftClose className="text-[17px] text-slate-400 dark:text-zinc-500" />}
-          {!isCollapsed && "Collapse"}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={toggleCollapse}
+            title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-2.5 px-6'} py-2.5 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-900/60 border-t border-slate-100 dark:border-zinc-900 transition-all text-left cursor-pointer`}
+          >
+            {collapsed ? <LuPanelLeftOpen className="text-[17px] text-slate-400 dark:text-zinc-555" /> : <LuPanelLeftClose className="text-[17px] text-slate-400 dark:text-zinc-555" />}
+            {!collapsed && "Collapse"}
+          </button>
+        )}
 
         {/* Version Badge */}
         <div className="px-2 py-2 bg-slate-50 dark:bg-zinc-950/40 border-t border-slate-100 dark:border-zinc-900">
           <p className="text-[9px] text-slate-400 dark:text-zinc-500 text-center font-bold">
-            {isCollapsed ? 'v2.0' : `${brand.companyName} v2.0 · Enterprise`}
+            {collapsed ? 'v2.0' : `${brand.companyName} v2.0 · Enterprise`}
           </p>
         </div>
       </div>

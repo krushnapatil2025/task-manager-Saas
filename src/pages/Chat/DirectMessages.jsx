@@ -64,7 +64,7 @@ const DirectMessages = () => {
     <DashboardLayout activeMenu="Team Chat">
       <div className="dm-layout">
         {/* Member list sidebar */}
-        <div className="dm-sidebar">
+        <div className={`${targetUserId ? 'hidden md:flex' : 'flex w-full md:w-[220px] md:shrink-0'} flex-col h-full border-r border-slate-100 dark:border-zinc-805`}>
           <div className="chat-sidebar-header">
             <div className="flex items-center gap-2">
               <LuMessageSquare size={15} className="text-indigo-400" />
@@ -97,7 +97,7 @@ const DirectMessages = () => {
         </div>
 
         {/* Chat window */}
-        <div className="team-chat-main">
+        <div className={`${targetUserId ? 'flex w-full' : 'hidden md:flex md:flex-1'} flex-col h-full overflow-hidden bg-white dark:bg-[#121215]`}>
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <LuLoaderCircle className="animate-spin text-indigo-400" size={28} />
@@ -112,6 +112,7 @@ const DirectMessages = () => {
                   navigate('/chat');
                 }
               }}
+              onBack={() => navigate('/chat')}
             />
           )}
         </div>

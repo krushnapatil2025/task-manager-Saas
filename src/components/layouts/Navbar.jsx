@@ -204,6 +204,29 @@ const Navbar = ({ activeMenu }) => {
     });
   };
 
+  // Disable body scroll when mobile menu is open
+  useEffect(() => {
+    if (openSideMenu) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [openSideMenu]);
+
+  // Close mobile drawer on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && openSideMenu) {
+        setOpenSideMenu(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openSideMenu]);
+
   return (
     <>
       <div className="flex items-center justify-between gap-4 bg-white dark:bg-zinc-950 border-b border-gray-150 dark:border-zinc-800/80 h-[52px] px-6 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
@@ -234,7 +257,7 @@ const Navbar = ({ activeMenu }) => {
                 {brand.companyName?.[0]?.toUpperCase() || 'T'}
               </div>
             )}
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 hidden sm:flex">
               <span className="text-slate-900 dark:text-zinc-100 font-black text-xs leading-none tracking-tight truncate">
                 {brand.companyName}
               </span>
@@ -249,17 +272,17 @@ const Navbar = ({ activeMenu }) => {
         <WorkspaceSwitcher />
 
         {/* ── Right: AI button + chat badge + notification bell ── */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {user && (
             <button
               id="global-search-trigger"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-650 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200/60 dark:bg-zinc-900/60 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-800/80 cursor-pointer transition-all duration-200"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-650 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200/60 dark:bg-zinc-900/60 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-800/80 cursor-pointer transition-all duration-200 px-2.5 py-1.5 rounded-xl"
               onClick={() => setSearchOpen(true)}
               title="Global Smart Search (Ctrl+P)"
             >
               <LuSearch className="text-slate-400" size={14} />
               <span className="hidden md:inline">Search</span>
-              <span className="text-[10px] text-slate-450 bg-slate-100 dark:bg-zinc-800 dark:text-zinc-400 px-1.5 py-0.5 rounded font-mono">Ctrl+P</span>
+              <span className="text-[10px] text-slate-450 bg-slate-100 dark:bg-zinc-800 dark:text-zinc-400 px-1.5 py-0.5 rounded font-mono hidden md:inline">Ctrl+P</span>
             </button>
           )}
 
@@ -272,7 +295,7 @@ const Navbar = ({ activeMenu }) => {
             >
               <LuSparkles className="ai-nav-sparkle" />
               <span className="hidden sm:inline">AI Assistant</span>
-              <span className="ai-nav-kbd">Ctrl+K</span>
+              <span className="ai-nav-kbd hidden md:inline">Ctrl+K</span>
             </button>
           )}
 
@@ -305,10 +328,39 @@ const Navbar = ({ activeMenu }) => {
           </button>
         </div>
 
-        {/* ── Mobile slide-down side menu ── */}
+        {/* ── Mobile slide-in side menu drawer ── */}
         {openSideMenu && (
-          <div className="fixed top-[52px] left-0 bg-white dark:bg-zinc-950 shadow-xl z-40 lg:hidden">
-            <SideMenu activeMenu={activeMenu} />
+          <div className="fixed inset-0 z-50 lg:hidden">
+            {/* Backdrop overlay */}
+            <div 
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300"
+              onClick={() => setOpenSideMenu(false)}
+            />
+            {/* Drawer Container */}
+            <div className="fixed inset-y-0 left-0 w-[280px] bg-white dark:bg-zinc-955 shadow-2xl flex flex-col transition-transform duration-300 ease-out border-r border-slate-100 dark:border-zinc-900">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between px-6 h-[52px] border-b border-slate-100 dark:border-zinc-900 bg-slate-50/20 dark:bg-zinc-950/20 flex-shrink-0">
+                <span className="font-extrabold text-xs text-slate-800 dark:text-zinc-200 tracking-wider uppercase">
+                  Navigation Menu
+                </span>
+                <button 
+                  onClick={() => setOpenSideMenu(false)}
+                  className="p-1 rounded-lg text-slate-405 hover:text-slate-655 dark:hover:text-zinc-200 transition cursor-pointer"
+                  aria-label="Close menu"
+                >
+                  <HiOutlineX className="text-lg" />
+                </button>
+              </div>
+              
+              {/* Drawer Body */}
+              <div className="flex-1 min-h-0">
+                <SideMenu 
+                  activeMenu={activeMenu} 
+                  isMobile={true} 
+                  onItemClick={() => setOpenSideMenu(false)} 
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>

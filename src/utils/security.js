@@ -98,7 +98,7 @@ export const injectCSPMeta = () => {
     "child-src 'self' blob:",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://meet.jit.si https://*.meet.jit.si",
     "font-src 'self' https://fonts.gstatic.com https://meet.jit.si https://*.meet.jit.si",
-    `connect-src 'self' ${import.meta.env?.VITE_SUPABASE_URL || ''} https://*.supabase.co wss://*.supabase.co https://api.brevo.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://drive.google.com https://tmpfiles.org https://api.groq.com https://api.microlink.io https://meet.jit.si https://*.meet.jit.si wss://meet.jit.si wss://*.meet.jit.si https://g.tenor.com https://tenor.googleapis.com`,
+    `connect-src 'self' ${import.meta.env?.VITE_SUPABASE_URL || ''} https://*.supabase.co wss://*.supabase.co https://api.brevo.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://drive.google.com https://tmpfiles.org https://api.groq.com https://api.openai.com https://api.microlink.io https://meet.jit.si https://*.meet.jit.si wss://meet.jit.si wss://*.meet.jit.si https://g.tenor.com https://tenor.googleapis.com`,
     "img-src 'self' data: blob: https: http:",
     "frame-src 'self' https://drive.google.com https://accounts.google.com https://meet.jit.si https://*.meet.jit.si",
     "media-src 'self' blob: data: https: http:",

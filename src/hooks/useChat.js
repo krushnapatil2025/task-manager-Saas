@@ -43,6 +43,12 @@ export const useChat = (roomId) => {
   }, [user?.id]);
 
   const channelRef = useRef(null);
+  // Keep a stable ref to roomId to avoid stale closures inside subscription callbacks
+  const roomIdRef = useRef(roomId);
+  useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
+
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const fetchMessages = useCallback(async () => {
     if (!roomId) return;
@@ -92,210 +98,179 @@ export const useChat = (roomId) => {
     }
   }, [roomId, loadingMore, hasMore, messages]);
 
+  // ── Helper: fetch full message details and upsert into state ──────────────
+  const upsertMessageById = useCallback(async (messageId, isUpdate = false) => {
+    if (!messageId) return;
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select(`id, content, type, is_deleted, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+                 sender:profiles!sender_id(name, profile_image_url),
+                 reply_to:reply_to_id(id, content, type, file_url, sender:profiles!sender_id(name)),
+                 reads:chat_message_reads(user_id),
+                 chat_message_reactions(user_id, emoji)`)
+        .eq('id', messageId)
+        .single();
+
+      if (error || !data) {
+        console.warn('[useChat] Failed to fetch message:', error?.message);
+        return;
+      }
+
+      // Ensure message belongs to the currently active room
+      if (String(data.room_id).toLowerCase() !== String(roomIdRef.current).toLowerCase()) return;
+
+      const msg = normalizeMsg(data);
+
+      if (msg.threadId) {
+        setMessages(prev => prev.map(m =>
+          m.id === msg.threadId ? { ...m, replyCount: (m.replyCount || 0) + 1 } : m
+        ));
+        return;
+      }
+
+      if (isUpdate) {
+        setMessages(prev => prev.map(m => m.id === msg.id ? msg : m));
+      } else {
+        setMessages(prev => {
+          const filtered = prev.filter(m =>
+            !(m.isOptimistic && m.content?.trim() === msg.content?.trim() && m.senderId === msg.senderId)
+          );
+          if (filtered.some(m => m.id === msg.id)) return filtered;
+          return [...filtered, msg];
+        });
+        if (userRef.current?.id) markRoomRead(roomIdRef.current, userRef.current.id);
+      }
+    } catch (err) {
+      console.warn('[useChat] Exception in upsertMessageById:', err);
+    }
+  }, []); // stable — uses refs only
+
   useEffect(() => {
     fetchMessages();
     if (!roomId) return;
 
-    console.log(`[useChat] Initiating subscription setup for roomId: ${roomId}`);
-    const channel = supabase
-      .channel(`chat-room-${roomId}-${Date.now()}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-      }, async (payload) => {
-        console.log('[useChat] Realtime INSERT event received:', payload);
-        if (!payload.new) return;
+    let retryCount = 0;
+    let retryTimeout = null;
+    let activeChannel = null;
 
-        const eventRoomId = String(payload.new.room_id).toLowerCase();
-        const activeRoomId = String(roomId).toLowerCase();
+    const setupChannel = () => {
+      if (activeChannel) {
+        supabase.removeChannel(activeChannel);
+        activeChannel = null;
+      }
 
-        if (eventRoomId !== activeRoomId) {
-          console.log(`[useChat] Room mismatch on INSERT. Event room: ${eventRoomId}, Active room: ${activeRoomId}`);
-          return;
-        }
+      console.log(`[useChat] Setting up realtime for room: ${roomId}`);
 
-        console.log('[useChat] Room matched. Fetching message details for ID:', payload.new.id);
-
-        let data = null;
-        try {
-          const res = await supabase
-            .from('chat_messages')
-            .select(`id, content, type, is_deleted, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
-                     sender:profiles!sender_id(name, profile_image_url),
-                     reply_to:reply_to_id(
-                       id, content, type, file_url,
-                       sender:profiles!sender_id(name)
-                     ),
-                     reads:chat_message_reads(user_id),
-                     chat_message_reactions(user_id, emoji)`)
-            .eq('id', payload.new.id)
-            .single();
-          if (res.error) {
-            console.warn('[useChat] Error fetching message details for realtime INSERT:', res.error);
-          } else {
-            data = res.data;
-          }
-        } catch (err) {
-          console.warn('[useChat] Exception fetching message details for realtime INSERT:', err);
-        }
-
-        const msg = data ? normalizeMsg(data) : normalizeMsg({
-          ...payload.new,
-          sender: {
-            name: payload.new.sender_id === user?.id ? (user?.name || 'You') : 'Someone',
-            profile_image_url: payload.new.sender_id === user?.id ? (user?.profileImageUrl || null) : null
-          },
-          reply_to: null,
-          reads: [],
-          chat_message_reactions: []
-        });
-
-        console.log('[useChat] Appending message to state:', msg);
-
-        if (msg.threadId) {
-          setMessages(prev => prev.map(m => m.id === msg.threadId ? { ...m, replyCount: (m.replyCount || 0) + 1 } : m));
-        } else {
-          setMessages(prev => {
-            const filtered = prev.filter(m => !(m.isOptimistic && m.content?.trim() === msg.content?.trim() && m.senderId === msg.senderId));
-            if (filtered.some(m => m.id === msg.id)) return filtered;
-            return [...filtered, msg];
-          });
-          if (user?.id) markRoomRead(roomId, user.id);
-        }
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'chat_messages',
-      }, async (payload) => {
-        console.log('[useChat] Realtime UPDATE event received:', payload);
-        if (!payload.new) return;
-
-        const eventRoomId = payload.new.room_id ? String(payload.new.room_id).toLowerCase() : null;
-        const activeRoomId = String(roomId).toLowerCase();
-
-        if (eventRoomId && eventRoomId !== activeRoomId) {
-          console.log(`[useChat] Room mismatch on UPDATE. Event room: ${eventRoomId}, Active room: ${activeRoomId}`);
-          return;
-        }
-
-        let data = null;
-        try {
-          const res = await supabase
-            .from('chat_messages')
-            .select(`id, content, type, is_deleted, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
-                     sender:profiles!sender_id(name, profile_image_url),
-                     reply_to:reply_to_id(
-                       id, content, type, file_url,
-                       sender:profiles!sender_id(name)
-                     ),
-                     reads:chat_message_reads(user_id),
-                     chat_message_reactions(user_id, emoji)`)
-            .eq('id', payload.new.id)
-            .single();
-          if (res.error) {
-            console.warn('[useChat] Error fetching message details for realtime UPDATE:', res.error);
-          } else {
-            data = res.data;
-          }
-        } catch (err) {
-          console.warn('[useChat] Exception fetching message details for realtime UPDATE:', err);
-        }
-
-        if (data && String(data.room_id).toLowerCase() !== activeRoomId) {
-          console.log(`[useChat] Room mismatch after fetch. Fetched room: ${data.room_id}, Active room: ${activeRoomId}`);
-          return;
-        }
-        if (!data && eventRoomId === null) {
-          let msgExists = false;
-          setMessages(prev => {
-            msgExists = prev.some(m => m.id === payload.new.id);
-            return prev;
-          });
-          if (!msgExists) return;
-        }
-
-        const msg = data ? normalizeMsg(data) : normalizeMsg({
-          ...payload.new,
-          sender: {
-            name: payload.new.sender_id === user?.id ? (user?.name || 'You') : 'Someone',
-            profile_image_url: payload.new.sender_id === user?.id ? (user?.profileImageUrl || null) : null
-          },
-          reply_to: null,
-          reads: [],
-          chat_message_reactions: []
-        });
-
-        console.log('[useChat] Updating message in state:', msg);
-        setMessages(prev => prev.map(m => m.id === msg.id ? msg : m));
-      })
-      .on('postgres_changes', {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'chat_messages',
-      }, (payload) => {
-        console.log('[useChat] Realtime DELETE event received:', payload);
-        if (payload.old && payload.old.id) {
-          setMessages(prev => prev.filter(m => m.id !== payload.old.id));
-        }
-      })
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_message_reads'
-      }, (payload) => {
-        console.log('[useChat] Realtime chat_message_reads INSERT received:', payload);
-        const { message_id, user_id } = payload.new;
-        setMessages(prev => prev.map(m => {
-          if (m.id === message_id) {
-            const alreadyRead = m.reads?.some(r => r.user_id === user_id);
-            if (alreadyRead) return m;
+      const ch = supabase
+        .channel(`chat-room-${roomId}-${Date.now()}`)
+        // ── Filter INSERT/UPDATE at DB level so Supabase only sends relevant events ──
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `room_id=eq.${roomId}`,
+        }, (payload) => {
+          if (payload.new?.id) upsertMessageById(payload.new.id, false);
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `room_id=eq.${roomId}`,
+        }, (payload) => {
+          if (payload.new?.id) upsertMessageById(payload.new.id, true);
+        })
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'chat_messages',
+        }, (payload) => {
+          if (payload.old?.id) setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+        })
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_message_reads',
+        }, (payload) => {
+          const { message_id, user_id } = payload.new || {};
+          if (!message_id) return;
+          setMessages(prev => prev.map(m => {
+            if (m.id !== message_id) return m;
+            if (m.reads?.some(r => r.user_id === user_id)) return m;
             return { ...m, reads: [...(m.reads || []), { user_id }] };
+          }));
+        })
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          const { userId, userName, isTyping } = payload.payload || {};
+          if (!userId || userId === userRef.current?.id) return;
+          setTypingUsers(prev => {
+            const next = { ...prev };
+            if (isTyping) next[userId] = { name: userName, timestamp: Date.now() };
+            else delete next[userId];
+            return next;
+          });
+        })
+        .subscribe((status, err) => {
+          console.log(`[useChat] Channel status for ${roomId}:`, status, err || '');
+          if (status === 'SUBSCRIBED') {
+            retryCount = 0;
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            retryCount++;
+            const delay = Math.min(3000 * retryCount, 15000);
+            console.warn(`[useChat] Channel lost. Retry #${retryCount} in ${delay}ms`);
+            retryTimeout = setTimeout(() => {
+              if (roomIdRef.current === roomId) setupChannel();
+            }, delay);
           }
-          return m;
-        }));
-      })
-      .on('broadcast', { event: 'typing' }, (payload) => {
-        const { userId, userName, isTyping } = payload.payload;
-        if (userId === user?.id) return;
-        setTypingUsers(prev => {
-          const next = { ...prev };
-          if (isTyping) {
-            next[userId] = { name: userName, timestamp: Date.now() };
-          } else {
-            delete next[userId];
-          }
-          return next;
         });
-      })
-      .subscribe((status, err) => {
-        console.log(`[useChat] Subscription Status for room ${roomId}:`, status, err || '');
-      });
 
-    channelRef.current = channel;
+      activeChannel = ch;
+      channelRef.current = ch;
+    };
 
-    const interval = setInterval(() => {
+    setupChannel();
+
+    // ── Polling fallback: re-fetch every 8 seconds to catch any missed messages
+    const pollInterval = setInterval(async () => {
+      if (!roomIdRef.current) return;
+      try {
+        const data = await getRoomMessages(roomIdRef.current, PAGE_SIZE);
+        setMessages(prev => {
+          const optimistic = prev.filter(m => m.isOptimistic);
+          const merged = [...data];
+          optimistic.forEach(opt => {
+            const confirmed = data.some(
+              m => m.content?.trim() === opt.content?.trim() && m.senderId === opt.senderId
+            );
+            if (!confirmed) merged.push(opt);
+          });
+          return merged;
+        });
+      } catch { /* silently ignore */ }
+    }, 8000);
+
+    // ── Typing indicator expiry
+    const typingInterval = setInterval(() => {
       setTypingUsers(prev => {
         const now = Date.now();
         let changed = false;
         const next = { ...prev };
         Object.entries(next).forEach(([uid, info]) => {
-          if (now - info.timestamp > 4000) {
-            delete next[uid];
-            changed = true;
-          }
+          if (now - info.timestamp > 4000) { delete next[uid]; changed = true; }
         });
         return changed ? next : prev;
       });
     }, 2000);
 
     return () => {
-      clearInterval(interval);
+      clearInterval(pollInterval);
+      clearInterval(typingInterval);
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (activeChannel) supabase.removeChannel(activeChannel);
       channelRef.current = null;
-      supabase.removeChannel(channel);
     };
-  }, [roomId, fetchMessages, user?.id]);
+  }, [roomId, fetchMessages, upsertMessageById]);
 
   const sendTyping = useCallback((isTyping) => {
     if (channelRef.current && user) {

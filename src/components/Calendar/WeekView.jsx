@@ -38,8 +38,9 @@ const WeekView = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white dark:bg-zinc-950 overflow-hidden">
-      {/* Header columns */}
+    <div className="flex-1 flex flex-col h-full bg-white dark:bg-zinc-950 overflow-x-auto">
+      <div className="min-w-[640px] md:min-w-0 flex-1 flex flex-col">
+        {/* Header columns */}
       <div className="grid grid-cols-[60px_1fr] border-b border-slate-200/60 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md sticky top-0 z-20">
         <div className="py-3 text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 text-center uppercase tracking-wider">
           Time
@@ -166,6 +167,7 @@ const WeekView = ({
             })}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

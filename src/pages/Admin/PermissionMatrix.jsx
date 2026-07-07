@@ -245,9 +245,10 @@ const PermissionMatrix = () => {
     try {
       const data = await getWorkspaceMembers(workspace.id);
       // Filter out admin or the active superuser from override targeting if they shouldn't be overriden
-      setMembers(data || []);
       if (data && data.length > 0 && !selectedUserId) {
-        setSelectedUserId(data[0].id);
+        if (window.innerWidth >= 1024) {
+          setSelectedUserId(data[0].id);
+        }
       }
     } catch (err) {
       console.error('Failed to load workspace members:', err.message);
@@ -844,7 +845,7 @@ const PermissionMatrix = () => {
         {activeTab === 'overrides' && (
           <div className="flex flex-col lg:flex-row gap-5">
             {/* Left sidebar: Members list */}
-            <div className="w-full lg:w-72 flex-shrink-0 flex flex-col bg-white dark:bg-[#151518]/90 border border-slate-200/60 dark:border-zinc-800/80 rounded-2xl shadow-sm overflow-hidden h-[500px]">
+            <div className={`w-full lg:w-72 flex-shrink-0 flex flex-col bg-white dark:bg-[#151518]/90 border border-slate-200/60 dark:border-zinc-800/80 rounded-2xl shadow-sm overflow-hidden h-[500px] ${selectedUserId ? 'hidden lg:flex' : 'flex'}`}>
               <div className="p-3.5 border-b border-slate-100 dark:border-zinc-800/80 flex flex-col gap-2">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-550 uppercase tracking-widest">
                   Workspace Members
@@ -906,11 +907,18 @@ const PermissionMatrix = () => {
             </div>
 
             {/* Right: Custom overrides list */}
-            <div className="flex-1 bg-white dark:bg-[#151518]/90 border border-slate-200/60 dark:border-zinc-800/80 rounded-2xl shadow-sm flex flex-col min-w-0">
+            <div className={`flex-1 bg-white dark:bg-[#151518]/90 border border-slate-200/60 dark:border-zinc-800/80 rounded-2xl shadow-sm flex flex-col min-w-0 ${!selectedUserId ? 'hidden lg:flex' : 'flex'}`}>
               {activeUserObj ? (
                 <>
                   <div className="p-4 border-b border-slate-100 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/30 dark:bg-zinc-900/10">
                     <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setSelectedUserId('')}
+                        className="lg:hidden p-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-850/50 text-slate-600 dark:text-zinc-350 mr-1 flex items-center justify-center cursor-pointer"
+                        title="Back to members"
+                      >
+                        <LuChevronLeft size={16} />
+                      </button>
                       {activeUserObj.profileImageUrl ? (
                         <img src={activeUserObj.profileImageUrl} alt={activeUserObj.name} className="w-10 h-10 rounded-full object-cover" />
                       ) : (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LuX, LuCalendar, LuClock, LuMapPin, LuVideo, LuCheck, LuTag, LuRepeat, LuLoaderCircle } from 'react-icons/lu';
 import moment from 'moment';
 import { generateGoogleMeetLink, deleteGoogleCalendarEvent } from '../../services/googleCalendarService';
@@ -48,6 +48,15 @@ const EventFormModal = ({
   const [genStatus, setGenStatus] = useState('idle'); // idle | loading | success | error
   const [googleEventId, setGoogleEventId] = useState(null);
 
+  const submittingRef = useRef(false);
+
+  // Sync submittingRef with isSubmitting prop to allow retrying if it fails or completes
+  useEffect(() => {
+    if (!isSubmitting) {
+      submittingRef.current = false;
+    }
+  }, [isSubmitting]);
+
   // Clean up any orphaned Google Calendar event if the modal is unmounted or closed without saving
   useEffect(() => {
     return () => {
@@ -67,6 +76,9 @@ const EventFormModal = ({
 
 
   useEffect(() => {
+    if (isOpen) {
+      submittingRef.current = false;
+    }
     if (initialData) {
       setTitle(initialData.title || '');
       setDescription(initialData.description || '');
@@ -104,8 +116,10 @@ const EventFormModal = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || submittingRef.current) return;
     if (!title.trim() || !startAt || !endAt) return;
+
+    submittingRef.current = true;
 
     const data = {
       title,

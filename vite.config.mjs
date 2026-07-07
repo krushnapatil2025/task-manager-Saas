@@ -91,7 +91,7 @@ export default defineConfig({
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: blob: https: http:",
-        "connect-src 'self' https://gxfnmpqbuamzilgeogfh.supabase.co https://*.supabase.co wss://*.supabase.co https://api.brevo.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://drive.google.com https://tmpfiles.org https://api.groq.com https://api.microlink.io https://g.tenor.com https://tenor.googleapis.com",
+        "connect-src 'self' https://gxfnmpqbuamzilgeogfh.supabase.co https://*.supabase.co wss://*.supabase.co https://api.brevo.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://drive.google.com https://tmpfiles.org https://api.groq.com https://api.openai.com https://api.microlink.io https://g.tenor.com https://tenor.googleapis.com",
         "worker-src 'self' blob:",
         "frame-src 'self' https://drive.google.com https://accounts.google.com",
         "media-src 'self' blob: data: https: http:"

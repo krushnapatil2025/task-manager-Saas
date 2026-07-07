@@ -267,15 +267,17 @@ const TeamChat = () => {
     <DashboardLayout activeMenu="Team Chat">
       <div className="team-chat-layout">
         {/* Left: channels + DMs */}
-        <ChatSidebar
-          selectedRoomId={activeRoom.id}
-          activeDMUserId={activeRoom.dmUserId}
-          onSelectRoom={handleSelectRoom}
-          refreshTrigger={sidebarRefreshKey}
-        />
+        <div className={`${activeRoom.id ? 'hidden md:flex' : 'flex w-full md:w-[240px] md:shrink-0'} flex-col h-full border-r border-slate-100 dark:border-zinc-800`}>
+          <ChatSidebar
+            selectedRoomId={activeRoom.id}
+            activeDMUserId={activeRoom.dmUserId}
+            onSelectRoom={handleSelectRoom}
+            refreshTrigger={sidebarRefreshKey}
+          />
+        </div>
 
         {/* Right: message feed or landing feature board */}
-        <div className="team-chat-main">
+        <div className={`${activeRoom.id ? 'flex w-full' : 'hidden md:flex md:flex-1'} flex-col h-full overflow-hidden bg-white dark:bg-[#121215]`}>
           {activeRoom.id ? (
             <ChatWindow
               roomId={activeRoom.id}
@@ -286,6 +288,7 @@ const TeamChat = () => {
               onRoomUpdated={handleRoomUpdated}
               onRoomDeleted={handleRoomDeleted}
               onRoomSwitch={(id, name) => handleSelectRoom(id, name, 'team', [])}
+              onBack={() => handleSelectRoom(null, '', 'team', [])}
             />
           ) : (
             <ChatLandingView user={user} workspace={workspace} />

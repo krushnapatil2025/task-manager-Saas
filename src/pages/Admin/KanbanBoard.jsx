@@ -132,7 +132,7 @@ const KanbanBoard = () => {
             </button>
             <button
               onClick={() => { setSelectedTaskId(null); setIsSlidePanelOpen(true); }}
-              className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-150 transition cursor-pointer"
+              className="flex items-center gap-2 bg-[var(--brand)] hover:opacity-90 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-[var(--brand-ring)]/20 transition cursor-pointer"
             >
               <LuPlus /> New Task
             </button>
@@ -141,12 +141,12 @@ const KanbanBoard = () => {
 
         {loading ? (
           <div className="flex flex-col items-center justify-center h-72 gap-3">
-            <LuLoaderCircle className="text-indigo-500 text-3xl animate-spin" />
+            <LuLoaderCircle className="text-[var(--brand)] text-3xl animate-spin" />
             <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Syncing board state...</p>
           </div>
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="flex flex-row overflow-x-auto md:grid md:grid-cols-3 gap-5 pb-4 md:pb-0 scrollbar-none snap-x snap-mandatory">
               {COLUMNS.map((col) => (
                 <KanbanColumn
                   key={col.id}
@@ -183,7 +183,7 @@ export default KanbanBoard;
 // ─────────────────────────────── Column ─────────────────────────────────────
 
 const KanbanColumn = ({ col, tasks, onTaskClick }) => (
-  <div className="flex flex-col min-h-[300px]">
+  <div className="flex flex-col min-h-[300px] w-[280px] shrink-0 md:w-auto md:shrink snap-center">
     {/* Column header */}
     <div className={`flex items-center justify-between px-4 py-3 rounded-2xl ${col.light} border border-slate-200/60 mb-3`}>
       <div className="flex items-center gap-2">
@@ -243,8 +243,8 @@ const KanbanCard = ({ task, index, onClick }) => {
           onClick={onClick}
           className={`bg-white rounded-2xl border p-4 cursor-pointer transition-all duration-200 ${
             snapshot.isDragging
-              ? 'shadow-xl rotate-1 scale-[1.02] border-indigo-400 ring-4 ring-indigo-500/5 bg-slate-25'
-              : 'border-slate-200/70 hover:border-indigo-400/50 hover:shadow-md hover:shadow-slate-150/40'
+              ? 'shadow-xl rotate-1 scale-[1.02] border-[var(--brand)] ring-4 ring-[var(--brand-ring)]/10 bg-slate-25'
+              : 'border-slate-200/70 hover:border-[var(--brand)]/50 hover:shadow-md hover:shadow-slate-150/40'
           }`}
         >
           {/* Priority badge */}
@@ -266,7 +266,7 @@ const KanbanCard = ({ task, index, onClick }) => {
           </div>
 
           {/* Title */}
-          <h4 className="font-extrabold text-sm text-slate-800 mb-1 leading-snug line-clamp-2 hover:text-indigo-600 transition-colors flex items-center gap-1.5">
+          <h4 className="font-extrabold text-sm text-slate-800 mb-1 leading-snug line-clamp-2 hover:text-[var(--brand)] transition-colors flex items-center gap-1.5">
             {task.taskNumber && (
               <span className="text-[10px] bg-slate-100 border border-slate-200 text-slate-655 px-1.5 py-0.5 rounded font-mono font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
                 {task.taskNumber}
@@ -285,7 +285,7 @@ const KanbanCard = ({ task, index, onClick }) => {
               </div>
               <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-violet-650 rounded-full transition-all"
+                  className="h-full bg-[var(--brand)] rounded-full transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -322,7 +322,7 @@ const KanbanCard = ({ task, index, onClick }) => {
                 ) : (
                   <div
                     key={i}
-                    className="w-5.5 h-5.5 rounded-full border border-white bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm"
+                    className="w-5.5 h-5.5 rounded-full border border-white bg-[var(--brand)] flex items-center justify-center shadow-sm"
                   >
                     <span className="text-white text-[8px] font-extrabold">
                       {u.name?.[0]?.toUpperCase()}

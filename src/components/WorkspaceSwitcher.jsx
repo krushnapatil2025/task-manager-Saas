@@ -76,7 +76,7 @@ const WorkspaceSwitcher = () => {
         ) : (
           <LuBuilding2 className="text-indigo-600 dark:text-indigo-400 text-base" />
         )}
-        <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 max-w-[120px] truncate">
+        <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 max-w-[80px] sm:max-w-[120px] truncate hidden sm:inline">
           {workspace?.name || "No Workspace"}
         </span>
         <LuChevronDown

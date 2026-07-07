@@ -44,7 +44,7 @@ const DashboardLayout = ({ children, activeMenu }) => {
 
           {/* ── SideMenu — greyed + locked when not approved ── */}
           <div
-            className="max-[1080px]:hidden shrink-0"
+            className="hidden lg:block shrink-0"
             style={isBlocked ? {
               filter: 'grayscale(1) opacity(0.45)',
               pointerEvents: 'none',

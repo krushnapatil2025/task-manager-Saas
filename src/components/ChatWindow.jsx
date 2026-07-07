@@ -4,7 +4,7 @@ import {
   LuLock, LuHash, LuSettings, LuPencil, LuUsers, LuX,
   LuDownload, LuFileText, LuEye, LuPin, LuMessageSquare, LuSearch,
   LuBookmark, LuSparkles, LuForward, LuBell, LuBellOff, LuInfo, LuLink,
-  LuClock, LuReply, LuEllipsis, LuMenu
+  LuClock, LuReply, LuEllipsis, LuMenu, LuArrowLeft
 } from 'react-icons/lu';
 import { useChat } from '../hooks/useChat';
 import { UserContext } from '../context/userContext';
@@ -57,7 +57,8 @@ const ChatWindow = ({
   createdBy = null,
   onRoomUpdated,
   onRoomDeleted,
-  onRoomSwitch
+  onRoomSwitch,
+  onBack
 }) => {
   const { user, updateUser } = useContext(UserContext);
   const { workspace, onlineUsers } = useContext(WorkspaceContext);
@@ -498,6 +499,15 @@ const ChatWindow = ({
         <div className="chat-window-header relative">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="md:hidden mr-1.5 p-1 rounded-lg text-slate-555 hover:text-slate-755 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer flex-shrink-0"
+                  aria-label="Back to conversations list"
+                >
+                  <LuArrowLeft size={16} />
+                </button>
+              )}
               {!isDirectDM && (
                 isPrivate
                   ? <LuLock size={15} className="text-amber-500 flex-shrink-0" />

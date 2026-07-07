@@ -6,6 +6,9 @@ import {
   summariseTaskComments,
   getSmartWarnings,
   parseNaturalLanguageTask,
+  chatWithAssistant,
+  generateTaskChecklist,
+  expandTaskDescription,
 } from '../services/aiService';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,10 +42,16 @@ export const useAI = () => {
   return {
     loading,
     error,
-    suggestPriority:   (title, desc)     => run(suggestTaskPriority, title, desc),
-    summariseComments: (title, comments) => run(summariseTaskComments, title, comments),
-    getWarnings:       (tasks)           => run(getSmartWarnings, tasks),
-    parseNLTask:       (input)           => run(parseNaturalLanguageTask, input),
+    setError,
+    // Core tools
+    suggestPriority:    (title, desc)              => run(suggestTaskPriority, title, desc),
+    summariseComments:  (title, comments)          => run(summariseTaskComments, title, comments),
+    getWarnings:        (tasks)                    => run(getSmartWarnings, tasks),
+    parseNLTask:        (input)                    => run(parseNaturalLanguageTask, input),
+    // New features
+    chat:               (history, context)         => run(chatWithAssistant, history, context),
+    generateChecklist:  (title, desc)              => run(generateTaskChecklist, title, desc),
+    expandDescription:  (summary)                  => run(expandTaskDescription, summary),
   };
 };
 

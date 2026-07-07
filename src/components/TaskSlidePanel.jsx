@@ -799,7 +799,7 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
             <button
               onClick={() => handleSave()}
               disabled={saving}
-              className="text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90 shadow-md shadow-indigo-100 rounded-xl px-5 py-2 cursor-pointer transition"
+              className="text-xs font-bold text-white bg-brand hover:opacity-90 shadow-[0_4px_12px_var(--brand-ring)] rounded-xl px-5 py-2 cursor-pointer transition"
             >
               {saving ? 'Saving...' : currentTaskId ? 'Save Updates' : 'Create Task'}
             </button>

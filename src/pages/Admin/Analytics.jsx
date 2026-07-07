@@ -422,7 +422,7 @@ const Analytics = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100/60 dark:bg-zinc-900/60 rounded-xl p-1 mb-5 w-fit border border-slate-205 dark:border-zinc-800/80 no-print">
+        <div className="flex items-center gap-1 bg-slate-100/60 dark:bg-zinc-900/60 rounded-xl p-1 mb-5 max-w-full overflow-x-auto border border-slate-205 dark:border-zinc-800/80 no-print">
           {TABS.map(tab => (
             <button
               key={tab.id}
