@@ -39,6 +39,7 @@ import moment from 'moment';
 import { toast } from 'react-hot-toast';
 import { parseMarkdownAndMentions } from '../utils/markdown';
 import VoiceMessageBubble from './VoiceMessageBubble';
+import FilePreviewModal from './FilePreviewModal';
 
 const QUICK_EMOJIS = ['👍', '❤️', '🔥', '✅', '😮', '🎉'];
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#22c55e', '#14b8a6'];
@@ -99,6 +100,7 @@ const ChatWindow = ({
   const [replyingToMessage, setReplyingToMessage] = useState(null);
   const [activeMenuMessageId, setActiveMenuMessageId] = useState(null);
   const [activeReactMessageId, setActiveReactMessageId] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
 
   // Threads, Pins, Saved & Scheduled Messages State
   const [selectedThreadParent, setSelectedThreadParent] = useState(null);
@@ -1200,7 +1202,12 @@ const ChatWindow = ({
                                   src={downloadUrl || displayUrl}
                                   alt={fileName}
                                   className="w-full h-auto object-cover max-h-[180px] cursor-pointer hover:opacity-95 transition-opacity"
-                                  onClick={() => window.open(previewUrl || downloadUrl || displayUrl, '_blank')}
+                                  onClick={() => setPreviewFile({
+                                    fileName: fileName,
+                                    mimeType: 'image/png',
+                                    publicUrl: previewUrl || downloadUrl || displayUrl,
+                                    fileSizeFormatted: fileSize || 'Image'
+                                  })}
                                   onError={(e) => {
                                     if (downloadUrl && e.target.src !== displayUrl) {
                                       const isBlob = displayUrl.startsWith('blob:');
@@ -1225,19 +1232,45 @@ const ChatWindow = ({
                             {/* General File Attachment Card */}
                             {hasAttachment && msg.type === 'file' && (
                               <div className="chat-file-preview-card shadow-sm flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-200">
-                                <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-[9px] flex items-center justify-center uppercase flex-shrink-0 border border-indigo-100 hover:bg-indigo-100 transition-colors" title="View Document">
+                                <button
+                                  onClick={() => setPreviewFile({
+                                    fileName: fileName,
+                                    mimeType: fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+                                    publicUrl: previewUrl || downloadUrl || displayUrl,
+                                    fileSizeFormatted: fileSize || 'Document'
+                                  })}
+                                  className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-[9px] flex items-center justify-center uppercase flex-shrink-0 border border-indigo-100 hover:bg-indigo-100 transition-colors cursor-pointer"
+                                  title="View Document"
+                                >
                                   {fileName.split('.').pop()?.substring(0, 4) || 'FILE'}
-                                </a>
+                                </button>
                                 <div className="flex-1 min-w-0 text-slate-700">
-                                  <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-semibold truncate hover:underline hover:text-indigo-600 block">
+                                  <button
+                                    onClick={() => setPreviewFile({
+                                      fileName: fileName,
+                                      mimeType: fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+                                      publicUrl: previewUrl || downloadUrl || displayUrl,
+                                      fileSizeFormatted: fileSize || 'Document'
+                                    })}
+                                    className="text-[11px] font-semibold text-left truncate hover:underline hover:text-indigo-600 block w-full cursor-pointer bg-transparent border-0 p-0"
+                                  >
                                     {fileName}
-                                  </a>
+                                  </button>
                                   <p className="text-[9px] text-slate-400">{fileSize || 'Document'}</p>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors flex-shrink-0" title="View/Preview File">
+                                  <button
+                                    onClick={() => setPreviewFile({
+                                      fileName: fileName,
+                                      mimeType: fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+                                      publicUrl: previewUrl || downloadUrl || displayUrl,
+                                      fileSizeFormatted: fileSize || 'Document'
+                                    })}
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors flex-shrink-0 cursor-pointer border-0 bg-transparent"
+                                    title="View/Preview File"
+                                  >
                                     <LuEye size={13} />
-                                  </a>
+                                  </button>
                                   <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-650 transition-colors flex-shrink-0" title="Download File">
                                     <LuDownload size={13} />
                                   </a>
@@ -1784,6 +1817,13 @@ const ChatWindow = ({
           </div>
         </div>
       )}
+
+      {/* Inline File Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+      />
     </div>
   );
 };

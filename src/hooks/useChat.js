@@ -104,7 +104,7 @@ export const useChat = (roomId) => {
     try {
       const { data, error } = await supabase
         .from('chat_messages')
-        .select(`id, content, type, is_deleted, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+        .select(`id, room_id, content, type, is_deleted, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
                  sender:profiles!sender_id(name, profile_image_url),
                  reply_to:reply_to_id(id, content, type, file_url, sender:profiles!sender_id(name)),
                  reads:chat_message_reads(user_id),
@@ -147,6 +147,8 @@ export const useChat = (roomId) => {
   }, []); // stable — uses refs only
 
   useEffect(() => {
+    setMessages([]);
+    setLoading(true);
     fetchMessages();
     if (!roomId) return;
 

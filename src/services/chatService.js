@@ -21,20 +21,27 @@ export const getMyRooms = async (workspaceId, userId) => {
   // Leverage RLS to automatically fetch allowed public + joined private rooms/DMs
   const { data, error } = await supabase
     .from('chat_rooms')
-    .select('id, type, name, workspace_id, created_at, is_private, created_by, description, topic')
+    .select(`
+      id, type, name, workspace_id, created_at, is_private, created_by, description, topic,
+      chat_room_members(user_id)
+    `)
     .eq('workspace_id', workspaceId);
   if (error) throw error;
 
-  return (data || []).map(r => ({
-    id:        r.id,
-    type:      r.type,
-    name:      r.name || null,
-    createdAt: r.created_at,
-    isPrivate: r.is_private || false,
-    createdBy: r.created_by,
-    description: r.description || '',
-    topic:     r.topic || '',
-  }));
+  return (data || []).map(r => {
+    const dmPartner = r.chat_room_members?.find(m => m.user_id !== userId);
+    return {
+      id:          r.id,
+      type:        r.type,
+      name:        r.name || null,
+      createdAt:   r.created_at,
+      isPrivate:   r.is_private || false,
+      createdBy:   r.created_by,
+      description: r.description || '',
+      topic:       r.topic || '',
+      dmPartnerId: dmPartner ? dmPartner.user_id : null,
+    };
+  });
 };
 
 /** Create a custom team room with selected members */
@@ -105,9 +112,19 @@ export const getOrCreateTeamRoom = async (workspaceId, name) => {
 
 /** Join a room (add self to chat_room_members) */
 export const joinRoom = async (roomId, userId) => {
+  // Check if membership already exists first to avoid RLS insert violations on private/direct rooms
+  const { data: existing } = await supabase
+    .from('chat_room_members')
+    .select('room_id')
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) return;
+
   const { error } = await supabase
     .from('chat_room_members')
-    .upsert({ room_id: roomId, user_id: userId }, { onConflict: 'room_id,user_id' });
+    .insert({ room_id: roomId, user_id: userId });
   if (error && error.code !== '23505') throw error;
 };
 

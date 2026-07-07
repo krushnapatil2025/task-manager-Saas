@@ -5,6 +5,7 @@ import {
 } from 'react-icons/lu';
 import { uploadTaskFile, getTaskFiles, deleteTaskFile, formatFileSize, getMimeIcon } from '../services/fileService';
 import toast from 'react-hot-toast';
+import FilePreviewModal from './FilePreviewModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TaskFileUploader — upload files to Supabase Storage and list attached files
@@ -25,6 +26,7 @@ const ICON_MAP = {
 const TaskFileUploader = ({ taskId, workspaceId, uploadedBy, files = [], onFilesChange }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver]   = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
   const inputRef = useRef(null);
 
   const handleFiles = async (fileList) => {
@@ -108,10 +110,22 @@ const TaskFileUploader = ({ taskId, workspaceId, uploadedBy, files = [], onFiles
       {files.length > 0 && (
         <div className="mt-3 space-y-2">
           {files.map((f) => (
-            <FileRow key={f.id} file={f} onDelete={() => handleDelete(f)} />
+            <FileRow 
+              key={f.id} 
+              file={f} 
+              onDelete={() => handleDelete(f)} 
+              onPreview={() => setPreviewFile({ ...f, fileSizeFormatted: formatFileSize(f.fileSize) })}
+            />
           ))}
         </div>
       )}
+
+      {/* Inline File Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+      />
     </div>
   );
 };
@@ -120,23 +134,8 @@ export default TaskFileUploader;
 
 // ─────────────────────────── File Row ────────────────────────────────────────
 
-const FileRow = ({ file, onDelete }) => {
+const FileRow = ({ file, onDelete, onPreview }) => {
   const iconType = getMimeIcon(file.mimeType || '');
-
-  const isGoogleDrive = file.publicUrl?.includes('drive.google.com') || file.storagePath?.startsWith('google-drive:');
-
-  const getGoogleDrivePreviewUrl = (url, storagePath) => {
-    let fileId = '';
-    if (storagePath && storagePath.startsWith('google-drive:')) {
-      fileId = storagePath.replace('google-drive:', '');
-    } else if (url) {
-      const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/file\/d\/([^/]+)/);
-      if (match) fileId = match[1];
-    }
-    return fileId ? `https://drive.google.com/file/d/${fileId}/view` : url;
-  };
-
-  const viewUrl = isGoogleDrive ? getGoogleDrivePreviewUrl(file.publicUrl, file.storagePath) : file.publicUrl;
 
   return (
     <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2.5 hover:border-blue-200 hover:shadow-sm transition group">
@@ -146,16 +145,13 @@ const FileRow = ({ file, onDelete }) => {
         <p className="text-[10px] text-gray-400">{formatFileSize(file.fileSize)}</p>
       </div>
       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <a
-          href={viewUrl}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="text-gray-400 hover:text-blue-600 text-sm"
+        <button
+          onClick={(e) => { e.stopPropagation(); onPreview(); }}
+          className="text-gray-400 hover:text-blue-600 text-sm cursor-pointer border-0 bg-transparent p-0 flex items-center"
           title="View File"
         >
           <LuExternalLink />
-        </a>
+        </button>
         <button
           onClick={onDelete}
           className="text-gray-400 hover:text-red-500 text-sm"
