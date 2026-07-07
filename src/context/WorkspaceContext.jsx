@@ -34,7 +34,7 @@ const WorkspaceProvider = ({ children }) => {
         .from("workspace_members")
         .select(`
           role,
-          workspace:workspaces(id, name, slug, logo_url, plan, owner_id, created_at)
+          workspace:workspaces(id, name, slug, logo_url, plan, owner_id, created_at, approval_status, approval_note)
         `)
         .eq("user_id", user.id);
 

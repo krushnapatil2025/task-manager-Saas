@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { DEFAULT_BRAND, applyCSSVariables } from '../context/BrandContext';
 import {
   LuKanban, LuBell, LuShield, LuZap, LuUsers, LuChartBar,
   LuArrowRight, LuCheck, LuStar, LuMenu, LuX,
   LuClipboardCheck, LuFileUp, LuMessageSquare,
+  LuChevronDown, LuChevronUp, LuPlay, LuPause, LuActivity,
+  LuLock, LuGithub, LuTwitter, LuLinkedin, LuSparkles
 } from 'react-icons/lu';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // LandingPage — public marketing page (Enterprise Light Mode Theme)
 // Route: /
@@ -12,61 +16,108 @@ import {
 
 /* ─── Data ─────────────────────────────────────────────────────────────────── */
 const FEATURES = [
-  { icon: LuKanban,         color: 'from-blue-500 to-cyan-500',    title: 'Kanban Board',          desc: 'Drag-and-drop cards across Pending, In Progress, and Completed columns with real-time status sync.' },
-  { icon: LuBell,           color: 'from-purple-500 to-pink-500',  title: 'Live Notifications',    desc: 'Instant in-app alerts when tasks are assigned, commented on, or completed — powered by Supabase Realtime.' },
-  { icon: LuShield,         color: 'from-red-500 to-orange-500',   title: 'Enterprise Security',   desc: 'Row-level security, invite-only workspaces, audit logs, Google OAuth, and CSP headers out of the box.' },
-  { icon: LuUsers,          color: 'from-emerald-500 to-teal-500', title: 'Multi-Tenant Workspaces', desc: 'Every team gets a fully isolated workspace. Zero data leakage between tenants — enforced at database level.' },
-  { icon: LuFileUp,         color: 'from-amber-500 to-yellow-500', title: 'File Attachments',      desc: 'Upload PDFs, images, and documents directly to tasks. Stored securely on Supabase Storage.' },
-  { icon: LuChartBar,       color: 'from-cyan-500 to-blue-500',    title: 'Analytics Dashboard',   desc: 'Completion rates, priority breakdowns, team productivity charts, and exportable Excel reports.' },
+  { icon: LuKanban,         color: 'from-blue-500 to-cyan-500',    title: 'Sprint Kanban Board',   desc: 'Drag-and-drop cards across custom columns with real-time status sync, sprint estimations, and interactive subtask checklists.' },
+  { icon: LuBell,           color: 'from-purple-500 to-pink-500',  title: 'Real-time Notifications', desc: 'Instant in-app notification bell and OS-level push alerts when tasks are assigned or commented on.' },
+  { icon: LuShield,         color: 'from-red-500 to-orange-500',   title: 'Enterprise Security & RLS', desc: 'Strict workspace tenant isolation, secure invitation workflows, audit logging, and Google OAuth security.' },
+  { icon: LuUsers,          color: 'from-emerald-500 to-teal-500', title: 'Multi-Tenant Workspaces', desc: 'Create multiple isolated workspaces. Seamless team management with invite-only access roles.' },
+  { icon: LuFileUp,         color: 'from-amber-500 to-yellow-500', title: 'Asset Storage & Sharing', desc: 'Upload documents, mockups, and spreadsheets directly to tasks with secure Supabase storage integration.' },
+  { icon: LuChartBar,       color: 'from-cyan-500 to-blue-500',    title: 'Advanced Analytics',    desc: 'Sprint completion rate metrics, team velocity, priority breakdowns, and exportable high-fidelity Excel reports.' },
 ];
 
 const PLANS = [
   {
-    name:  'Free',
+    name:  'Free Starter',
     price: '₹0',
     sub:   'Forever',
-    color: 'border-slate-200/80 hover:border-slate-300',
+    color: 'border-slate-200/85 hover:border-slate-350 hover:shadow-lg',
     badge: null,
-    items: ['5 members', '100 tasks', 'Basic charts', 'Kanban board', '100 MB storage'],
-    cta:   { label: 'Start Free', to: '/admin/register', style: 'border border-slate-250 hover:bg-slate-50 text-slate-700' },
+    items: ['Up to 5 team members', '100 Active tasks limit', 'Basic analytics dashboard', 'Standard Kanban boards', '100 MB Storage limit'],
+    cta:   { label: 'Get Started Free', to: '/admin/register', style: 'border border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs' },
   },
   {
-    name:  'Pro',
+    name:  'Professional',
     price: '₹999',
     sub:   '/month',
-    color: 'border-indigo-500/80 shadow-xl shadow-indigo-500/5 hover:border-indigo-600',
+    color: 'border-indigo-500 ring-2 ring-indigo-500/10 shadow-xl shadow-indigo-500/5 hover:border-indigo-650',
     badge: 'Most Popular',
-    items: ['25 members', 'Unlimited tasks', 'Advanced analytics', 'Real-time sync', 'File uploads 5 GB', 'Priority support'],
-    cta:   { label: 'Start Pro Trial', to: '/admin/register', style: 'bg-gradient-to-r from-indigo-650 to-violet-650 text-white hover:opacity-95 shadow-md shadow-indigo-600/10' },
+    items: ['Up to 25 team members', 'Unlimited tasks & boards', 'Advanced analytics & charts', 'Real-time collaboration sync', '5 GB Secure storage', 'Priority customer support'],
+    cta:   { label: 'Start 14-Day Trial', to: '/admin/register', style: 'bg-gradient-to-r from-indigo-600 to-violet-650 text-white hover:opacity-95 shadow-md shadow-indigo-600/10' },
   },
   {
-    name:  'Enterprise',
+    name:  'Enterprise Scale',
     price: '₹2,999',
     sub:   '/month',
-    color: 'border-slate-200/80 hover:border-slate-300',
+    color: 'border-slate-200/85 hover:border-slate-350 hover:shadow-lg',
     badge: null,
-    items: ['Unlimited members', 'Unlimited everything', 'Custom reports', 'Public API access', 'Audit logs', 'Dedicated support'],
-    cta:   { label: 'Contact Sales', to: '/admin/register', style: 'border border-slate-250 hover:bg-slate-50 text-slate-700' },
+    items: ['Unlimited team members', 'Unlimited storage & tasks', 'Custom analytics reports', 'Public Developer API access', 'Comprehensive Audit logs', 'Dedicated Account Manager'],
+    cta:   { label: 'Contact Sales', to: '/admin/register', style: 'border border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs' },
   },
 ];
 
-const TESTIMONIALS = [
-  { name: 'Rahul Sharma',   role: 'CTO, TechStartup',     avatar: 'RS', text: 'TaskFlow replaced Jira for our 20-person team. The Kanban board and real-time updates are buttery smooth.',    stars: 5 },
-  { name: 'Priya Nair',     role: 'Product Manager, EdTech', avatar: 'PN', text: 'Workspace isolation is a game-changer. Each client team sees only their data. Supabase RLS is doing the heavy lifting.', stars: 5 },
-  { name: 'Arjun Mehta',    role: 'Engineering Lead',      avatar: 'AM', text: 'The audit log caught a rogue admin action immediately. The security hardening in Phase 4 is enterprise-grade.',   stars: 5 },
-];
+
 
 const STATS = [
-  { value: '10K+',  label: 'Tasks Completed'   },
-  { value: '500+',  label: 'Active Workspaces'  },
-  { value: '99.9%', label: 'Uptime SLA'         },
-  { value: '<50ms', label: 'Realtime Latency'   },
+  { value: '25K+',  label: 'Tasks Completed'   },
+  { value: '1.2K+',  label: 'Active Workspaces'  },
+  { value: '99.99%', label: 'Uptime SLA'         },
+  { value: '<45ms', label: 'Realtime Latency'   },
+];
+
+const STEPS = [
+  {
+    num: '01',
+    title: 'Initialize Workspace',
+    desc: 'Register in seconds, set up your organization details, and establish your tenant workspace.'
+  },
+  {
+    num: '02',
+    title: 'Invite Collaborative Teams',
+    desc: 'Share secure, invite-only links with developers, managers, or external stakeholders.'
+  },
+  {
+    num: '03',
+    title: 'Manage & Time Sprint Tasks',
+    desc: 'Organize boards, start interactive timers on items, and chat dynamically on comments.'
+  },
+  {
+    num: '04',
+    title: 'Export & Audit Insights',
+    desc: 'Download rich Excel summaries, analyze key velocity charts, and inspect admin audit logs.'
+  }
+];
+
+
+
+const FAQS = [
+  {
+    q: 'How does team workspace isolation work?',
+    a: 'Strideo uses Supabase Row-Level Security (RLS) policies at the database layer. Every select, update, or delete operation is filtered by the user session and workspace tenant ID. This ensures complete client isolation and zero data leakage.'
+  },
+  {
+    q: 'Can we run active timers on tasks?',
+    a: 'Absolutely! Our dashboard includes a running task timer module. You can start, pause, and log precise duration metrics for any assigned task, which automatically updates the sprint analytical charts.'
+  },
+  {
+    q: 'What makes Strideo different from simple boards?',
+    a: 'Unlike generic managers, Strideo features fully isolated multi-tenancy, built-in real-time team chats on specific tasks, custom time trackers, audit logs for compliance, and Excel exports out-of-the-box.'
+  },
+  {
+    q: 'Can we configure Google OAuth for login?',
+    a: 'Yes. Administrators can enable Google authentication in their workspace settings, allowing team members to sign in securely using corporate Google accounts.'
+  }
 ];
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 const LandingPage = () => {
   const [menuOpen,  setMenuOpen]  = useState(false);
   const [scrolled,  setScrolled]  = useState(false);
+  const [activeFaq, setActiveFaq] = useState(null);
+  const [timerRunning, setTimerRunning] = useState(true);
+  const [timerSeconds, setTimerSeconds] = useState(142); // 2m 22s initial
+
+  useEffect(() => {
+    applyCSSVariables(DEFAULT_BRAND);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -74,32 +125,44 @@ const LandingPage = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const companyName = 'TaskFlow';
+  useEffect(() => {
+    let interval = null;
+    if (timerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds((s) => s + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerRunning]);
+
+  const formatTime = (totalSecs) => {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const companyName = 'Strideo';
 
   return (
-    <div className="bg-[#fafbfd] text-slate-800 min-h-screen overflow-x-hidden font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="bg-slate-50/50 text-slate-800 min-h-screen overflow-x-hidden font-sans antialiased selection:bg-indigo-150 selection:text-indigo-950">
 
       {/* ══════════════════════ NAVBAR ══════════════════════════════════════ */}
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/60 shadow-sm' : 'bg-transparent'}`}>
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
           <span className="text-lg font-black tracking-tight flex items-center gap-2 select-none">
-            <span 
-              className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm text-white font-black text-xs bg-gradient-to-br from-indigo-500 to-violet-650"
-            >
-              T
-            </span>
+            <img src="/logo.png" className="w-7 h-7 object-contain rounded-lg shadow-sm" alt="Logo" />
             <span className="text-slate-900 font-extrabold">{companyName}</span>
           </span>
 
           <div className="hidden md:flex items-center gap-8 text-xs font-bold text-slate-500">
-            {['Features', 'Pricing', 'Testimonials'].map((s) => (
-              <a key={s} href={`#${s.toLowerCase()}`} className="hover:text-slate-900 transition-colors">{s}</a>
+            {['Features', 'How it Works', 'Pricing', 'FAQ'].map((s) => (
+              <a key={s} href={`#${s.toLowerCase().replace(/\s+/g, '-')}`} className="hover:text-indigo-600 transition-colors">{s}</a>
             ))}
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/login" className="text-xs font-bold text-slate-600 hover:text-slate-900 transition px-4 py-2">Login</Link>
-            <Link to="/admin/register" className="text-xs font-extrabold bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md">
+            <Link to="/login" className="text-xs font-bold text-slate-600 hover:text-indigo-650 transition px-4 py-2">Login</Link>
+            <Link to="/admin/register" className="text-xs font-extrabold bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md">
               Create Workspace
             </Link>
           </div>
@@ -112,12 +175,12 @@ const LandingPage = () => {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden bg-white border-t border-slate-100 px-6 py-4 space-y-3 shadow-lg">
-            {['features', 'pricing', 'testimonials'].map((s) => (
-              <a key={s} href={`#${s}`} className="block text-xs font-bold capitalize text-slate-600 hover:text-slate-900 py-1" onClick={() => setMenuOpen(false)}>{s}</a>
+            {['features', 'how-it-works', 'pricing', 'faq'].map((s) => (
+              <a key={s} href={`#${s}`} className="block text-xs font-bold capitalize text-slate-600 hover:text-indigo-650 py-1" onClick={() => setMenuOpen(false)}>{s.replace(/-/g, ' ')}</a>
             ))}
             <div className="flex gap-3 pt-3 border-t border-slate-100">
               <Link to="/login" className="flex-1 text-center text-xs border border-slate-200 text-slate-700 rounded-xl py-2.5 hover:bg-slate-50 transition font-bold">Login</Link>
-              <Link to="/admin/register" className="flex-1 text-center text-xs bg-slate-900 hover:bg-slate-850 text-white rounded-xl py-2.5 transition font-bold">Sign Up</Link>
+              <Link to="/admin/register" className="flex-1 text-center text-xs bg-indigo-650 text-white rounded-xl py-2.5 transition font-bold">Sign Up</Link>
             </div>
           </div>
         )}
@@ -151,7 +214,7 @@ const LandingPage = () => {
         <div className="flex flex-col sm:flex-row items-center gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
           <Link
             to="/admin/register"
-            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-8 py-4 rounded-2xl text-xs shadow-md transition-all duration-200 hover:-translate-y-0.5"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-750 text-white font-bold px-8 py-4 rounded-2xl text-xs shadow-md transition-all duration-200 hover:-translate-y-0.5"
           >
             Create Your Workspace <LuArrowRight />
           </Link>
@@ -174,8 +237,8 @@ const LandingPage = () => {
               <div className="space-y-6">
                 {/* Logo */}
                 <div className="flex items-center gap-2 px-2">
-                  <span className="w-2.5 h-4.5 bg-gradient-to-b from-indigo-500 to-violet-600 rounded-sm inline-block shrink-0"></span>
-                  <span className="hidden md:inline text-xs font-black tracking-wide text-slate-850">{companyName}</span>
+                  <span className="w-2.5 h-4.5 bg-gradient-to-b from-indigo-500 to-violet-650 rounded-sm inline-block shrink-0"></span>
+                  <span className="hidden md:inline text-xs font-black tracking-wide text-slate-855">{companyName}</span>
                 </div>
                 {/* Menu items */}
                 <div className="space-y-1">
@@ -190,7 +253,7 @@ const LandingPage = () => {
                       key={idx}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-extrabold transition-all duration-150 ${
                         m.active 
-                          ? 'bg-indigo-50 text-indigo-700 border-l-2 border-indigo-600 rounded-l-none' 
+                          ? 'bg-indigo-55 text-indigo-700 border-l-2 border-indigo-600 rounded-l-none' 
                           : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
                       }`}
                     >
@@ -202,7 +265,7 @@ const LandingPage = () => {
               </div>
               
               <div className="hidden md:flex items-center gap-2 px-2 text-[10px] text-slate-400 font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live updates active
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Live sync active
               </div>
             </div>
 
@@ -216,8 +279,15 @@ const LandingPage = () => {
                   <span className="text-slate-650">Kanban Board</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="hidden sm:block text-[9px] text-slate-400 bg-slate-50 px-2.5 py-1 rounded border border-slate-200/80 font-mono font-bold">
-                    Ctrl+K to search
+                  <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100/60 rounded-lg py-1 px-2.5">
+                    <button 
+                      onClick={() => setTimerRunning(!timerRunning)}
+                      className="text-[10px] text-indigo-750 hover:scale-110 transition flex items-center justify-center p-0.5 bg-white shadow-xs rounded-full cursor-pointer"
+                    >
+                      {timerRunning ? <LuPause className="text-[8px]" /> : <LuPlay className="text-[8px] fill-indigo-700" />}
+                    </button>
+                    <span className="text-[10px] font-mono font-black text-indigo-700">{formatTime(timerSeconds)}</span>
+                    <span className="text-[9px] text-indigo-500 font-bold hidden sm:inline">Active Timer</span>
                   </div>
                   <div className="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[9px] text-indigo-700 font-black">
                     KS
@@ -254,8 +324,8 @@ const LandingPage = () => {
                 ].map((column) => (
                   <div key={column.col} className="flex flex-col min-w-0 select-none">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-extrabold text-slate-450 uppercase tracking-wider">{column.col}</span>
-                      <span className="text-[9px] font-bold text-slate-550 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md">{column.badge}</span>
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{column.col}</span>
+                      <span className="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md">{column.badge}</span>
                     </div>
 
                     <div className="space-y-3 overflow-hidden flex-grow">
@@ -264,8 +334,8 @@ const LandingPage = () => {
                           key={i}
                           className={`bg-white border rounded-2xl p-3.5 shadow-sm transition-all duration-200 group/card cursor-pointer ${
                             card.active 
-                              ? 'border-indigo-400 ring-2 ring-indigo-500/5 shadow-indigo-100/50 bg-indigo-25/10' 
-                              : 'border-slate-200 hover:border-slate-300 hover:shadow'
+                              ? 'border-indigo-450 ring-2 ring-indigo-500/5 shadow-indigo-100/50 bg-indigo-25/10' 
+                              : 'border-slate-200 hover:border-slate-350 hover:shadow-md'
                           }`}
                         >
                           <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
@@ -344,6 +414,36 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ══════════════════════ HOW IT WORKS ═════════════════════════════════ */}
+      <section id="how-it-works" className="py-28 px-6 bg-white border-t border-slate-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-20">
+            <p className="text-xs font-black text-indigo-650 uppercase tracking-widest mb-3">Workflow Execution</p>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">How Strideo drives productivity</h2>
+            <p className="text-slate-500 mt-4 max-w-xl mx-auto text-sm font-medium leading-relaxed">
+              Four simple phases to align team timelines, tracking accuracy, and enterprise visibility.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
+            {/* Connecting lines for desktop */}
+            <div className="hidden md:block absolute top-1/2 left-[12%] right-[12%] h-[1px] bg-slate-200 -translate-y-12 z-0" />
+            
+            {STEPS.map((step, idx) => (
+              <div key={step.num} className="relative z-10 flex flex-col items-center text-center bg-[#fafbfd] border border-slate-200/60 rounded-3xl p-6.5 hover:shadow-lg transition-all duration-300">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-md shadow-indigo-650/15 mb-6">
+                  {step.num}
+                </div>
+                <h3 className="font-extrabold text-slate-900 text-sm mb-2.5">{step.title}</h3>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+
       {/* ══════════════════════ PRICING ═════════════════════════════════════ */}
       <section id="pricing" className="py-28 px-6 bg-white border-t border-slate-100">
         <div className="max-w-5xl mx-auto">
@@ -393,34 +493,36 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ══════════════════════ TESTIMONIALS ════════════════════════════════ */}
-      <section id="testimonials" className="py-28 px-6 bg-[#fafbfd] border-t border-slate-150/70">
-        <div className="max-w-5xl mx-auto">
+
+
+      {/* ══════════════════════ FAQ SECTION ═══════════════════════════════════ */}
+      <section id="faq" className="py-28 px-6 bg-[#fafbfd] border-t border-slate-150/70">
+        <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Customer Success</p>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Loved by high-performing teams</h2>
+            <p className="text-xs font-black text-indigo-650 uppercase tracking-widest mb-3">Common Questions</p>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Frequently Asked Queries</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="bg-white border border-slate-200/80 rounded-3xl p-8 hover:shadow-md transition-all duration-300">
-                <div className="flex gap-0.5 mb-5">
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <LuStar key={i} className="text-amber-400 text-xs fill-amber-400" />
-                  ))}
+          <div className="space-y-4">
+            {FAQS.map((faq, idx) => {
+              const isOpen = activeFaq === idx;
+              return (
+                <div key={idx} className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden transition-all duration-200">
+                  <button 
+                    onClick={() => setActiveFaq(isOpen ? null : idx)}
+                    className="w-full flex items-center justify-between p-6 text-left font-bold text-slate-800 text-xs md:text-sm hover:text-indigo-650 transition-colors"
+                  >
+                    <span>{faq.q}</span>
+                    {isOpen ? <LuChevronUp className="text-slate-450" /> : <LuChevronDown className="text-slate-450" />}
+                  </button>
+                  {isOpen && (
+                    <div className="px-6 pb-6 text-xs text-slate-500 font-semibold leading-relaxed border-t border-slate-100 pt-4 animate-fade-in">
+                      {faq.a}
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs font-medium text-slate-600 leading-relaxed mb-6">"{t.text}"</p>
-                <div className="flex items-center gap-3.5">
-                  <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0 text-indigo-600 font-extrabold text-xs shadow-sm">
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">{t.name}</p>
-                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">{t.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -428,7 +530,7 @@ const LandingPage = () => {
       {/* ══════════════════════ CTA ══════════════════════════════════════════ */}
       <section className="py-24 px-6 bg-white border-t border-slate-100">
         <div className="max-w-4xl mx-auto">
-          <div className="relative bg-gradient-to-br from-indigo-900 to-violet-900 rounded-[32px] p-16 shadow-2xl text-center text-white overflow-hidden">
+          <div className="relative bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[32px] p-16 shadow-2xl text-center text-white overflow-hidden border border-slate-800">
             {/* Mesh glows in CTA */}
             <div className="absolute inset-0 pointer-events-none opacity-20">
               <div className="absolute -top-12 -left-12 w-64 h-64 bg-indigo-400 rounded-full blur-2xl" />
@@ -436,38 +538,76 @@ const LandingPage = () => {
             </div>
             <div className="relative">
               <h2 className="text-3xl md:text-4xl font-black mb-4 tracking-tight">Ready to boost team efficiency?</h2>
-              <p className="text-indigo-200 mb-8 max-w-md mx-auto text-sm leading-relaxed font-semibold">
-                Join thousands of teams using {companyName} to structure workspace tasks and track time.
+              <p className="text-indigo-200 mb-8 max-w-md mx-auto text-xs md:text-sm leading-relaxed font-semibold">
+                Join thousands of organizations using {companyName} to structure workspace sprint iterations and track active time.
               </p>
               <Link
                 to="/admin/register"
-                className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-indigo-950 font-black px-8 py-4 rounded-2xl text-xs shadow-xl hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center gap-2 bg-indigo-605 hover:bg-indigo-700 text-white font-bold px-8 py-4 rounded-2xl text-xs shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer"
               >
                 Create Free Workspace <LuArrowRight />
               </Link>
-              <p className="text-[10px] text-indigo-300/80 mt-4 font-bold">Free forever tier · Create in 2 minutes</p>
+              <p className="text-[10px] text-indigo-300/80 mt-4 font-bold">Free forever tier · Setup under 2 minutes</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* ══════════════════════ FOOTER ═══════════════════════════════════════ */}
-      <footer className="bg-slate-50 border-t border-slate-200/80 py-12 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <span className="text-xs font-black flex items-center gap-2 select-none">
-            <span 
-              className="w-5 h-5 rounded flex items-center justify-center shadow-xs text-white font-black text-[9px] bg-gradient-to-br from-indigo-500 to-violet-650"
-            >
-              T
+      <footer className="bg-slate-900 text-slate-400 pt-20 pb-10 px-6 border-t border-slate-800">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-12 mb-16">
+          <div className="md:col-span-2 space-y-6">
+            <span className="text-lg font-black text-white flex items-center gap-2 select-none">
+              <img src="/logo.png" className="w-8 h-8 object-contain rounded-lg shadow-lg" alt="Logo" />
+              <span className="tracking-tight text-white">{companyName}</span>
             </span>
-            <span className="text-slate-800 font-extrabold">{companyName}</span>
-            <span className="text-slate-400 font-bold ml-2">© {new Date().getFullYear()}</span>
-          </span>
-          <div className="flex items-center gap-6 text-xs font-bold text-slate-500">
-            <Link to="/login"  className="hover:text-slate-900 transition-colors">Login</Link>
-            <Link to="/admin/register" className="hover:text-slate-900 transition-colors">Sign Up</Link>
-            <a href="#features" className="hover:text-slate-900 transition-colors">Features</a>
-            <a href="#pricing"  className="hover:text-slate-900 transition-colors">Pricing</a>
+            <p className="text-xs text-slate-400 max-w-xs leading-relaxed font-semibold">
+              The ultimate high-performance workspace for agile teams. Organize tasks, track time logs, and collaborate in real-time.
+            </p>
+            <div className="flex gap-4">
+              <a href="#" className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-white hover:bg-indigo-600 transition-colors"><LuTwitter className="text-xs" /></a>
+              <a href="#" className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-white hover:bg-indigo-600 transition-colors"><LuGithub className="text-xs" /></a>
+              <a href="#" className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-white hover:bg-indigo-600 transition-colors"><LuLinkedin className="text-xs" /></a>
+            </div>
+          </div>
+          
+          <div>
+            <h4 className="text-white text-[10px] font-extrabold uppercase tracking-widest mb-4">Product</h4>
+            <ul className="space-y-2.5 text-xs font-semibold">
+              <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
+              <li><a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a></li>
+              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><Link to="/login" className="hover:text-white transition-colors">Workspace Login</Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="text-white text-[10px] font-extrabold uppercase tracking-widest mb-4">Resources</h4>
+            <ul className="space-y-2.5 text-xs font-semibold">
+              <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">API Reference</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Changelog</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">System Status</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-white text-[10px] font-extrabold uppercase tracking-widest mb-4">Security</h4>
+            <ul className="space-y-2.5 text-xs font-semibold">
+              <li><a href="#" className="hover:text-white transition-colors">Data Privacy</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">RLS Policies</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Security Audits</a></li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="max-w-6xl mx-auto pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold">
+          <p>© 2026 strideo . All rights reserved.</p>
+          <p>Built by <a href="https://www.cicdtech.in/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 hover:underline">CICD Tech</a></p>
+          <div className="flex gap-6">
+            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-white transition-colors">Compliance SLA</a>
           </div>
         </div>
       </footer>

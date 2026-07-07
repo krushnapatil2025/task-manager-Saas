@@ -48,7 +48,7 @@ function buildWelcomeEmailHTML(params: {
     <div style="font-size:52px;margin-bottom:12px;">🎉</div>
     <h1 style="margin:0;color:#fff;font-size:28px;font-weight:800;letter-spacing:-0.5px;">Welcome aboard, ${name}!</h1>
     <p style="margin:10px 0 0;color:rgba(255,255,255,0.8);font-size:15px;">
-      You're now part of <strong>${params.workspaceName}</strong> on TaskFlow
+      You're now part of <strong>${params.workspaceName}</strong> on Strideo
     </p>
   </td></tr>
 
@@ -89,8 +89,8 @@ function buildWelcomeEmailHTML(params: {
 
   <!-- Footer -->
   <tr><td style="background:#0f0a1e;border-top:1px solid rgba(255,255,255,0.06);padding:20px 32px;text-align:center;">
-    <p style="margin:0 0 6px;color:#4f46e5;font-size:15px;font-weight:800;">TaskFlow</p>
-    <p style="margin:0;color:#334155;font-size:11px;">© ${new Date().getFullYear()} TaskFlow. All rights reserved.</p>
+    <p style="margin:0 0 6px;color:#4f46e5;font-size:15px;font-weight:800;">Strideo</p>
+    <p style="margin:0;color:#334155;font-size:11px;">© ${new Date().getFullYear()} Strideo. All rights reserved.</p>
   </td></tr>
 </table>
 </td></tr>
@@ -112,8 +112,8 @@ Deno.serve(async (req: Request) => {
 
   const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY");
   const APP_URL       = Deno.env.get("APP_URL") || "http://localhost:5173";
-  const SENDER_EMAIL  = Deno.env.get("SENDER_EMAIL") || "noreply@taskflow.app";
-  const SENDER_NAME   = Deno.env.get("SENDER_NAME")  || "TaskFlow";
+  const SENDER_EMAIL  = Deno.env.get("SENDER_EMAIL") || "noreply@Strideo.app";
+  const SENDER_NAME   = Deno.env.get("SENDER_NAME")  || "Strideo";
 
   if (!BREVO_API_KEY) {
     return new Response(JSON.stringify({ error: "BREVO_API_KEY not configured" }), { status: 500 });
@@ -151,7 +151,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         sender:      { name: SENDER_NAME, email: SENDER_EMAIL },
         to:          [{ email, name: fullName || email }],
-        subject:     `Welcome to ${workspaceName} on TaskFlow! 🎉`,
+        subject:     `Welcome to ${workspaceName} on Strideo! 🎉`,
         htmlContent,
         tags:        ["employee-welcome"],
       }),

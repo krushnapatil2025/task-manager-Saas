@@ -97,25 +97,22 @@ const ChatSidebar = ({ selectedRoomId, activeDMUserId, onSelectRoom, refreshTrig
 
   useEffect(() => { load(); }, [load, refreshTrigger]);
 
-  // Auto-select general or first channel if nothing is selected
-  useEffect(() => {
-    if (loading || selectedRoomId || rooms.length === 0) return;
-    const general = rooms.find(r => r.name === 'general' && r.type === 'team') || rooms.find(r => r.type === 'team');
-    if (general) {
-      onSelectRoom(general.id, `# ${general.name}`, 'team', members, null, general.isPrivate, general.createdBy);
-    }
-  }, [rooms, selectedRoomId, onSelectRoom, loading, members]);
+  // Auto-select general room removed to support chat landing page feature summary
 
   // Real-time unread counter refresh
   useEffect(() => {
     if (!user?.id) return;
+    const refreshUnread = async () => {
+      try {
+        const counts = await getUnreadCounts(user.id);
+        setUnread(counts);
+      } catch { /* ignore */ }
+    };
     const ch = supabase
       .channel('unread-counter')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        async () => {
-          const counts = await getUnreadCounts(user.id);
-          setUnread(counts);
-        })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, refreshUnread)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, refreshUnread)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_room_members', filter: `user_id=eq.${user.id}` }, refreshUnread)
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [user?.id]);

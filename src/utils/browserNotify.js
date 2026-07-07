@@ -3,7 +3,7 @@
 // Uses the Web Notifications API (zero dependencies).
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_NAME   = 'TaskFlow';
+const APP_NAME   = 'Strideo';
 const APP_ICON   = '/icons/icon-192x192.png'; // PWA icon path
 
 // ── Permission management ────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ export function showBrowserNotification({ title, body, icon, tag, navigateTo }) 
       body:    body  || '',
       icon:    icon  || APP_ICON,
       badge:   APP_ICON,
-      tag:     tag   || 'taskflow-msg',
+      tag:     tag   || 'strideo-msg',
       renotify: true,
       silent:  true,   // suppress OS system sound — app plays its own sound
     });

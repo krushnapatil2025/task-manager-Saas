@@ -18,6 +18,7 @@ import { calendarService } from '../../services/calendarService';
 import { getAllTasks, getMyTasks } from '../../services/taskService';
 import { createNotification } from '../../services/notificationService';
 import { getLeaveHolidays } from '../../services/leaveService';
+import { updateGoogleCalendarEvent } from '../../services/googleCalendarService';
 import { LuCalendar, LuClock, LuMapPin, LuVideo, LuClipboardCheck } from 'react-icons/lu';
 
 const CalendarPage = () => {
@@ -32,13 +33,14 @@ const CalendarPage = () => {
   // Calendar UI states
   const [currentDate, setCurrentDate] = useState(moment());
   const [view, setView] = useState('month'); // 'month' | 'week' | 'day'
-  
+
   // Data states
   const [events, setEvents] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [holidays, setHolidays] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Panel/Modal states
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -134,14 +136,36 @@ const CalendarPage = () => {
 
   const handleFormSubmit = async (formData, attendeeIds, linkedTaskId) => {
     try {
+      setIsSubmitting(true);
+
+      const { google_event_id, ...supabaseFormData } = formData;
+
+      if (google_event_id) {
+        try {
+          toast.loading('Finalizing Google Calendar meeting details...', { id: 'google-meet-loading' });
+          await updateGoogleCalendarEvent(google_event_id, {
+            title: supabaseFormData.title,
+            start: supabaseFormData.start_at,
+            end: supabaseFormData.end_at,
+            description: supabaseFormData.description
+          });
+          toast.dismiss('google-meet-loading');
+        } catch (meetErr) {
+          toast.dismiss('google-meet-loading');
+          console.warn('Google Calendar event update failed:', meetErr);
+          // Do not block the save flow if Google update fails (e.g. rate limit/network warning), but let user know.
+          toast.error(`Warning: Google Calendar sync details could not be updated: ${meetErr.message || meetErr}`);
+        }
+      }
+
       if (editingEvent) {
         // Update Event
-        await calendarService.updateEvent(editingEvent.id, formData);
-        
+        await calendarService.updateEvent(editingEvent.id, supabaseFormData);
+
         // Update attendees separately
         // Delete old and insert new matching the selection
         await supabase.from('event_attendees').delete().eq('event_id', editingEvent.id);
-        
+
         if (attendeeIds.length > 0) {
           const attendeePayload = attendeeIds.map(uid => ({
             event_id: editingEvent.id,
@@ -165,22 +189,23 @@ const CalendarPage = () => {
               userId: uid,
               type: 'calendar_event',
               title: 'Meeting Details Updated 📅',
-              body: `Meeting: "${formData.title}" details have been updated.`,
+              body: `Meeting: "${supabaseFormData.title}" details have been updated.`,
               link: '/calendar'
             }).catch(e => console.error('Failed to notify updated attendee:', uid, e)));
           await Promise.all(notificationPromises);
         }
-        
+
         toast.success('Event updated successfully');
       } else {
         // Create Event
         const eventPayload = {
-          ...formData,
+          ...supabaseFormData,
           workspace_id: workspace.id,
           created_by: user.id
         };
         const eventId = await calendarService.createEvent(eventPayload, attendeeIds);
-        
+
+
         if (linkedTaskId) {
           await calendarService.linkTask(eventId, linkedTaskId);
         }
@@ -193,7 +218,7 @@ const CalendarPage = () => {
               userId: uid,
               type: 'calendar_event',
               title: 'New Meeting Scheduled 📅',
-              body: `Meeting: "${formData.title}" scheduled for ${moment(formData.start_at).format('MMM D, h:mm A')}`,
+              body: `Meeting: "${updatedFormData.title}" scheduled for ${moment(updatedFormData.start_at).format('MMM D, h:mm A')}`,
               link: '/calendar'
             }).catch(e => console.error('Failed to notify attendee:', uid, e)));
           await Promise.all(notificationPromises);
@@ -201,13 +226,15 @@ const CalendarPage = () => {
 
         toast.success('Event scheduled successfully');
       }
-      
+
       setIsFormOpen(false);
       setEditingEvent(null);
       loadData();
     } catch (err) {
       console.error('Failed to save event:', err);
       toast.error('Error saving calendar event');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -228,13 +255,13 @@ const CalendarPage = () => {
     try {
       await calendarService.rsvpEvent(eventId, status);
       toast.success(`RSVP updated to ${status}`);
-      
+
       // Update selected event detail view
       if (selectedEvent && selectedEvent.id === eventId) {
         const updatedDetail = await calendarService.getEventDetail(eventId);
         setSelectedEvent(updatedDetail);
       }
-      
+
       loadData();
     } catch (err) {
       console.error('Failed to update RSVP:', err);
@@ -279,14 +306,14 @@ const CalendarPage = () => {
         <div className="flex-1 flex flex-col lg:flex-row min-h-0">
           {/* Left Sidebar - Enterprise Calendar Panel */}
           <div className="w-full lg:w-[260px] border-r border-slate-200/50 bg-white/90 backdrop-blur-md p-4 flex flex-col gap-5 flex-shrink-0 select-none">
-            
+
             {/* Quick date picker */}
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Quick Navigation</p>
               <div className="flex justify-center">
-                <MiniCalendar 
-                  currentDate={currentDate} 
-                  onChangeDate={setCurrentDate} 
+                <MiniCalendar
+                  currentDate={currentDate}
+                  onChangeDate={setCurrentDate}
                 />
               </div>
             </div>
@@ -294,16 +321,16 @@ const CalendarPage = () => {
             {/* Filter Legend / Toggle Switches */}
             <div className="flex flex-col gap-3">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calendar Layers</p>
-              
+
               <div className="flex flex-col gap-2">
                 <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-all cursor-pointer shadow-sm">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm animate-pulse" />
                     <span className="text-xs font-bold text-slate-700">Team Meetings</span>
                   </div>
-                  <input 
-                    type="checkbox" 
-                    checked={filterEvents} 
+                  <input
+                    type="checkbox"
+                    checked={filterEvents}
                     onChange={(e) => setFilterEvents(e.target.checked)}
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-350 cursor-pointer"
                   />
@@ -314,9 +341,9 @@ const CalendarPage = () => {
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm" />
                     <span className="text-xs font-bold text-slate-700">Tasks Due</span>
                   </div>
-                  <input 
-                    type="checkbox" 
-                    checked={filterTasks} 
+                  <input
+                    type="checkbox"
+                    checked={filterTasks}
                     onChange={(e) => setFilterTasks(e.target.checked)}
                     className="w-4 h-4 rounded text-amber-600 focus:ring-indigo-500 border-slate-350 cursor-pointer"
                   />
@@ -327,9 +354,9 @@ const CalendarPage = () => {
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm" />
                     <span className="text-xs font-bold text-slate-700">Public Holidays</span>
                   </div>
-                  <input 
-                    type="checkbox" 
-                    checked={filterHolidays} 
+                  <input
+                    type="checkbox"
+                    checked={filterHolidays}
                     onChange={(e) => setFilterHolidays(e.target.checked)}
                     className="w-4 h-4 rounded text-rose-600 focus:ring-indigo-500 border-slate-350 cursor-pointer"
                   />
@@ -436,6 +463,7 @@ const CalendarPage = () => {
           activeUserId={user?.id}
           tasks={tasks}
           prefilledTaskId={prefilledTaskId}
+          isSubmitting={isSubmitting}
         />
       </div>
     </DashboardLayout>

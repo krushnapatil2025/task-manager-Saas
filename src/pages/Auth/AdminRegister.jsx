@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthLayout from '../../components/layouts/AuthLAyout';
 import { supabase } from '../../utils/supabaseClient';
 import { validateEmail } from '../../utils/helper';
-import { BRAND_COLORS } from '../../context/BrandContext';
+import { BRAND_COLORS, DEFAULT_BRAND, applyCSSVariables } from '../../context/BrandContext';
+import { uploadFileToGoogleDrive } from '../../services/chatService';
+import { sendRegistrationReceivedEmail } from '../../services/companyApprovalEmailService';
 import toast from 'react-hot-toast';
 import {
   LuLoaderCircle, LuBuilding2, LuUser, LuMail, LuPhone,
@@ -42,6 +44,10 @@ const AdminRegister = () => {
   const [error,   setError]   = useState('');
   const [showPw,  setShowPw]  = useState(false);
 
+  useEffect(() => {
+    applyCSSVariables(DEFAULT_BRAND);
+  }, []);
+
   // Step 0 — account
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
@@ -55,6 +61,44 @@ const AdminRegister = () => {
 
   // Step 2 — branding
   const [selectedColor, setSelectedColor] = useState(BRAND_COLORS[0]); // default Indigo
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
+
+  // Logo upload handlers
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast.error('Logo must be under 1 MB');
+      return;
+    }
+    setLogoFile(file);
+    setLogoUploading(true);
+    setError('');
+
+    try {
+      const res = await uploadFileToGoogleDrive(file);
+      if (res && res.url) {
+        const driveUrl = res.url.split('||')[1] || res.url;
+        setLogoUrl(driveUrl);
+        toast.success('Logo uploaded to Google Drive!');
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to upload to Google Drive, using local fallback.');
+      setLogoUrl(URL.createObjectURL(file));
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleClearLogo = () => {
+    setLogoFile(null);
+    setLogoUrl('');
+  };
 
   // ── validation per step ───────────────────────────────────────────────────
   const validateStep = () => {
@@ -130,6 +174,10 @@ const AdminRegister = () => {
         p_workspace_slug: `${slug}-${Date.now()}`,
       });
 
+      if (rpcData && rpcData.success === false) {
+        throw new Error(rpcData.error || 'Failed to bootstrap company account.');
+      }
+
       let workspaceId = rpcData?.workspace_id;
 
       // Fallback in case RPC bootstrap_company_admin is styled differently or has different columns
@@ -144,6 +192,7 @@ const AdminRegister = () => {
           company_size:     size,
           setup_completed:  true,
           status:           'active',
+          account_approval_status: 'pending',
         }, { onConflict: 'id' });
 
         const { data: wsData, error: createWsErr } = await supabase.rpc('create_workspace_with_admin', {
@@ -166,20 +215,32 @@ const AdminRegister = () => {
             brand_color_text:  selectedColor.text,
             brand_color_name:  selectedColor.name,
             company_name:      company,
+            logo_url:          logoUrl || null,
           })
           .eq('id', workspaceId);
       }
 
       clearTimeout(timeoutId);
 
-      // 5. Check if email confirmation is required
+      // 5. Send "Registration Received" confirmation email
+      sendRegistrationReceivedEmail({
+        toEmail:     email,
+        toName:      name,
+        companyName: company,
+        adminName:   name,
+        industry,
+        size,
+        appUrl:      window.location.origin,
+      }).catch((err) => console.warn('Registration email send failed (non-fatal):', err));
+
+      // 6. Check if email confirmation is required
       const needsConfirm = !authData.session;
       if (needsConfirm) {
         toast.success('Account created! Check your email to confirm, then log in.');
       } else {
         toast.success(`Welcome to ${company}! 🎉`);
       }
-      navigate('/login');
+      navigate('/registration-pending');
 
     } catch (err) {
       clearTimeout(timeoutId);
@@ -418,17 +479,70 @@ const AdminRegister = () => {
               </div>
             </Field>
 
+            {/* Company Logo Upload */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-500 font-semibold">Company Logo (Optional)</label>
+              <div className="flex items-center gap-4 bg-slate-50/50 border border-slate-100 p-3 rounded-2xl">
+                <div className="relative w-12 h-12 bg-white border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
+                  {logoUploading ? (
+                    <LuLoaderCircle className="animate-spin text-indigo-650" size={18} />
+                  ) : logoUrl ? (
+                    <img src={logoUrl} alt="Logo Preview" className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <div className="text-lg font-black text-slate-350" style={{ color: selectedColor.hex }}>
+                      {company ? company[0].toUpperCase() : 'T'}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer bg-white hover:bg-slate-50 text-slate-700 border border-slate-205 font-bold text-[10px] px-3 py-1.5 rounded-lg shadow-sm transition inline-block">
+                      Choose Logo
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleLogoUpload} 
+                        disabled={logoUploading}
+                      />
+                    </label>
+                    {logoUrl && (
+                      <button 
+                        type="button"
+                        onClick={handleClearLogo}
+                        className="flex items-center gap-0.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[10px] px-2 py-1.5 rounded-lg transition cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[9px] text-slate-400 font-semibold">
+                    Supported formats: PNG, JPG, SVG. Max 1MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Interactive Live Card Preview */}
             <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 flex flex-col gap-2.5 select-none mt-1">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Live Brand Preview</span>
               <div className="flex items-center gap-2">
-                <span 
-                  style={{ backgroundColor: selectedColor.hex }}
-                  className="w-6.5 h-6.5 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm"
-                >
-                  {company ? company[0].toUpperCase() : 'A'}
-                </span>
-                <span className="text-xs font-black text-slate-800">{company || 'My Company'}</span>
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Logo Preview"
+                    className="w-6.5 h-6.5 rounded-lg object-contain border border-slate-200/40 shadow-sm bg-white p-0.5"
+                  />
+                ) : (
+                  <span 
+                    style={{ backgroundColor: selectedColor.hex }}
+                    className="w-6.5 h-6.5 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm"
+                  >
+                    {company ? company[0].toUpperCase() : 'A'}
+                  </span>
+                )}
+                <span className="text-xs font-black text-slate-805">{company || 'My Company'}</span>
               </div>
               <div className="flex gap-2 mt-0.5">
                 <button

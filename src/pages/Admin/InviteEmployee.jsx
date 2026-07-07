@@ -76,6 +76,7 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
         setupLink:   result.setupLink,
         tempPassword: result.tempPassword,
         emailSent:   result.emailSent,
+        employeeId:   result.employeeId,
       });
       onSuccess?.();
     } catch (err) {
@@ -106,6 +107,26 @@ const InviteEmployee = ({ open, onClose, onSuccess, teams = [] }) => {
                 </p>
               )}
             </div>
+
+            {/* Employee ID */}
+            {successData.employeeId && (
+              <div className="mb-4">
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-1.5">Employee ID</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly value={successData.employeeId}
+                    className="flex-1 bg-slate-25 dark:bg-[#121215] border border-slate-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-indigo-650 dark:text-indigo-400 font-extrabold select-all outline-none"
+                    onClick={e => e.target.select()}
+                  />
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(successData.employeeId); toast.success('Employee ID copied!'); }}
+                    className="px-3.5 py-2 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700 text-xs font-bold rounded-lg transition cursor-pointer"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Setup link */}
             <div className="mb-4">

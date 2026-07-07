@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09090b" />
+      <stop offset="100%" stop-color="#181824" />
+    </linearGradient>
+    <!-- Accent Gradients -->
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+    <linearGradient id="secondaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background squircle -->
+  <rect width="512" height="512" rx="140" fill="url(#bgGrad)" />
+
+  <!-- Logo Icon: Geometric "S" with Forward Momentum Arrows -->
+  <g>
+    <!-- Main S Ribbon Loop Top -->
+    <path d="M 160,150 C 160,90 210,65 276,65 C 350,65 390,105 390,155 C 390,215 320,245 266,255 C 190,267 130,285 130,355 C 130,425 180,455 256,455" 
+          fill="none" 
+          stroke="url(#primaryGrad)" 
+          stroke-width="50" 
+          stroke-linecap="round" />
+          
+    <!-- Main S Ribbon Loop Bottom Overlap with gradient -->
+    <path d="M 266,255 C 320,245 390,215 390,155 C 390,105 350,65 276,65" 
+          fill="none" 
+          stroke="url(#secondaryGrad)" 
+          stroke-width="50" 
+          stroke-linecap="round" />
+
+    <!-- Forward Momentum Arrow Head on the bottom tail -->
+    <path d="M 330,355 L 400,395 L 330,435" 
+          fill="none" 
+          stroke="url(#secondaryGrad)" 
+          stroke-width="50" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+  </g>
+</svg>

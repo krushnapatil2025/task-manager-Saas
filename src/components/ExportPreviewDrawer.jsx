@@ -157,7 +157,7 @@ const ExportPreviewDrawer = ({ isOpen, onClose, workspace, format: initialFormat
 
           return [
             "BEGIN:VEVENT",
-            `UID:taskflow-${workspace.id}-${t.id}`,
+            `UID:strideo-${workspace.id}-${t.id}`,
             `DTSTAMP:${now}`,
             `DTSTART;VALUE=DATE:${dueStr.slice(0, 8)}`,
             `DTEND;VALUE=DATE:${dueStr.slice(0, 8)}`,
@@ -172,7 +172,7 @@ const ExportPreviewDrawer = ({ isOpen, onClose, workspace, format: initialFormat
         const icalContent = [
           "BEGIN:VCALENDAR",
           "VERSION:2.0",
-          "PRODID:-//TaskFlow//Calendar Export//EN",
+          "PRODID:-//Strideo//Calendar Export//EN",
           `X-WR-CALNAME:${workspace.name} Tasks`,
           "X-WR-TIMEZONE:Asia/Kolkata",
           "CALSCALE:GREGORIAN",

@@ -80,9 +80,9 @@ Deno.serve(async (req: Request) => {
             method: "POST",
             headers: {
               "Content-Type":         "application/json",
-              "X-TaskFlow-Event":     d.event,
-              "X-TaskFlow-Signature": signature,
-              "X-TaskFlow-Delivery":  d.id,
+              "X-Strideo-Event":     d.event,
+              "X-Strideo-Signature": signature,
+              "X-Strideo-Delivery":  d.id,
             },
             body,
             signal: AbortSignal.timeout(10_000),
@@ -157,7 +157,7 @@ async function buildSlackPayload(
     // 1. Header
     blocks.push({
       type: "header",
-      text: { type: "plain_text", text: `${cfg.emoji}  ${cfg.label}  ·  TaskFlow HR`, emoji: true },
+      text: { type: "plain_text", text: `${cfg.emoji}  ${cfg.label}  ·  Strideo HR`, emoji: true },
     });
 
     // 2. Intro context
@@ -222,12 +222,12 @@ async function buildSlackPayload(
     blocks.push({
       type: "context",
       elements: [
-        { type: "mrkdwn", text: `🏢 *TaskFlow Enterprise HR*  ·  Leave & Holiday Management  ·  Workspace Calendar` },
+        { type: "mrkdwn", text: `🏢 *Strideo Enterprise HR*  ·  Leave & Holiday Management  ·  Workspace Calendar` },
       ],
     });
 
     return {
-      text: `[TaskFlow HR] ${cfg.label}: ${holidayName} — ${fullDateStr}`,
+      text: `[Strideo HR] ${cfg.label}: ${holidayName} — ${fullDateStr}`,
       blocks,
       attachments: [{ color: cfg.color, fallback: `${cfg.label}: ${holidayName} on ${fullDateStr}` }],
     };
@@ -261,7 +261,7 @@ async function buildSlackPayload(
     const blocks: unknown[] = [
       {
         type: "header",
-        text: { type: "plain_text", text: `${cfg.emoji}  ${cfg.label}  ·  TaskFlow`, emoji: true },
+        text: { type: "plain_text", text: `${cfg.emoji}  ${cfg.label}  ·  Strideo`, emoji: true },
       },
       { type: "divider" },
       {
@@ -295,14 +295,14 @@ async function buildSlackPayload(
         elements: [
           {
             type: "mrkdwn",
-            text: `🏢 *TaskFlow Enterprise*  ·  ${new Date().toLocaleString("en-US")}`,
+            text: `🏢 *Strideo Enterprise*  ·  ${new Date().toLocaleString("en-US")}`,
           },
         ],
       }
     );
 
     return {
-      text: `[TaskFlow] ${cfg.label}: ${applicantName} - ${leaveType} (${durationStr})`,
+      text: `[Strideo] ${cfg.label}: ${applicantName} - ${leaveType} (${durationStr})`,
       blocks,
       attachments: [{ color: cfg.color, fallback: `${cfg.label}: ${applicantName} - ${leaveType}` }],
     };
@@ -400,7 +400,7 @@ async function buildSlackPayload(
   // ── 1. Header ─────────────────────────────────────────────────────────────
   blocks.push({
     type: "header",
-    text: { type: "plain_text", text: `${cfg.emoji}  ${cfg.label}  ·  TaskFlow`, emoji: true },
+    text: { type: "plain_text", text: `${cfg.emoji}  ${cfg.label}  ·  Strideo`, emoji: true },
   });
 
   blocks.push({ type: "divider" });
@@ -508,14 +508,14 @@ async function buildSlackPayload(
     elements: [
       {
         type: "mrkdwn",
-        text: `🏢 *TaskFlow Enterprise*  ·  ${now}${taskId ? `  ·  ID: \`${taskId.slice(0, 8)}…\`` : ""}`,
+        text: `🏢 *Strideo Enterprise*  ·  ${now}${taskId ? `  ·  ID: \`${taskId.slice(0, 8)}…\`` : ""}`,
       },
     ],
   });
 
   // ── Slack attachment (colored left bar) ───────────────────────────────────
   return {
-    text: `[TaskFlow] ${cfg.label}: ${title}`,   // fallback / notification preview
+    text: `[Strideo] ${cfg.label}: ${title}`,   // fallback / notification preview
     blocks,
     attachments: [{ color: cfg.color, fallback: `${cfg.label}: ${title}` }],
   };

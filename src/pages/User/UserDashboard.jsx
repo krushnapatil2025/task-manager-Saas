@@ -65,7 +65,14 @@ const UserDashboard = () => {
     <DashboardLayout activeMenu="Dashboard">
       <div className="bg-white border border-slate-200/60 shadow-md shadow-slate-100/40 rounded-2xl p-6 md:p-8 mb-6 mt-4 animate-fade-in">
         <div>
-          <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">Good Morning, {user?.name}!</h2>
+          <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
+            {(() => {
+              const hour = new Date().getHours();
+              if (hour < 12) return 'Good Morning';
+              if (hour < 17) return 'Good Afternoon';
+              return 'Good Evening';
+            })()}, {user?.name}!
+          </h2>
           <p className="text-xs text-slate-400 mt-1.5 font-semibold uppercase tracking-wider">
             {moment().format('dddd, Do MMMM YYYY')}
           </p>

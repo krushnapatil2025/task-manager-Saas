@@ -18,6 +18,7 @@ const BASE_PERMISSIONS = {
   canChangeTaskStatus:  true,   // everyone can update status of their tasks
   canViewAllTasks:      false,
   canExportTasks:       false,
+  canAddComment:        true,
 
   // ── User / member permissions ─────────────────────────────────────────────
   canInviteEmployee:    false,
@@ -38,10 +39,46 @@ const BASE_PERMISSIONS = {
   canViewReports:       false,
   canViewDashboard:     true,   // everyone sees their own dashboard
 
-  // ── Content permissions ───────────────────────────────────────────────────
-  canViewKanban:        true,
-  canAddComment:        true,
+  // ── Chat permissions ──────────────────────────────────────────────────────
+  canSendMessages:      true,
+  canCreateChannels:    false,
+  canDeleteMessages:    false,
+  canManageChannels:    false,
+  canSendDirectMessages: true,
+
+  // ── Goal permissions ──────────────────────────────────────────────────────
+  canCreateGoal:        false,
+  canEditGoal:          false,
+  canDeleteGoal:        false,
+  canViewGoals:         true,
+
+  // ── Sprint Board permissions ──────────────────────────────────────────────
+  canCreateSprint:      false,
+  canManageSprint:      false,
+  canViewSprints:       true,
+  canMoveCards:         true,
+
+  // ── Leave permissions ─────────────────────────────────────────────────────
+  canApplyLeave:        true,
+  canApproveLeave:      false,
+  canViewAllLeaves:     false,
+  canManageLeavePolicy: false,
+
+  // ── Automation permissions ────────────────────────────────────────────────
+  canCreateAutomation:  false,
+  canEditAutomation:    false,
+  canDeleteAutomation:  false,
+  canViewAutomations:   false,
+
+  // ── Files & Media permissions ─────────────────────────────────────────────
   canUploadFile:        true,
+  canDeleteFiles:       false,
+  canViewFiles:         true,
+  canShareFiles:        true,
+
+  // ── Reports permissions ───────────────────────────────────────────────────
+  canExportReports:     false,
+  canViewAnalytics:     false,
 };
 
 // Per-profile overrides (merged onto base)
@@ -65,6 +102,24 @@ const PROFILE_PERMISSIONS = {
     canManageApiKeys:     true,
     canManageWebhooks:    true,
     canViewReports:       true,
+    canCreateChannels:    true,
+    canDeleteMessages:    true,
+    canManageChannels:    true,
+    canCreateGoal:        true,
+    canEditGoal:          true,
+    canDeleteGoal:        true,
+    canCreateSprint:      true,
+    canManageSprint:      true,
+    canApproveLeave:      true,
+    canViewAllLeaves:     true,
+    canManageLeavePolicy: true,
+    canCreateAutomation:  true,
+    canEditAutomation:    true,
+    canDeleteAutomation:  true,
+    canViewAutomations:   true,
+    canDeleteFiles:       true,
+    canExportReports:     true,
+    canViewAnalytics:     true,
   },
 
   manager: {
@@ -86,6 +141,24 @@ const PROFILE_PERMISSIONS = {
     canViewReports:       true,
     canManageApiKeys:     true,
     canManageWebhooks:    true,
+    canCreateChannels:    true,
+    canDeleteMessages:    true,
+    canManageChannels:    true,
+    canCreateGoal:        true,
+    canEditGoal:          true,
+    canDeleteGoal:        true,
+    canCreateSprint:      true,
+    canManageSprint:      true,
+    canApproveLeave:      true,
+    canViewAllLeaves:     true,
+    canManageLeavePolicy: true,
+    canCreateAutomation:  true,
+    canEditAutomation:    true,
+    canDeleteAutomation:  true,
+    canViewAutomations:   true,
+    canDeleteFiles:       true,
+    canExportReports:     true,
+    canViewAnalytics:     true,
   },
 
   employee: {
@@ -107,6 +180,24 @@ const PROFILE_PERMISSIONS = {
     canViewReports:       true,
     canManageApiKeys:     true,
     canManageWebhooks:    true,
+    canCreateChannels:    true,
+    canDeleteMessages:    true,
+    canManageChannels:    true,
+    canCreateGoal:        true,
+    canEditGoal:          true,
+    canDeleteGoal:        true,
+    canCreateSprint:      true,
+    canManageSprint:      true,
+    canApproveLeave:      true,
+    canViewAllLeaves:     true,
+    canManageLeavePolicy: true,
+    canCreateAutomation:  true,
+    canEditAutomation:    true,
+    canDeleteAutomation:  true,
+    canViewAutomations:   true,
+    canDeleteFiles:       true,
+    canExportReports:     true,
+    canViewAnalytics:     true,
   },
 
   intern: {
@@ -117,9 +208,14 @@ const PROFILE_PERMISSIONS = {
     canViewAllTasks:      true,
     canViewTeamMembers:   true,
     canChangeTaskStatus:  true,
-    canViewKanban:        true,
     canAddComment:        true,
+    canViewGoals:         true,
+    canViewSprints:       true,
+    canMoveCards:         true,
+    canApplyLeave:        true,
     canUploadFile:        true,
+    canViewFiles:         true,
+    canShareFiles:        true,
   },
 };
 

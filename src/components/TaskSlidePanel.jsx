@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { WorkspaceContext } from '../context/WorkspaceContext';
 import { UserContext } from '../context/userContext';
+import { supabase } from '../utils/supabaseClient';
 import {
   getTaskById,
   createTask,
@@ -17,13 +18,12 @@ import {
 import {
   LuX, LuTrash2, LuUser, LuFlag, LuCalendar, LuPlus,
   LuLock, LuTriangleAlert, LuCircleCheck, LuLink,
-  LuCirclePlus, LuUserPlus, LuFolderOpen, LuTarget, LuRefreshCw
+  LuCirclePlus, LuUserPlus, LuFolderOpen, LuTarget
 } from 'react-icons/lu';
 import { PRIORITY_DATA } from '../utils/data';
 import toast from 'react-hot-toast';
 import moment from 'moment';
 import { usePresence } from '../hooks/usePresence';
-import { supabase } from '../utils/supabaseClient';
 import SelectDropdown from './Inputs/SelectDropdown';
 import SelectDropdown2 from './Inputs/SelectDropdown'; // Fallback
 import SelectUsers from './Inputs/SelectUsers';
@@ -56,10 +56,6 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
     assignedTo: [],
     todoCheckList: [],
     attachments: [],
-    recurrenceRule: '',
-    recurrenceInterval: 1,
-    recurrenceEndDate: '',
-    parentTaskId: null,
   });
 
   const [loading, setLoading] = useState(false);
@@ -127,10 +123,6 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
               completed: c.completed
             })),
             attachments: task.attachments || [],
-            recurrenceRule: task.recurrenceRule || '',
-            recurrenceInterval: task.recurrenceInterval || 1,
-            recurrenceEndDate: task.recurrenceEndDate ? moment(task.recurrenceEndDate).format('YYYY-MM-DD') : '',
-            parentTaskId: task.parentTaskId,
           });
 
           // Fetch dependencies
@@ -154,10 +146,6 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
             assignedTo: [],
             todoCheckList: [],
             attachments: [],
-            recurrenceRule: '',
-            recurrenceInterval: 1,
-            recurrenceEndDate: '',
-            parentTaskId: null,
           });
           setDependencies({ blocking: [], blockedBy: [] });
           if (aiPrefill) {
@@ -246,106 +234,31 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
   const [showSaveChoice, setShowSaveChoice] = useState(false);
 
   // Create or Update task
-  const handleSave = async (recurrenceChoice = null) => {
+  const handleSave = async () => {
     setError('');
     if (!taskData.title.trim()) return setError('Title is required');
     if (!taskData.dueDate) return setError('Due date is required');
 
-    // If editing an existing task that has a recurrence rule, and no choice is made yet
-    if (currentTaskId && taskData.recurrenceRule && !recurrenceChoice) {
-      setShowSaveChoice(true);
-      return;
-    }
-
     setSaving(true);
     try {
       if (currentTaskId) {
-        if (recurrenceChoice === 'occurrence') {
-          // 1. Detach this occurrence by creating a standalone task
-          await createTask(
-            {
-              title: taskData.title,
-              description: taskData.description,
-              priority: taskData.priority,
-              dueDate: new Date(taskData.dueDate).toISOString(),
-              attachments: taskData.attachments,
-              recurrenceRule: null,
-              recurrenceInterval: 1,
-              recurrenceEndDate: null,
-            },
-            taskData.assignedTo,
-            taskData.todoCheckList,
-            user.id,
-            workspace.id
-          );
-
-          // 2. Advance the template task's next_occurrence_at and due_date
-          let nextOccur = moment(taskData.dueDate);
-          const interval = taskData.recurrenceInterval || 1;
-          if (taskData.recurrenceRule === 'daily') {
-            nextOccur = nextOccur.add(interval, 'days');
-          } else if (taskData.recurrenceRule === 'weekly') {
-            nextOccur = nextOccur.add(interval, 'weeks');
-          } else if (taskData.recurrenceRule === 'monthly') {
-            nextOccur = nextOccur.add(interval, 'months');
-          } else {
-            nextOccur = nextOccur.add(interval, 'days');
-          }
-
-          let finalNextOccur = nextOccur.toISOString();
-          if (taskData.recurrenceEndDate && nextOccur.isAfter(moment(taskData.recurrenceEndDate), 'day')) {
-            finalNextOccur = null;
-          }
-
-          // Fetch the original task details first to preserve other fields
-          const originalRaw = await getTaskById(currentTaskId);
-          const original = normalizeTask(originalRaw);
-
-          // Update the template task's due date and next_occurrence_at
-          await updateTask(
-            currentTaskId,
-            {
-              title: original.title,
-              description: original.description,
-              priority: original.priority,
-              dueDate: finalNextOccur, // Pushed forward!
-              attachments: original.attachments,
-              recurrenceRule: original.recurrenceRule,
-              recurrenceInterval: original.recurrenceInterval,
-              recurrenceEndDate: original.recurrenceEndDate,
-            },
-            original.assignedTo.map(u => u.id),
-            original.todoChecklist.map(c => ({
-              title: c.title,
-              description: c.description || '',
-              completed: c.completed
-            }))
-          );
-
-          if (!finalNextOccur) {
-            await supabase.from("tasks").update({ next_occurrence_at: null }).eq("id", currentTaskId);
-          }
-
-          toast.success('Occurrence saved as standalone; template advanced!');
-        } else {
-          // Standard Update: Save directly to the task
-          await updateTask(
-            currentTaskId,
-            {
-              title: taskData.title,
-              description: taskData.description,
-              priority: taskData.priority,
-              dueDate: new Date(taskData.dueDate).toISOString(),
-              attachments: taskData.attachments,
-              recurrenceRule: taskData.recurrenceRule || null,
-              recurrenceInterval: parseInt(taskData.recurrenceInterval) || 1,
-              recurrenceEndDate: taskData.recurrenceEndDate ? new Date(taskData.recurrenceEndDate).toISOString() : null,
-            },
-            taskData.assignedTo,
-            taskData.todoCheckList
-          );
-          toast.success('Task updated successfully!');
-        }
+        // Update task
+        await updateTask(
+          currentTaskId,
+          {
+            title: taskData.title,
+            description: taskData.description,
+            priority: taskData.priority,
+            dueDate: new Date(taskData.dueDate).toISOString(),
+            attachments: taskData.attachments,
+            recurrenceRule: null,
+            recurrenceInterval: 1,
+            recurrenceEndDate: null,
+          },
+          taskData.assignedTo,
+          taskData.todoCheckList
+        );
+        toast.success('Task updated successfully!');
       } else {
         // Create task
         await createTask(
@@ -355,9 +268,9 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
             priority: taskData.priority,
             dueDate: new Date(taskData.dueDate).toISOString(),
             attachments: taskData.attachments,
-            recurrenceRule: taskData.recurrenceRule || null,
-            recurrenceInterval: parseInt(taskData.recurrenceInterval) || 1,
-            recurrenceEndDate: taskData.recurrenceEndDate ? new Date(taskData.recurrenceEndDate).toISOString() : null,
+            recurrenceRule: null,
+            recurrenceInterval: 1,
+            recurrenceEndDate: null,
           },
           taskData.assignedTo,
           taskData.todoCheckList,
@@ -490,12 +403,7 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
               {currentTaskId ? 'Workspace Task' : 'New Task'}
             </span>
             <h3 className="text-sm font-extrabold text-slate-900 mt-0.5 flex items-center gap-2">
-              {currentTaskId ? `Task Details` : 'Create Iteration Task'}
-              {taskData.recurrenceRule && (
-                <span className="text-[9px] font-extrabold text-indigo-650 bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
-                  <LuRefreshCw size={8} className="animate-spin-slow" /> {taskData.recurrenceRule}
-                </span>
-              )}
+              {currentTaskId ? `Task Details` : 'Create New Task'}
             </h3>
           </div>
 
@@ -632,91 +540,6 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
                 </div>
               </div>
 
-              {/* Recurrence Section */}
-              {taskData.parentTaskId ? (
-                <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between animate-fade-in">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100/80 flex items-center justify-center text-indigo-650">
-                      <LuRefreshCw size={14} className="animate-spin-slow" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-indigo-900">Recurring Task Occurrence</h4>
-                      <p className="text-[10px] text-indigo-700 font-semibold mt-0.5">This task is part of a recurring series.</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentTaskId(taskData.parentTaskId)}
-                    className="text-[10px] font-extrabold text-white bg-indigo-650 hover:bg-indigo-700 px-3.5 py-1.5 rounded-xl shadow-sm transition cursor-pointer"
-                  >
-                    Edit Template
-                  </button>
-                </div>
-              ) : (
-                <div className="border border-slate-200/70 rounded-2xl p-4 bg-slate-25 space-y-4">
-                  <div className="flex items-center gap-1.5">
-                    <LuRefreshCw size={12} className="text-indigo-500" />
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Task Recurrence
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                        Repeat Pattern
-                      </label>
-                      <select
-                        value={taskData.recurrenceRule || ''}
-                        onChange={(e) => handleValueChange('recurrenceRule', e.target.value)}
-                        className="w-full px-3 py-2.5 text-xs font-bold text-slate-700 bg-white rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition-all cursor-pointer"
-                      >
-                        <option value="">None (One-time task)</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
-                    </div>
-
-                    {taskData.recurrenceRule && (
-                      <>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                            Repeat Every
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              min="1"
-                              value={taskData.recurrenceInterval || 1}
-                              onChange={(e) => handleValueChange('recurrenceInterval', parseInt(e.target.value) || 1)}
-                              className="w-20 px-3 py-2 text-xs font-bold text-slate-700 bg-white rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition-all text-center"
-                            />
-                            <span className="text-xs text-slate-500 font-bold capitalize">
-                              {taskData.recurrenceRule === 'daily' && 'day(s)'}
-                              {taskData.recurrenceRule === 'weekly' && 'week(s)'}
-                              {taskData.recurrenceRule === 'monthly' && 'month(s)'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                            End Date (Optional)
-                          </label>
-                          <input
-                            type="date"
-                            value={taskData.recurrenceEndDate || ''}
-                            min={taskData.dueDate}
-                            onChange={(e) => handleValueChange('recurrenceEndDate', e.target.value)}
-                            className="w-full px-3 py-2 text-xs font-semibold text-slate-700 bg-white rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition-all"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Dependencies Widget (Phase 4 Rebuild highlight) */}
               {currentTaskId && (

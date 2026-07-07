@@ -52,56 +52,134 @@ export const useTaskChat = (taskId) => {
     fetchMessages();
     if (!taskId) return;
 
+    console.log(`[useTaskChat] Initiating subscription setup for taskId: ${taskId}`);
     const channel = supabase
-      .channel(`task-chat-${taskId}`)
+      .channel(`task-chat-${taskId}-${Date.now()}`)
       .on('postgres_changes', {
         event:  'INSERT',
         schema: 'public',
         table:  'task_messages',
-        filter: `task_id=eq.${taskId}`,
       }, async (payload) => {
-        if (payload.new && payload.new.user_id !== user?.id) {
+        console.log('[useTaskChat] Realtime INSERT event received:', payload);
+        if (!payload.new) return;
+
+        const eventTaskId = String(payload.new.task_id).toLowerCase();
+        const activeTaskId = String(taskId).toLowerCase();
+
+        if (eventTaskId !== activeTaskId) {
+          console.log(`[useTaskChat] Task ID mismatch on INSERT. Event task: ${eventTaskId}, Active task: ${activeTaskId}`);
+          return;
+        }
+
+        console.log('[useTaskChat] Task matched. Fetching message details for ID:', payload.new.id);
+
+        if (payload.new.user_id !== user?.id) {
           playUserPrefSound();
         }
-        const { data } = await supabase
-          .from('task_messages')
-          .select(MSG_SELECT)
-          .eq('id', payload.new.id)
-          .single();
-        if (data) {
-          setMessages(prev => {
-            if (prev.some(m => m.id === data.id)) return prev;
-            return [...prev, normalizeMsg(data)];
-          });
+        let data = null;
+        try {
+          const res = await supabase
+            .from('task_messages')
+            .select(MSG_SELECT)
+            .eq('id', payload.new.id)
+            .single();
+          if (res.error) {
+            console.warn('[useTaskChat] Error fetching task message for realtime INSERT:', res.error);
+          } else {
+            data = res.data;
+          }
+        } catch (err) {
+          console.warn('[useTaskChat] Exception fetching task message for realtime INSERT:', err);
         }
+
+        const msg = data ? normalizeMsg(data) : normalizeMsg({
+          ...payload.new,
+          profiles: {
+            name: payload.new.user_id === user?.id ? (user?.name || 'You') : 'Someone',
+            profile_image_url: payload.new.user_id === user?.id ? (user?.profileImageUrl || null) : null
+          }
+        });
+
+        console.log('[useTaskChat] Appending message to state:', msg);
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
       })
       .on('postgres_changes', {
         event:  'DELETE',
         schema: 'public',
         table:  'task_messages',
-        filter: `task_id=eq.${taskId}`,
       }, (payload) => {
-        setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+        console.log('[useTaskChat] Realtime DELETE event received:', payload);
+        if (payload.old && payload.old.id) {
+          setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+        }
       })
       .on('postgres_changes', {
         event:  'UPDATE',
         schema: 'public',
         table:  'task_messages',
-        filter: `task_id=eq.${taskId}`,
       }, async (payload) => {
-        const { data } = await supabase
-          .from('task_messages')
-          .select(MSG_SELECT)
-          .eq('id', payload.new.id)
-          .single();
-        if (data) setMessages(prev =>
-          prev.map(m => m.id === data.id ? normalizeMsg(data) : m)
+        console.log('[useTaskChat] Realtime UPDATE event received:', payload);
+        if (!payload.new) return;
+
+        const eventTaskId = payload.new.task_id ? String(payload.new.task_id).toLowerCase() : null;
+        const activeTaskId = String(taskId).toLowerCase();
+
+        if (eventTaskId && eventTaskId !== activeTaskId) {
+          console.log(`[useTaskChat] Task ID mismatch on UPDATE. Event task: ${eventTaskId}, Active task: ${activeTaskId}`);
+          return;
+        }
+
+        let data = null;
+        try {
+          const res = await supabase
+            .from('task_messages')
+            .select(MSG_SELECT)
+            .eq('id', payload.new.id)
+            .single();
+          if (res.error) {
+            console.warn('[useTaskChat] Error fetching task message for realtime UPDATE:', res.error);
+          } else {
+            data = res.data;
+          }
+        } catch (err) {
+          console.warn('[useTaskChat] Exception fetching task message for realtime UPDATE:', err);
+        }
+
+        if (data && String(data.task_id).toLowerCase() !== activeTaskId) {
+          console.log(`[useTaskChat] Task ID mismatch after fetch. Fetched task: ${data.task_id}, Active task: ${activeTaskId}`);
+          return;
+        }
+        if (!data && eventTaskId === null) {
+          let msgExists = false;
+          setMessages(prev => {
+            msgExists = prev.some(m => m.id === payload.new.id);
+            return prev;
+          });
+          if (!msgExists) return;
+        }
+
+        const msg = data ? normalizeMsg(data) : normalizeMsg({
+          ...payload.new,
+          profiles: {
+            name: payload.new.user_id === user?.id ? (user?.name || 'You') : 'Someone',
+            profile_image_url: payload.new.user_id === user?.id ? (user?.profileImageUrl || null) : null
+          }
+        });
+
+        console.log('[useTaskChat] Updating message in state:', msg);
+        setMessages(prev =>
+          prev.map(m => m.id === msg.id ? msg : m)
         );
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log(`[useTaskChat] Subscription Status for task ${taskId}:`, status, err || '');
+      });
 
     return () => supabase.removeChannel(channel);
-  }, [taskId, fetchMessages]);
+  }, [taskId, fetchMessages, user]);
 
   // ── Send message ──────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (content, type = 'text') => {

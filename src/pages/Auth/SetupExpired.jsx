@@ -45,7 +45,7 @@ const SetupExpired = ({ reason = 'expired' }) => {
           <div className="flex items-center justify-center gap-2 mb-2">
             <LuShield className="text-purple-400" size={18} />
             <span className="text-xs text-purple-300 font-semibold tracking-wide uppercase">
-              TaskFlow · Account Setup
+              Strideo · Account Setup
             </span>
           </div>
 
@@ -64,8 +64,8 @@ const SetupExpired = ({ reason = 'expired' }) => {
 
         <p className="text-white/30 text-xs mt-4">
           Need help? Email your company admin or contact{' '}
-          <a href="mailto:support@taskflow.app" className="text-blue-400 hover:underline">
-            support@taskflow.app
+          <a href="mailto:support@strideo.app" className="text-blue-400 hover:underline">
+            support@strideo.app
           </a>
         </p>
       </div>

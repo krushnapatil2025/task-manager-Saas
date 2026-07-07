@@ -1,6 +1,7 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import AuthLayout from '../../components/layouts/AuthLAyout';
 import { useNavigate, Link } from 'react-router-dom';
+import { DEFAULT_BRAND, applyCSSVariables } from '../../context/BrandContext';
 import Input from '../../components/Inputs/Input';
 import { validateEmail } from '../../utils/helper';
 import { supabase } from '../../utils/supabaseClient';
@@ -20,30 +21,38 @@ const GoogleIcon = () => (
 );
 
 const Login = () => {
-  const [email,     setEmail]    = useState('');
-  const [password,  setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [magicSent, setMagicSent] = useState(false);
-  const [error,     setError]    = useState('');
-  const [loading,   setLoading]  = useState(false);
-  const [tab,       setTab]      = useState('password'); // 'password' | 'magic'
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState('password'); // 'password' | 'magic'
 
   const { updateUser } = useContext(UserContext);
-  const navigate       = useNavigate();
+  const navigate = useNavigate();
 
-  const companyName = 'TaskFlow';
+  useEffect(() => {
+    applyCSSVariables(DEFAULT_BRAND);
+  }, []);
+
+  const companyName = 'Strideo';
 
   // ── Email/password login ──────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!validateEmail(email))  return setError('Please enter a valid email address.');
-    if (!password)              return setError('Password cannot be empty.');
+    if (!validateEmail(email)) return setError('Please enter a valid email address.');
+    if (!password) return setError('Password cannot be empty.');
 
     setLoading(true);
     try {
-      // ── Super Admin: purely local check, NO Supabase call ──────────────────
+      // ── Super Admin: check .env credentials ────────────────────────────────
       if (superAdminLogin(email, password)) {
+        // Also authenticate with Supabase so RLS (is_super_admin=true) allows
+        // platform-wide queries in the SA panel. Silent — local session is truth.
+        await supabase.auth.signInWithPassword({ email, password }).catch(() => {});
+
         toast.success('Welcome, Super Admin! 🛡️');
         navigate('/super-admin/dashboard');
         return;
@@ -123,11 +132,10 @@ const Login = () => {
           <button
             key={t}
             onClick={() => { setTab(t); setError(''); setMagicSent(false); }}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all duration-155 cursor-pointer flex items-center justify-center gap-1.5 ${
-              tab === t
+            className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all duration-155 cursor-pointer flex items-center justify-center gap-1.5 ${tab === t
                 ? 'bg-white shadow-sm border border-slate-100 text-indigo-600'
                 : 'text-slate-500 hover:text-slate-800'
-            }`}
+              }`}
           >
             {t === 'password' ? (
               <>
@@ -187,7 +195,7 @@ const Login = () => {
               <LuMail className="text-5xl text-indigo-650 mx-auto mb-3" />
               <p className="text-slate-900 font-black">Check your inbox!</p>
               <p className="text-slate-500 text-xs mt-1.5 font-semibold">
-                A magic link was sent to <strong>{email}</strong>.<br/>
+                A magic link was sent to <strong>{email}</strong>.<br />
                 Click the link to sign in instantly.
               </p>
               <button

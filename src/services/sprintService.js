@@ -74,7 +74,7 @@ export const getSprintTasks = async (sprintId) => {
     // Fallback: plain join query
     const { data: fb, error: err2 } = await supabase
       .from('sprint_tasks')
-      .select('task_id, tasks(id, title, status, priority, progress, due_date)')
+      .select('task_id, tasks(id, task_number, title, status, priority, progress, due_date)')
       .eq('sprint_id', sprintId);
     if (err2) throw err2;
     return (fb || []).map(r => ({ ...r.tasks }));

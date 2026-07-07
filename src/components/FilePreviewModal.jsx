@@ -7,6 +7,34 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
   const isImage = file.mimeType?.startsWith('image/');
   const isPdf = file.mimeType === 'application/pdf';
 
+  const isGoogleDrive = file.publicUrl?.includes('drive.google.com') || file.storagePath?.startsWith('google-drive:');
+
+  const getGoogleDriveEmbedUrl = (url, storagePath) => {
+    let fileId = '';
+    if (storagePath && storagePath.startsWith('google-drive:')) {
+      fileId = storagePath.replace('google-drive:', '');
+    } else if (url) {
+      const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/file\/d\/([^/]+)/);
+      if (match) fileId = match[1];
+    }
+    return fileId ? `https://drive.google.com/file/d/${fileId}/preview` : url;
+  };
+
+  const getGoogleDriveImageUrl = (url, storagePath) => {
+    let fileId = '';
+    if (storagePath && storagePath.startsWith('google-drive:')) {
+      fileId = storagePath.replace('google-drive:', '');
+    } else if (url) {
+      const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/file\/d\/([^/]+)/);
+      if (match) fileId = match[1];
+    }
+    return fileId ? `https://drive.google.com/uc?id=${fileId}&export=download` : url;
+  };
+
+  const displayUrl = isGoogleDrive 
+    ? (isImage ? getGoogleDriveImageUrl(file.publicUrl, file.storagePath) : getGoogleDriveEmbedUrl(file.publicUrl, file.storagePath))
+    : file.publicUrl;
+
   return (
     <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
       <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col border border-slate-100 animate-scale-in">
@@ -17,13 +45,13 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
             <h3 className="text-sm font-extrabold text-slate-800 truncate">
               {file.fileName}
             </h3>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5 uppercase tracking-wider">
+            <p className="text-[10px] text-slate-450 font-semibold mt-0.5 uppercase tracking-wider">
               {file.mimeType} • {file.fileSizeFormatted}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <a
-              href={file.publicUrl}
+              href={isGoogleDrive ? getGoogleDriveImageUrl(file.publicUrl, file.storagePath) : file.publicUrl}
               download={file.fileName}
               target="_blank"
               rel="noopener noreferrer"
@@ -34,7 +62,7 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
             </a>
             <button
               onClick={onClose}
-              className="p-2 text-slate-450 hover:text-slate-650 hover:bg-slate-50 rounded-xl transition cursor-pointer"
+              className="p-2 text-slate-450 hover:text-slate-655 hover:bg-slate-50 rounded-xl transition cursor-pointer"
               title="Close Preview"
             >
               <LuX size={18} />
@@ -46,13 +74,13 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
         <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-6 min-h-[300px]">
           {isImage ? (
             <img
-              src={file.publicUrl}
+              src={displayUrl}
               alt={file.fileName}
               className="max-w-full max-h-[60vh] object-contain rounded-xl shadow-md border border-slate-200/50"
             />
           ) : isPdf ? (
             <iframe
-              src={`${file.publicUrl}#toolbar=0`}
+              src={isGoogleDrive ? displayUrl : `${displayUrl}#toolbar=0`}
               title={file.fileName}
               className="w-full h-[60vh] rounded-xl border border-slate-200/50 shadow-md bg-white"
             />
@@ -60,11 +88,11 @@ const FilePreviewModal = ({ file, isOpen, onClose }) => {
             <div className="text-center p-8 bg-white rounded-2xl border border-slate-200/60 max-w-sm">
               <span className="text-4xl block mb-3">📁</span>
               <h4 className="text-sm font-extrabold text-slate-700">Preview Not Available</h4>
-              <p className="text-xs text-slate-450 mt-1.5 leading-relaxed font-semibold">
+              <p className="text-xs text-slate-455 mt-1.5 leading-relaxed font-semibold">
                 We can't render a live preview for this file type. Please download the file to view its contents.
               </p>
               <a
-                href={file.publicUrl}
+                href={isGoogleDrive ? getGoogleDriveImageUrl(file.publicUrl, file.storagePath) : file.publicUrl}
                 download={file.fileName}
                 className="inline-flex items-center gap-2 mt-4 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-750 px-4 py-2 rounded-xl shadow-md shadow-indigo-100 transition cursor-pointer"
               >

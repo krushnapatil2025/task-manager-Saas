@@ -177,6 +177,44 @@ export const acceptInvitation = async (token) => {
 // EMPLOYEE INVITATIONS — Direct DB (no Edge Function required)
 // =============================================================================
 
+/** Generate the next sequential employee ID in EMP-001 format */
+export const generateNextEmployeeId = async () => {
+  try {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("employee_id")
+      .not("employee_id", "is", null);
+
+    const { data: invitations } = await supabase
+      .from("employee_invitations")
+      .select("employee_id")
+      .not("employee_id", "is", null);
+
+    const ids = [];
+    if (profiles) {
+      profiles.forEach(p => p.employee_id && ids.push(p.employee_id));
+    }
+    if (invitations) {
+      invitations.forEach(i => i.employee_id && ids.push(i.employee_id));
+    }
+
+    let maxNum = 0;
+    ids.forEach(id => {
+      const match = id.match(/^EMP-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+
+    const nextNum = maxNum + 1;
+    return `EMP-${String(nextNum).padStart(3, "0")}`;
+  } catch (err) {
+    console.error("Failed to generate next employee ID, defaulting to EMP-001:", err);
+    return "EMP-001";
+  }
+};
+
 /**
  * Send an employee invitation — stores the row in employee_invitations and
  * returns the setup link for the admin to copy/share manually.
@@ -214,6 +252,7 @@ export const sendEmployeeInvite = async (params) => {
   const token        = generateToken();
   const tempPassword = generateTempPassword();
   const expiresAt    = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const employeeId   = await generateNextEmployeeId();
 
   const { error: insertErr } = await supabase
     .from("employee_invitations")
@@ -229,6 +268,7 @@ export const sendEmployeeInvite = async (params) => {
       temp_password: tempPassword,
       status:        "pending",
       expires_at:    expiresAt,
+      employee_id:   employeeId,
     });
 
   if (insertErr) throw new Error(insertErr.message);
@@ -237,8 +277,7 @@ export const sendEmployeeInvite = async (params) => {
 
   // Send the email via Brevo
   const htmlContent = buildInviteEmailHTML({
-    fullName:        fullName || email,
-    workspaceName:   workspaceName || "TaskFlow",
+    workspaceName:   workspaceName || "Strideo",
     jobProfile,
     department,
     teamName,
@@ -247,12 +286,13 @@ export const sendEmployeeInvite = async (params) => {
     invitedByName:   invitedByName || "Your Admin",
     personalMessage: personalMessage || "",
     email:           email.toLowerCase().trim(),
+    employeeId,
   });
 
   const emailSent = await sendEmailViaBrevo({
     toEmail: email.toLowerCase().trim(),
     toName: fullName || email,
-    subject: `You're invited to join ${workspaceName || "TaskFlow"} on TaskFlow 🎉`,
+    subject: `You're invited to join ${workspaceName || "Strideo"} on Strideo 🎉`,
     htmlContent,
   });
 
@@ -261,6 +301,7 @@ export const sendEmployeeInvite = async (params) => {
     emailSent,
     setupLink,
     tempPassword,
+    employeeId,
     warning:     emailSent ? null : "Invitation saved. Email could not be sent — copy the setup link to share manually.",
   };
 };
@@ -274,7 +315,7 @@ export const getEmployeeInvitations = async (workspaceId, statusFilter = null) =
     .select(`
       id, email, name, job_profile, department, status,
       expires_at, accepted_at, created_at,
-      invited_by, team_id,
+      invited_by, team_id, employee_id,
       teams(name),
       inviter:profiles!invited_by(id, name)
     `)
@@ -301,6 +342,7 @@ export const getEmployeeInvitations = async (workspaceId, statusFilter = null) =
     personalMessage: null,
     inviterName:     inv.inviter?.name || "Unknown",
     inviterId:       inv.inviter?.id,
+    employeeId:      inv.employee_id,
     isPending:       inv.status === "pending" && new Date(inv.expires_at) > new Date(),
     isExpired:       inv.status === "expired" || (inv.status === "pending" && new Date(inv.expires_at) < new Date()),
     isAccepted:      inv.status === "accepted",
@@ -329,7 +371,7 @@ export const resendEmployeeInvite = async (invitationId) => {
     .from("employee_invitations")
     .select(`
       email, name, job_profile, department, team_id,
-      workspace_id,
+      workspace_id, employee_id,
       workspaces(name),
       teams(name),
       inviter:profiles!invited_by(name)
@@ -339,6 +381,11 @@ export const resendEmployeeInvite = async (invitationId) => {
 
   if (fetchErr || !inv) {
     throw new Error(fetchErr?.message || "Invitation not found");
+  }
+
+  let employeeId = inv.employee_id;
+  if (!employeeId) {
+    employeeId = await generateNextEmployeeId();
   }
 
   const newToken    = generateToken();
@@ -352,6 +399,7 @@ export const resendEmployeeInvite = async (invitationId) => {
       temp_password: newPassword,
       expires_at:    newExpiry,
       status:        "pending",
+      employee_id:   employeeId,
     })
     .eq("id", invitationId);
 
@@ -362,7 +410,7 @@ export const resendEmployeeInvite = async (invitationId) => {
   // Send the email via Brevo
   const htmlContent = buildInviteEmailHTML({
     fullName:        inv.name || inv.email,
-    workspaceName:   inv.workspaces?.name || "TaskFlow",
+    workspaceName:   inv.workspaces?.name || "Strideo",
     jobProfile:      inv.job_profile,
     department:      inv.department,
     teamName:        inv.teams?.name || "",
@@ -371,12 +419,13 @@ export const resendEmployeeInvite = async (invitationId) => {
     invitedByName:   inv.inviter?.name || "Your Admin",
     personalMessage: "Here is your refreshed invitation link and temporary password.",
     email:           inv.email,
+    employeeId,
   });
 
   const emailSent = await sendEmailViaBrevo({
     toEmail: inv.email,
     toName: inv.name || inv.email,
-    subject: `Your invitation to join ${inv.workspaces?.name || "TaskFlow"} has been refreshed! 🎉`,
+    subject: `Your invitation to join ${inv.workspaces?.name || "Strideo"} has been refreshed! 🎉`,
     htmlContent,
   });
 
@@ -385,6 +434,7 @@ export const resendEmployeeInvite = async (invitationId) => {
     emailSent,
     setupLink,
     tempPassword: newPassword,
+    employeeId,
     warning:     emailSent ? null : "Invitation refreshed. Copy the new setup link to share manually.",
   };
 };
@@ -418,6 +468,7 @@ export const getEmployeeInviteByToken = async (token) => {
     workspaceName: row.workspace_name || null,
     workspaceLogo: row.workspace_logo || null,
     tempPassword:  row.temp_password || null,
+    employeeId:    row.employee_id || null,
   };
 };
 
@@ -468,29 +519,29 @@ function buildInviteEmailHTML(params) {
     <table width="100%" style="max-width:560px;border-radius:20px;overflow:hidden;border:1px solid rgba(99,102,241,0.25);background:#1a1035;">
 
       <tr><td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 60%,#a21caf 100%);padding:40px 32px;text-align:center;">
-        <div style="width:56px;height:56px;background:rgba(255,255,255,0.15);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:28px;">
+        <div style="width:56px;height:56px;line-height:56px;background:rgba(255,255,255,0.15);border-radius:14px;margin:0 auto 16px auto;font-size:28px;text-align:center;color:#fff;">
           ✅
         </div>
-        <h1 style="margin:0;color:#fff;font-size:26px;font-weight:800;letter-spacing:-0.5px;">
+        <h1 style="margin:0;color:#fff;font-size:26px;font-weight:800;letter-spacing:-0.5px;text-align:center;">
           You're Invited!
         </h1>
-        <p style="margin:8px 0 0;color:rgba(255,255,255,0.75);font-size:15px;">
-          Join <strong>${params.workspaceName}</strong> on TaskFlow
+        <p style="margin:8px 0 0;color:rgba(255,255,255,0.75);font-size:15px;text-align:center;">
+          Join <strong>${params.workspaceName}</strong> on Strideo
         </p>
       </td></tr>
 
       <tr><td style="padding:32px;">
 
-        <p style="color:#e2e8f0;font-size:16px;margin:0 0 24px;">
+        <p style="color:#e2e8f0;font-size:16px;margin:0 0 24px;text-align:left;">
           Hi <strong style="color:#fff;">${name}</strong>,
         </p>
-        <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin:0 0 24px;">
+        <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin:0 0 24px;text-align:left;">
           <strong style="color:#c4b5fd;">${params.invitedByName}</strong> has invited you to join
-          <strong style="color:#fff;">${params.workspaceName}</strong> on TaskFlow — your team's
+          <strong style="color:#fff;">${params.workspaceName}</strong> on Strideo — your team's
           project management hub. Your account is ready and waiting!
         </p>
 
-        <div style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:16px 20px;margin-bottom:24px;">
+        <div style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:16px 20px;margin-bottom:24px;text-align:left;">
           <p style="margin:0 0 6px;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Your Role</p>
           <p style="margin:0;font-size:18px;font-weight:700;color:#fff;">
             <span style="margin-right:8px;">${jp.emoji}</span>
@@ -501,25 +552,31 @@ function buildInviteEmailHTML(params) {
         </div>
 
         ${params.personalMessage ? `
-        <div style="background:rgba(255,255,255,0.04);border-left:3px solid #7c3aed;border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:24px;">
+        <div style="background:rgba(255,255,255,0.04);border-left:3px solid #7c3aed;border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:24px;text-align:left;">
           <p style="margin:0;color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Message from ${params.invitedByName}</p>
           <p style="margin:0;color:#cbd5e1;font-size:14px;font-style:italic;">"${params.personalMessage}"</p>
         </div>
         ` : ""}
 
-        <div style="background:#0f0a1e;border:1px solid rgba(99,102,241,0.4);border-radius:12px;padding:20px;margin-bottom:28px;">
+        <div style="background:#0f0a1e;border:1px solid rgba(99,102,241,0.4);border-radius:12px;padding:20px;margin-bottom:28px;text-align:left;">
           <p style="margin:0 0 14px;color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">
             🔐 Your Temporary Credentials
           </p>
-          <table width="100%" cellpadding="0" cellspacing="0">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            ${params.employeeId ? `
             <tr>
-              <td style="color:#64748b;font-size:13px;padding:6px 0;">Email</td>
-              <td style="color:#e2e8f0;font-size:13px;font-family:monospace;text-align:right;">${params.email}</td>
+              <td style="color:#64748b;font-size:13px;padding:6px 0;text-align:left;vertical-align:middle;">Employee ID</td>
+              <td style="color:#e2e8f0;font-size:13px;font-family:monospace;font-weight:700;text-align:right;vertical-align:middle;">${params.employeeId}</td>
+            </tr>
+            ` : ""}
+            <tr>
+              <td style="color:#64748b;font-size:13px;padding:6px 0;text-align:left;vertical-align:middle;">Email</td>
+              <td style="color:#e2e8f0;font-size:13px;font-family:monospace;text-align:right;vertical-align:middle;">${params.email}</td>
             </tr>
             <tr>
-              <td style="color:#64748b;font-size:13px;padding:6px 0;">Temp Password</td>
-              <td style="text-align:right;">
-                <span style="background:rgba(99,102,241,0.2);color:#a5b4fc;font-family:monospace;font-size:14px;font-weight:700;padding:4px 10px;border-radius:6px;letter-spacing:0.05em;">
+              <td style="color:#64748b;font-size:13px;padding:6px 0;text-align:left;vertical-align:middle;">Temp Password</td>
+              <td style="text-align:right;vertical-align:middle;">
+                <span style="background:rgba(99,102,241,0.2);color:#a5b4fc;font-family:monospace;font-size:14px;font-weight:700;padding:4px 10px;border-radius:6px;letter-spacing:0.05em;display:inline-block;">
                   ${params.tempPassword}
                 </span>
               </td>
@@ -535,42 +592,60 @@ function buildInviteEmailHTML(params) {
              style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:14px;letter-spacing:0.01em;box-shadow:0 8px 32px rgba(99,102,241,0.4);">
             Set Up My Account →
           </a>
-          <p style="margin:12px 0 0;color:#475569;font-size:12px;">
+          <p style="margin:12px 0 0;color:#475569;font-size:12px;text-align:center;">
             Link expires on <strong style="color:#94a3b8;">${expires}</strong>
           </p>
         </div>
 
-        <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:20px;margin-bottom:24px;text-align:left;">
           <p style="margin:0 0 14px;color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;">Getting Started</p>
-          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
-            <span style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">1</span>
-            <span style="color:#94a3b8;font-size:13px;line-height:1.5;">Click the button above to open your setup page</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
-            <span style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">2</span>
-            <span style="color:#94a3b8;font-size:13px;line-height:1.5;">Enter your temporary password</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
-            <span style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">3</span>
-            <span style="color:#94a3b8;font-size:13px;line-height:1.5;">Create your own secure password</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
-            <span style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">4</span>
-            <span style="color:#94a3b8;font-size:13px;line-height:1.5;">Complete your profile and start collaborating!</span>
-          </div>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td valign="top" style="padding-bottom:12px;width:32px;">
+                <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:22px;height:22px;line-height:22px;border-radius:50%;text-align:center;font-size:11px;font-weight:700;">1</div>
+              </td>
+              <td valign="middle" style="padding-bottom:12px;color:#94a3b8;font-size:13px;line-height:1.5;">
+                Click the button above to open your setup page
+              </td>
+            </tr>
+            <tr>
+              <td valign="top" style="padding-bottom:12px;width:32px;">
+                <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:22px;height:22px;line-height:22px;border-radius:50%;text-align:center;font-size:11px;font-weight:700;">2</div>
+              </td>
+              <td valign="middle" style="padding-bottom:12px;color:#94a3b8;font-size:13px;line-height:1.5;">
+                Enter your temporary password
+              </td>
+            </tr>
+            <tr>
+              <td valign="top" style="padding-bottom:12px;width:32px;">
+                <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:22px;height:22px;line-height:22px;border-radius:50%;text-align:center;font-size:11px;font-weight:700;">3</div>
+              </td>
+              <td valign="middle" style="padding-bottom:12px;color:#94a3b8;font-size:13px;line-height:1.5;">
+                Create your own secure password
+              </td>
+            </tr>
+            <tr>
+              <td valign="top" style="padding-bottom:12px;width:32px;">
+                <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:22px;height:22px;line-height:22px;border-radius:50%;text-align:center;font-size:11px;font-weight:700;">4</div>
+              </td>
+              <td valign="middle" style="padding-bottom:12px;color:#94a3b8;font-size:13px;line-height:1.5;">
+                Complete your profile and start collaborating!
+              </td>
+            </tr>
+          </table>
         </div>
 
-        <p style="color:#475569;font-size:12px;text-align:center;margin:0;">
+        <p style="color:#475569;font-size:12px;text-align:center;margin:0;line-height:1.6;">
           Having trouble? Copy this link into your browser:<br/>
           <span style="color:#818cf8;word-break:break-all;font-size:11px;">${params.setupLink}</span>
         </p>
       </td></tr>
 
       <tr><td style="background:#0f0a1e;border-top:1px solid rgba(255,255,255,0.06);padding:20px 32px;text-align:center;">
-        <p style="margin:0 0 8px;color:#4f46e5;font-size:15px;font-weight:800;letter-spacing:-0.3px;">TaskFlow</p>
-        <p style="margin:0;color:#334155;font-size:11px;">
+        <p style="margin:0 0 8px;color:#4f46e5;font-size:15px;font-weight:800;letter-spacing:-0.3px;text-align:center;">Strideo</p>
+        <p style="margin:0;color:#334155;font-size:11px;text-align:center;">
           You received this because ${params.invitedByName} invited you to ${params.workspaceName}.
-          <br/>© ${new Date().getFullYear()} TaskFlow. All rights reserved.
+          <br/>© ${new Date().getFullYear()} Strideo. All rights reserved.
         </p>
       </td></tr>
 
@@ -583,8 +658,8 @@ function buildInviteEmailHTML(params) {
 
 const sendEmailViaBrevo = async ({ toEmail, toName, subject, htmlContent }) => {
   const apiKey = import.meta.env.VITE_BREVO_API_KEY;
-  const senderEmail = import.meta.env.VITE_SENDER_EMAIL || "noreply@taskflow.app";
-  const senderName = import.meta.env.VITE_SENDER_NAME || "TaskFlow";
+  const senderEmail = import.meta.env.VITE_SENDER_EMAIL || "noreply@strideo.app";
+  const senderName = import.meta.env.VITE_SENDER_NAME || "Strideo";
 
   if (!apiKey) {
     console.warn("VITE_BREVO_API_KEY not configured in .env. Skipping email sending.");

@@ -12,6 +12,7 @@ import { supabase } from '../utils/supabaseClient';
 import { useTheme } from '../context/ThemeContext';
 import { useBrand } from '../context/BrandContext';
 import { NOTIFICATION_SOUNDS, playNotificationSound } from '../utils/audioSynthesizer';
+import { uploadFileToGoogleDrive } from '../services/chatService';
 import toast from 'react-hot-toast';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -142,24 +143,35 @@ const Settings = () => {
     finally { setBrandSaving(false); }
   };
 
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 1024 * 1024) {
       toast.error('Logo must be under 1 MB');
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      setBrandLogo(reader.result);
-      setBrandSaving(true);
-      try {
-        await updateBrand({ companyLogo: reader.result });
-        toast.success('Logo saved! All users will see the update.');
-      } catch { toast.error('Failed to save logo'); }
-      finally { setBrandSaving(false); }
-    };
-    reader.readAsDataURL(file);
+    
+    const localUrl = URL.createObjectURL(file);
+    setBrandLogo(localUrl);
+    setBrandSaving(true);
+    
+    try {
+      const res = await uploadFileToGoogleDrive(file);
+      if (res && res.url) {
+        const driveUrl = res.url.split('||')[1] || res.url;
+        setBrandLogo(driveUrl);
+        await updateBrand({ companyLogo: driveUrl });
+        toast.success('Logo uploaded to Google Drive! All users will see the update.');
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save logo to Google Drive');
+      setBrandLogo(brand.companyLogo);
+    } finally {
+      setBrandSaving(false);
+    }
   };
 
   const handleClearLogo = async () => {
@@ -530,7 +542,7 @@ const Settings = () => {
                 <div className="flex justify-between items-center bg-slate-50/50 border border-slate-100 p-4 rounded-2xl">
                   <div>
                     <h4 className="text-xs font-bold text-slate-750">Reset Brand Configuration</h4>
-                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">Revert all brand settings back to their default TaskFlow configuration.</p>
+                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">Revert all brand settings back to their default Strideo configuration.</p>
                   </div>
                   <button
                     type="button"
@@ -539,7 +551,7 @@ const Settings = () => {
                       setBrandSaving(true);
                       try {
                         await resetBrand();
-                        setBrandName('TaskFlow');
+                        setBrandName('Strideo');
                         setBrandLogo(null);
                         setSelectedColor('#6366f1');
                         toast.success('Brand reset for all workspace users!');

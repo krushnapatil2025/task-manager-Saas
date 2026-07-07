@@ -63,7 +63,7 @@ const Integrations = () => {
     {
       icon:  LuKey,
       label: 'API Keys',
-      desc:  'Generate secure access tokens to connect TaskFlow with external CLI tools, scripts, or pipelines.',
+      desc:  'Generate secure access tokens to connect Strideo with external CLI tools, scripts, or pipelines.',
       path:  '/admin/api-keys',
       color: 'from-amber-500 to-orange-500',
       badge: 'Enterprise',

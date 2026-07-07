@@ -148,27 +148,53 @@ export const getUnreadCounts = async (userId) => {
 
 // ── Messages ──────────────────────────────────────────────────────────────
 
-/** Fetch recent messages for a room (excludes scheduled/draft messages) */
+const MSG_SELECT = `
+  id, content, type, is_deleted, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+  sender:profiles!sender_id(name, profile_image_url),
+  reply_to:reply_to_id(
+    id, content, type, file_url,
+    sender:profiles!sender_id(name)
+  ),
+  reads:chat_message_reads(user_id),
+  chat_message_reactions(user_id, emoji)
+`;
+
+/** Fetch the LATEST N messages for a room (initial load) */
 export const getRoomMessages = async (roomId, limit = 100) => {
+  // Fetch the latest `limit` messages by getting the last N rows
   const { data, error } = await supabase
     .from('chat_messages')
-    .select(`
-      id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
-      sender:profiles!sender_id(name, profile_image_url),
-      reply_to:reply_to_id(
-        id, content, type, file_url,
-        sender:profiles!sender_id(name)
-      ),
-      reads:chat_message_reads(user_id),
-      chat_message_reactions(user_id, emoji)
-    `)
+    .select(MSG_SELECT)
     .eq('room_id', roomId)
     .eq('is_draft', false)
     .is('thread_id', null)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })   // newest first
     .limit(limit);
   if (error) throw error;
-  return (data || []).map(normalizeMsg);
+  // Reverse so oldest is at top in the feed
+  return (data || []).reverse().map(normalizeMsg);
+};
+
+/**
+ * Fetch older messages BEFORE a given timestamp (cursor-based pagination).
+ * Used when user scrolls to the top of the feed to load more history.
+ * @param {string} roomId
+ * @param {string} beforeTimestamp - ISO timestamp of the oldest visible message
+ * @param {number} limit
+ */
+export const getOlderMessages = async (roomId, beforeTimestamp, limit = 100) => {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select(MSG_SELECT)
+    .eq('room_id', roomId)
+    .eq('is_draft', false)
+    .is('thread_id', null)
+    .lt('created_at', beforeTimestamp)           // strictly before the cursor
+    .order('created_at', { ascending: false })   // newest of the older batch first
+    .limit(limit);
+  if (error) throw error;
+  // Reverse so they appear in chronological order prepended to the top
+  return (data || []).reverse().map(normalizeMsg);
 };
 
 export const sendChatMessage = async (roomId, senderId, content, type = 'text', fileUrl = null, threadId = null, replyToId = null) => {
@@ -269,7 +295,41 @@ export const searchRoomMessages = async (roomId, query) => {
   }));
 };
 
-/** Delete a message */
+/** 
+ * Delete for EVERYONE — soft-delete: marks is_deleted = true.
+ * The real content is blanked. Other clients see "This message was deleted".
+ * Only the sender or workspace admin should call this.
+ */
+export const softDeleteMessage = async (messageId) => {
+  const { error } = await supabase
+    .from('chat_messages')
+    .update({ is_deleted: true, content: '' })
+    .eq('id', messageId);
+  if (error) throw error;
+};
+
+/**
+ * Delete for ME ONLY — stores messageId in localStorage so only this
+ * browser session hides the message. No server change.
+ * @param {string} userId
+ * @param {string} messageId
+ */
+export const hideMessageForMe = (userId, messageId) => {
+  const key = `hidden_msgs_${userId}`;
+  const existing = JSON.parse(localStorage.getItem(key) || '[]');
+  if (!existing.includes(messageId)) {
+    existing.push(messageId);
+    localStorage.setItem(key, JSON.stringify(existing));
+  }
+};
+
+/** Get the set of message IDs the current user has hidden locally */
+export const getHiddenMessageIds = (userId) => {
+  const key = `hidden_msgs_${userId}`;
+  return new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+};
+
+/** Hard-delete a message row — kept for legacy/admin use */
 export const deleteChatMessage = async (messageId) => {
   const { error } = await supabase.from('chat_messages').delete().eq('id', messageId);
   if (error) throw error;
@@ -380,6 +440,7 @@ export const normalizeMsg = (row) => {
     id:           row.id,
     content:      row.content,
     type,
+    isDeleted:    row.is_deleted || false,
     mentions:     row.mentions || [],
     fileUrl:      row.file_url || null,
     editedAt:     row.edited_at,

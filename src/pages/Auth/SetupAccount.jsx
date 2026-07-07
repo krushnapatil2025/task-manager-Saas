@@ -80,6 +80,9 @@ const SetupAccount = () => {
         if (inv.isExpired)    { setPageState('invalid');  return; }
 
         setInvite(inv);
+        if (inv.employeeId) {
+          setEmpId(inv.employeeId);
+        }
         setPageState('valid');
       } catch {
         setPageState('invalid');
@@ -340,7 +343,7 @@ const SetupAccount = () => {
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-1">
             <LuShield className="text-purple-400" size={18} />
-            <span className="text-purple-300 font-bold text-sm tracking-wide uppercase">TaskFlow</span>
+            <span className="text-purple-300 font-bold text-sm tracking-wide uppercase">Strideo</span>
           </div>
           <p className="text-white/40 text-xs">Account Setup Wizard</p>
         </div>
@@ -626,7 +629,7 @@ const SetupAccount = () => {
         {/* Help */}
         <p className="text-center text-white/30 text-xs mt-4">
           Having trouble?{' '}
-          <a href="mailto:support@taskflow.app" className="text-indigo-400 hover:underline">
+          <a href="mailto:support@strideo.app" className="text-indigo-400 hover:underline">
             Contact support
           </a>
         </p>

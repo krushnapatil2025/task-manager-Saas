@@ -66,7 +66,7 @@ export const exportTasksICal = async (workspaceId, workspaceName = "workspace") 
   const tasks = raw.map(normalizeTask).filter((t) => t.dueDate);
 
   const now    = formatICalDate(new Date());
-  const UID_NS = `taskflow-${workspaceId}`;
+  const UID_NS = `strideo-${workspaceId}`;
 
   const events = tasks.map((t) => {
     const due     = new Date(t.dueDate);
@@ -91,7 +91,7 @@ export const exportTasksICal = async (workspaceId, workspaceName = "workspace") 
   const ical = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//TaskFlow//TaskFlow Calendar//EN",
+    "PRODID:-//Strideo//Strideo Calendar//EN",
     `X-WR-CALNAME:${workspaceName} Tasks`,
     "X-WR-TIMEZONE:Asia/Kolkata",
     "CALSCALE:GREGORIAN",

@@ -256,12 +256,8 @@ const KanbanCard = ({ task, index, onClick }) => {
                 <LuFlag size={10} />
                 {task.priority}
               </span>
-              {task.recurrenceRule && (
-                <span className="text-[9px] font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/40 flex items-center gap-0.5 uppercase tracking-wider">
-                  🔁 {task.recurrenceRule}
-                </span>
-              )}
             </div>
+
             {isOverdue && (
               <span className="text-[9px] font-extrabold text-red-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-200/50">
                 Overdue
@@ -270,7 +266,12 @@ const KanbanCard = ({ task, index, onClick }) => {
           </div>
 
           {/* Title */}
-          <h4 className="font-extrabold text-sm text-slate-800 mb-1 leading-snug line-clamp-2 hover:text-indigo-600 transition-colors">
+          <h4 className="font-extrabold text-sm text-slate-800 mb-1 leading-snug line-clamp-2 hover:text-indigo-600 transition-colors flex items-center gap-1.5">
+            {task.taskNumber && (
+              <span className="text-[10px] bg-slate-100 border border-slate-200 text-slate-655 px-1.5 py-0.5 rounded font-mono font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
+                {task.taskNumber}
+              </span>
+            )}
             {task.title}
           </h4>
           <p className="text-xs text-slate-400 line-clamp-2 mb-3 font-medium">{task.description}</p>

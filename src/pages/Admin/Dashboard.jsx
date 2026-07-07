@@ -28,9 +28,19 @@ const Dashboard = () => {
   const { user } = useContext(UserContext);
   const { workspace } = useContext(WorkspaceContext);
   const navigate = useNavigate();
-  const perms  = usePermissions();
+  const perms = usePermissions();
   const JP_MAP = Object.fromEntries(JOB_PROFILES.map(j => [j.value, j]));
-  const myJP   = JP_MAP[user?.job_profile] || JP_MAP[user?.role] || JP_MAP.employee;
+  const myJP = JP_MAP[user?.job_profile] || JP_MAP[user?.role] || JP_MAP.employee;
+
+  // ── Approval gate state ───────────────────────────────────────────────────
+  const isAdmin =
+    user?.role === 'admin' ||
+    user?.job_profile === 'company_admin' ||
+    user?.role === 'company_admin';
+  const isBlocked =
+    isAdmin &&
+    user?.account_approval_status &&
+    user?.account_approval_status !== 'approved';
 
   const [dashboardData, setDashboardData] = useState(null);
   const [pieChartData, setPieChartData] = useState([]);
@@ -88,180 +98,204 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout activeMenu="Dashboard">
-      <div className="card mt-4 animate-fade-in">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-zinc-100 tracking-tight">
-                Good Morning, {user?.name}!
-              </h2>
-              <LuSparkles className="text-indigo-500 animate-pulse" size={18} />
+
+      {/* ── BLOCKED: locked overlay when admin account is not yet approved ── */}
+      {isBlocked ? (
+        <div className="relative min-h-[70vh] flex flex-col items-center justify-center select-none">
+          {/* Blurred ghost skeleton */}
+          <div className="absolute inset-0 overflow-hidden opacity-25 blur-sm pointer-events-none">
+            <div className="card mt-4">
+              <div className="h-8 w-64 bg-slate-200 dark:bg-zinc-700 rounded-lg mb-4 animate-pulse" />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-slate-100 dark:bg-zinc-800 rounded-xl animate-pulse" />)}
+              </div>
+              <div className="grid grid-cols-3 gap-4 mt-6">
+                {[1, 2, 3].map(i => <div key={i} className="h-40 bg-slate-100 dark:bg-zinc-800 rounded-xl animate-pulse" />)}
+              </div>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1.5 font-bold uppercase tracking-widest">
-              {moment().format('dddd, Do MMMM YYYY')}
-            </p>
           </div>
-          {/* Refresh button */}
-          <div className="flex items-center gap-3 self-start md:self-center">
-            <RefreshButton
-              id="dashboard-refresh"
-              onRefresh={() => loadDashboard(false)}
-              label="Refresh"
-              size="sm"
-            />
-          </div>
-        </div>
 
-        {/* Role & quick-access permission chips */}
-        <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
-          {myJP && (
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full text-white shadow-sm uppercase tracking-wider"
-              style={{ background: myJP.color }}>
-              {myJP.emoji} {myJP.label}
-            </span>
-          )}
-          {perms.canCreateTask && (
-            <span className="text-[10px] px-3 py-1 rounded-full bg-indigo-50/50 text-indigo-750 border border-indigo-100/50 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30 font-bold uppercase tracking-wider shadow-sm">✏ Create Tasks</span>
-          )}
-          {perms.canInviteEmployee && (
-            <span className="text-[10px] px-3 py-1 rounded-full bg-purple-50/50 text-purple-750 border border-purple-100/50 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/30 font-bold uppercase tracking-wider shadow-sm">📧 Invite Members</span>
-          )}
-          {perms.canViewReports && (
-            <span className="text-[10px] px-3 py-1 rounded-full bg-emerald-50/50 text-emerald-750 border border-emerald-100/50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30 font-bold uppercase tracking-wider shadow-sm">📊 Reports</span>
-          )}
-          {perms.canViewAuditLog && (
-            <span className="text-[10px] px-3 py-1 rounded-full bg-amber-50/50 text-amber-750 border border-amber-100/50 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30 font-bold uppercase tracking-wider shadow-sm">🔍 Audit Log</span>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
-        <InfoCard
-          label="Total Tasks"
-          value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.All || 0)}
-          color="bg-indigo-600"
-          icon={LuClipboardList}
-        />
-        <InfoCard
-          label="Pending Tasks"
-          value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.Pending || 0)}
-          color="bg-amber-500"
-          icon={LuHourglass}
-        />
-        <InfoCard
-          label="In Progress"
-          value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.InProgress || 0)}
-          color="bg-cyan-500"
-          icon={LuPlay}
-        />
-        <InfoCard
-          label="Completed"
-          value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.Completed || 0)}
-          color="bg-emerald-500"
-          icon={LuCircleCheck}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-4 md:my-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-        <div>
-          <div className="card">
-            <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-4">Task Distribution</h5>
-            <CustomPieChart data={pieChartData} colors={COLORS} />
-          </div>
-        </div>
-
-        <div>
-          <div className="card">
-            <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-4">Task Priority Levels</h5>
-            <CustomBarChart data={barChartData} />
-          </div>
-        </div>
-
-        <div>
-          <div className="card h-full flex flex-col justify-between">
+          {/* Lock message */}
+          <div className="relative z-10 flex flex-col items-center gap-4 text-center px-6 py-12">
+            <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center shadow-lg">
+              <span className="text-4xl">🔒</span>
+            </div>
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-                  <LuTarget size={14} className="text-indigo-500" /> Strategic Goals
-                </h5>
-                <button
-                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer transition-colors"
-                  onClick={() => navigate('/admin/goals')}
-                >
-                  See All <LuArrowRight size={14} />
-                </button>
-              </div>
-
-              {goals.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <LuTarget size={30} className="text-slate-350 dark:text-zinc-700 mb-2" />
-                  <p className="text-xs text-slate-450 dark:text-zinc-500 font-semibold">No active goals</p>
-                  <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5">Align tasks to track outcomes.</p>
-                </div>
-              ) : (
-                <div className="space-y-3.5">
-                  {goals.slice(0, 3).map((goal) => {
-                    const health = goal.progress < 30 ? 'text-rose-700 bg-rose-50 border-rose-100/30 dark:bg-rose-950/20 dark:text-rose-450 dark:border-rose-900/30' :
-                                   goal.progress < 75 ? 'text-amber-700 bg-amber-50 border-amber-100/30 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30' :
-                                   'text-indigo-705 bg-indigo-50 border-indigo-100/30 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30';
-                    return (
-                      <div
-                        key={goal.id}
-                        onClick={() => navigate(`/admin/goals/${goal.id}`)}
-                        className="cursor-pointer group"
-                      >
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs font-semibold text-slate-700 dark:text-zinc-200 group-hover:text-indigo-605 transition-colors truncate max-w-[150px]">
-                            {goal.title}
-                          </span>
-                          <span className={`text-[9px] font-extrabold px-1.5 py-0.5 border rounded-full uppercase tracking-wider ${health}`}>
-                            {goal.progress}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className="bg-indigo-500 dark:bg-indigo-400 h-full rounded-full transition-all duration-300"
-                            style={{ width: `${goal.progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <h2 className="text-xl font-black text-slate-700 dark:text-zinc-300 tracking-tight">Dashboard Locked</h2>
+              <p className="text-sm text-slate-500 dark:text-zinc-500 mt-1 max-w-md font-medium">
+                Review the status message above for details. Your dashboard will unlock automatically once approved.
+              </p>
             </div>
-            
-            {goals.length > 0 && (
-              <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-widest">
-                <span>Total: {goals.length} Goals</span>
-                <span>Avg: {Math.round(goals.reduce((acc, curr) => acc + (curr.progress || 0), 0) / goals.length)}%</span>
+          </div>
+        </div>
+
+      ) : (
+        /* ── APPROVED: full dashboard ── */
+        <div className="card mt-4 animate-fade-in">
+
+          {/* Header row */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-zinc-100 tracking-tight">
+                  {(() => {
+                    const hour = new Date().getHours();
+                    if (hour < 12) return 'Good Morning';
+                    if (hour < 17) return 'Good Afternoon';
+                    return 'Good Evening';
+                  })()}, {user?.name}!
+                </h2>
+                <LuSparkles className="text-indigo-500 animate-pulse" size={18} />
               </div>
+              <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1.5 font-bold uppercase tracking-widest">
+                {moment().format('dddd, Do MMMM YYYY')}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 self-start md:self-center">
+              <RefreshButton
+                id="dashboard-refresh"
+                onRefresh={() => loadDashboard(false)}
+                label="Refresh"
+                size="sm"
+              />
+            </div>
+          </div>
+
+          {/* Role & permission chips */}
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
+            {myJP && (
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1 rounded-full text-white shadow-sm uppercase tracking-wider"
+                style={{ background: myJP.color }}>
+                {myJP.emoji} {myJP.label}
+              </span>
+            )}
+            {perms.canCreateTask && (
+              <span className="text-[10px] px-3 py-1 rounded-full bg-indigo-50/50 text-indigo-750 border border-indigo-100/50 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30 font-bold uppercase tracking-wider shadow-sm">✏ Create Tasks</span>
+            )}
+            {perms.canInviteEmployee && (
+              <span className="text-[10px] px-3 py-1 rounded-full bg-purple-50/50 text-purple-750 border border-purple-100/50 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/30 font-bold uppercase tracking-wider shadow-sm">📧 Invite Members</span>
+            )}
+            {perms.canViewReports && (
+              <span className="text-[10px] px-3 py-1 rounded-full bg-emerald-50/50 text-emerald-750 border border-emerald-100/50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30 font-bold uppercase tracking-wider shadow-sm">📊 Reports</span>
+            )}
+            {perms.canViewAuditLog && (
+              <span className="text-[10px] px-3 py-1 rounded-full bg-amber-50/50 text-amber-750 border border-amber-100/50 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30 font-bold uppercase tracking-wider shadow-sm">🔍 Audit Log</span>
             )}
           </div>
         </div>
+      )}
 
-        <div className="md:col-span-3 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="card lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Recent Tasks</h5>
-              <button className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer transition-colors" onClick={() => navigate('/admin/tasks')}>
-                See All <LuArrowRight size={14} />
-              </button>
-            </div>
-            <TaskListTable tableData={dashboardData?.recentTasks || []} />
+      {/* Stat cards + charts — only when approved */}
+      {!isBlocked && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6 mt-6">
+            <InfoCard label="Total Tasks" value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.All || 0)} color="bg-indigo-600" icon={LuClipboardList} />
+            <InfoCard label="Pending Tasks" value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.Pending || 0)} color="bg-amber-500" icon={LuHourglass} />
+            <InfoCard label="In Progress" value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.InProgress || 0)} color="bg-cyan-500" icon={LuPlay} />
+            <InfoCard label="Completed" value={addThousandsSeparator(dashboardData?.charts?.taskDistribution?.Completed || 0)} color="bg-emerald-500" icon={LuCircleCheck} />
           </div>
 
-          <div className="card flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">📅 Upcoming Events</h5>
-              <button className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer transition-colors" onClick={() => navigate('/calendar')}>
-                Calendar <LuArrowRight size={14} />
-              </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-4 md:my-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <div>
+              <div className="card">
+                <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-4">Task Distribution</h5>
+                <CustomPieChart data={pieChartData} colors={COLORS} />
+              </div>
             </div>
-            <UpcomingEventsWidget />
+
+            <div>
+              <div className="card">
+                <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-4">Task Priority Levels</h5>
+                <CustomBarChart data={barChartData} />
+              </div>
+            </div>
+
+            <div>
+              <div className="card h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <LuTarget size={14} className="text-indigo-500" /> Strategic Goals
+                    </h5>
+                    <button
+                      className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+                      onClick={() => navigate('/admin/goals')}
+                    >
+                      See All <LuArrowRight size={14} />
+                    </button>
+                  </div>
+
+                  {goals.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <LuTarget size={30} className="text-slate-350 dark:text-zinc-700 mb-2" />
+                      <p className="text-xs text-slate-450 dark:text-zinc-500 font-semibold">No active goals</p>
+                      <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5">Align tasks to track outcomes.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3.5">
+                      {goals.slice(0, 3).map((goal) => {
+                        const health = goal.progress < 30
+                          ? 'text-rose-700 bg-rose-50 border-rose-100/30 dark:bg-rose-950/20 dark:text-rose-450 dark:border-rose-900/30'
+                          : goal.progress < 75
+                            ? 'text-amber-700 bg-amber-50 border-amber-100/30 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30'
+                            : 'text-indigo-705 bg-indigo-50 border-indigo-100/30 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30';
+                        return (
+                          <div key={goal.id} onClick={() => navigate(`/admin/goals/${goal.id}`)} className="cursor-pointer group">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-semibold text-slate-700 dark:text-zinc-200 group-hover:text-indigo-605 transition-colors truncate max-w-[150px]">
+                                {goal.title}
+                              </span>
+                              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 border rounded-full uppercase tracking-wider ${health}`}>
+                                {goal.progress}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="bg-indigo-500 dark:bg-indigo-400 h-full rounded-full transition-all duration-300"
+                                style={{ width: `${goal.progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {goals.length > 0 && (
+                  <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-widest">
+                    <span>Total: {goals.length} Goals</span>
+                    <span>Avg: {Math.round(goals.reduce((acc, curr) => acc + (curr.progress || 0), 0) / goals.length)}%</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="md:col-span-3 grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="card lg:col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Recent Tasks</h5>
+                  <button className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer transition-colors" onClick={() => navigate('/admin/tasks')}>
+                    See All <LuArrowRight size={14} />
+                  </button>
+                </div>
+                <TaskListTable tableData={dashboardData?.recentTasks || []} />
+              </div>
+
+              <div className="card flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h5 className="text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">📅 Upcoming Events</h5>
+                  <button className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer transition-colors" onClick={() => navigate('/calendar')}>
+                    Calendar <LuArrowRight size={14} />
+                  </button>
+                </div>
+                <UpcomingEventsWidget />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
+
     </DashboardLayout>
   );
 };

@@ -488,8 +488,11 @@ RETURNS workspaces AS $$
 DECLARE
   v_workspace workspaces;
 BEGIN
-  INSERT INTO workspaces (name, slug, logo_url, owner_id)
-  VALUES (p_name, p_slug, p_logo_url, auth.uid())
+  -- approval_status = 'approved' explicitly because this function is only called
+  -- by users who have already completed company registration and been verified.
+  -- The 'pending' state is only applied by bootstrap_company_admin (signup flow).
+  INSERT INTO workspaces (name, slug, logo_url, owner_id, approval_status)
+  VALUES (p_name, p_slug, p_logo_url, auth.uid(), 'approved')
   RETURNING * INTO v_workspace;
 
   INSERT INTO workspace_members (workspace_id, user_id, role)

@@ -294,7 +294,7 @@ serve(async (req) => {
   const emailPayload = {
     sender: { name: workspaceName, email: 'noreply@yourdomain.com' },
     to: [{ email, name: name || email }],
-    subject: `You're invited to join ${workspaceName} on TaskFlow`,
+    subject: `You're invited to join ${workspaceName} on Strideo`,
     htmlContent: buildInviteEmailHTML({
       name, workspaceName, jobProfile, setupLink, tempPassword
     })
@@ -313,7 +313,7 @@ serve(async (req) => {
 ### C2. Email Template — `buildInviteEmailHTML()`
 
 **Marketing-quality HTML email with:**
-- Company logo / TaskFlow branding header (gradient indigo/purple)
+- Company logo / Strideo branding header (gradient indigo/purple)
 - Personalized greeting: "Hi [Name], [CompanyName] has invited you..."
 - Role badge: "Your role: **Senior Developer**"
 - Temporary credentials box (styled)
@@ -599,7 +599,7 @@ Different nav items shown based on job profile:
 ### H1. Welcome Email (Post-Setup)
 
 After employee completes account setup → send a Brevo "Welcome" email:
-- Subject: "Welcome to [Company] on TaskFlow! 🎉"
+- Subject: "Welcome to [Company] on Strideo! 🎉"
 - Shows their role, team, quick-start tips
 
 ### H2. Admin Notification System

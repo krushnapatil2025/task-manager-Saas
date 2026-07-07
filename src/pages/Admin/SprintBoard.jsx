@@ -373,10 +373,15 @@ const TaskItemCard = ({ task, index, onTaskClick, onRemoveFromSprint, sprintsLis
           <div className="flex items-center gap-3 min-w-0 flex-1" onClick={() => onTaskClick(task.id)}>
             <div className="flex flex-col gap-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
+                {task.taskNumber && (
+                  <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-650 px-1.5 py-0.5 rounded font-mono font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
+                    {task.taskNumber}
+                  </span>
+                )}
                 <span className={`text-[8.5px] font-extrabold px-1.5 py-0.5 rounded capitalize flex items-center gap-0.5 ${PRIORITY_BADGES[task.priority] || 'bg-slate-105 text-slate-500'}`}>
                   {task.priority}
                 </span>
-                <span className="text-xs font-bold text-slate-805 dark:text-zinc-200 truncate hover:text-indigo-650 dark:hover:text-indigo-400 transition-colors cursor-pointer">
+                <span className="text-xs font-bold text-slate-850 dark:text-zinc-200 truncate hover:text-indigo-650 dark:hover:text-indigo-400 transition-colors cursor-pointer">
                   {task.title}
                 </span>
               </div>
@@ -582,6 +587,7 @@ const SprintBoard = () => {
   const [allTasks,     setAllTasks   ] = useState([]);
   const [sprintTasks,  setSprintTasks] = useState({}); // { [sprintId]: Task[] }
   const [loading,      setLoading    ] = useState(true);
+  const [syncing,      setSyncing    ] = useState(false);
   const [showCreate,   setShowCreate ] = useState(false);
   const [editingSprint, setEditingSprint] = useState(null);
   const [backlogFilter, setBacklogFilter] = useState('');
@@ -592,9 +598,10 @@ const SprintBoard = () => {
   const [isSlidePanelOpen, setIsSlidePanelOpen] = useState(false);
 
   // ── Load workspace sprints, tasks, and resolve mappings ───────────────────
-  const load = useCallback(async () => {
+  const load = useCallback(async (isSilent = false) => {
     if (!workspace?.id) return;
-    setLoading(true);
+    if (!isSilent) setLoading(true);
+    else setSyncing(true);
     try {
       const [s, t] = await Promise.all([
         getSprints(workspace.id),
@@ -610,6 +617,7 @@ const SprintBoard = () => {
           const tasks = await getSprintTasks(sprint.id);
           sprintTasksMap[sprint.id] = tasks.map(t => ({
             id: t.task_id || t.id,
+            taskNumber: t.task_number || t.taskNumber,
             title: t.title,
             status: t.status,
             priority: t.priority,
@@ -628,6 +636,7 @@ const SprintBoard = () => {
       toast.error('Failed to load Agile sprint data');
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
   }, [workspace?.id]);
 
@@ -695,6 +704,7 @@ const SprintBoard = () => {
         [sprintId]: (prev[sprintId] || []).filter(t => t.id !== taskId)
       }));
       toast.success('Task removed from sprint');
+      load(true);
     } catch {
       toast.error('Failed to remove task');
     }
@@ -704,7 +714,7 @@ const SprintBoard = () => {
     try {
       await addTaskToSprint(sprintId, taskId);
       // Trigger load to sync all properties correctly
-      load();
+      load(true);
       toast.success('Task added to sprint');
     } catch {
       toast.error('Failed to add task');
@@ -723,29 +733,51 @@ const SprintBoard = () => {
 
     // A: Planning Tab Interactions (Sprint Planning & Backlog allocation)
     if (activeTab === 'planning') {
+      let movedTaskObj = null;
+      if (srcId === 'backlog') {
+        movedTaskObj = backlogTasks.find(t => t.id === draggableId);
+      } else {
+        movedTaskObj = (sprintTasks[srcId] || []).find(t => t.id === draggableId);
+      }
+
+      if (!movedTaskObj) return;
+
+      // Optimistically update local state for a butter-smooth transition
+      setSprintTasks(prev => {
+        const next = { ...prev };
+        if (srcId !== 'backlog') {
+          next[srcId] = (next[srcId] || []).filter(t => t.id !== draggableId);
+        }
+        if (destId !== 'backlog') {
+          next[destId] = [...(next[destId] || []), movedTaskObj];
+        }
+        return next;
+      });
+
       try {
         // 1. Backlog → Sprint
         if (srcId === 'backlog' && destId !== 'backlog') {
           await addTaskToSprint(destId, draggableId);
           toast.success('Task added to sprint');
-          load();
+          load(true);
         }
         // 2. Sprint → Backlog
         else if (srcId !== 'backlog' && destId === 'backlog') {
           await removeTaskFromSprint(srcId, draggableId);
           toast.success('Task returned to Backlog');
-          load();
+          load(true);
         }
         // 3. Sprint A → Sprint B
         else if (srcId !== 'backlog' && destId !== 'backlog') {
           await removeTaskFromSprint(srcId, draggableId);
           await addTaskToSprint(destId, draggableId);
           toast.success('Task moved to new sprint');
-          load();
+          load(true);
         }
       } catch (err) {
         console.error(err);
         toast.error('Failed to move task');
+        load(); // revert to correct db state
       }
     } 
     // B: Board Tab Interactions (Active Sprint Board Column status movement)
@@ -775,6 +807,7 @@ const SprintBoard = () => {
         ));
 
         toast.success(`Task moved to ${newStatus}`);
+        load(true); // silent sync
       } catch (err) {
         console.error(err);
         toast.error('Failed to update task status');
@@ -797,6 +830,12 @@ const SprintBoard = () => {
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold text-slate-905 dark:text-zinc-100 tracking-tight flex items-center gap-2">
               🏃 Agile Sprint Board
+              {syncing && (
+                <span className="flex items-center gap-1.5 ml-2 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 text-[10px] font-extrabold border border-indigo-150 dark:border-indigo-900/30 animate-pulse">
+                  <LuLoaderCircle className="animate-spin text-indigo-500" size={10} />
+                  Saving...
+                </span>
+              )}
             </h1>
             <p className="text-xs text-slate-400 dark:text-zinc-555 mt-1 font-bold uppercase tracking-wider">
               {workspace?.name} · <span className="text-indigo-650 dark:text-indigo-400">{sprints.length} Total Iteration{sprints.length !== 1 ? 's' : ''}</span>
@@ -1115,7 +1154,12 @@ const SprintBoard = () => {
                                               </span>
                                             </div>
 
-                                            <h4 className="font-extrabold text-sm text-slate-805 dark:text-zinc-200 mb-1 leading-snug line-clamp-2 hover:text-indigo-650 dark:hover:text-indigo-400 transition-colors">
+                                            <h4 className="font-extrabold text-sm text-slate-805 dark:text-zinc-200 mb-1 leading-snug line-clamp-2 hover:text-indigo-655 dark:hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+                                              {task.taskNumber && (
+                                                <span className="text-[10px] bg-slate-100 border border-slate-200 text-slate-650 px-1.5 py-0.5 rounded font-mono font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
+                                                  {task.taskNumber}
+                                                </span>
+                                              )}
                                               {task.title}
                                             </h4>
                                             {task.description && (

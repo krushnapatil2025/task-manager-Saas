@@ -321,10 +321,9 @@ const PublicBoard = () => {
       </main>
 
       {/* Footer Branding */}
-      <footer className="py-4 border-t border-slate-200/50 bg-white text-center">
-        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-          Powered by TaskFlow Enterprise Shared Boards
-        </p>
+      <footer className="py-6 border-t border-slate-200/50 bg-white text-center flex flex-col sm:flex-row items-center justify-between px-8 gap-2 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+        <p>© 2026 strideo . All rights reserved.</p>
+        <p>Built by <a href="https://www.cicdtech.in/" target="_blank" rel="noopener noreferrer" className="text-indigo-650 hover:underline">CICD Tech</a></p>
       </footer>
     </div>
   );

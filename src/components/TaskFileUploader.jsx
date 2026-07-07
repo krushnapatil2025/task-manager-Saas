@@ -123,6 +123,21 @@ export default TaskFileUploader;
 const FileRow = ({ file, onDelete }) => {
   const iconType = getMimeIcon(file.mimeType || '');
 
+  const isGoogleDrive = file.publicUrl?.includes('drive.google.com') || file.storagePath?.startsWith('google-drive:');
+
+  const getGoogleDrivePreviewUrl = (url, storagePath) => {
+    let fileId = '';
+    if (storagePath && storagePath.startsWith('google-drive:')) {
+      fileId = storagePath.replace('google-drive:', '');
+    } else if (url) {
+      const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/file\/d\/([^/]+)/);
+      if (match) fileId = match[1];
+    }
+    return fileId ? `https://drive.google.com/file/d/${fileId}/view` : url;
+  };
+
+  const viewUrl = isGoogleDrive ? getGoogleDrivePreviewUrl(file.publicUrl, file.storagePath) : file.publicUrl;
+
   return (
     <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-3 py-2.5 hover:border-blue-200 hover:shadow-sm transition group">
       <span className="text-lg flex-shrink-0">{ICON_MAP[iconType]}</span>
@@ -132,17 +147,19 @@ const FileRow = ({ file, onDelete }) => {
       </div>
       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <a
-          href={file.publicUrl}
+          href={viewUrl}
           target="_blank"
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
           className="text-gray-400 hover:text-blue-600 text-sm"
+          title="View File"
         >
           <LuExternalLink />
         </a>
         <button
           onClick={onDelete}
           className="text-gray-400 hover:text-red-500 text-sm"
+          title="Delete File"
         >
           <LuTrash2 />
         </button>

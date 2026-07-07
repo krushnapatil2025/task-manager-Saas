@@ -15,6 +15,7 @@ import RefreshButton from '../../components/RefreshButton';
 import moment from 'moment';
 import TaskSlidePanel from '../../components/TaskSlidePanel';
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ManageTasks — admin and employee task manager panel with full keyboard nav
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +137,7 @@ const ManageTasks = () => {
       const workbook = new ExcelJS.Workbook();
       const sheet    = workbook.addWorksheet('Tasks');
       sheet.columns = [
+        { header: 'Task Number', key: 'taskNumber',  width: 15 },
         { header: 'Title',       key: 'title',       width: 30 },
         { header: 'Description', key: 'description', width: 40 },
         { header: 'Priority',    key: 'priority',    width: 12 },
@@ -145,6 +147,7 @@ const ManageTasks = () => {
         { header: 'Assigned To', key: 'assignedTo',  width: 35 },
       ];
       tasks.forEach((t) => sheet.addRow({
+        taskNumber:  t.taskNumber || '',
         title:       t.title,
         description: t.description,
         priority:    t.priority,
@@ -173,7 +176,9 @@ const ManageTasks = () => {
     }
   };
 
+
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
 
   const filteredTasks = allTasks.filter((task) => {
     // 1. Text Search (title & description)
@@ -489,6 +494,7 @@ const ManageTasks = () => {
                     }`}
                   >
                     <TaskCard
+                      taskNumber={item.taskNumber}
                       title={item.title}
                       description={item.description}
                       priority={item.priority}

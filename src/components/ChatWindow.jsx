@@ -64,8 +64,13 @@ const ChatWindow = ({
   const isDirectDM = !roomName?.startsWith('#');
   const {
     messages, loading, sending, sendError, typingUsers = {},
-    send, remove, edit, react, markRead, sendTyping, refresh
+    send, remove, edit, react, markRead, sendTyping, refresh,
+    hasMore, loadingMore, loadMore,
+    removeForMe, removeForEveryone
   } = useChat(roomId);
+
+  // WhatsApp-style delete confirmation: stores the message to be deleted
+  const [deleteConfirmMsg, setDeleteConfirmMsg] = useState(null);
 
   const bottomRef = useRef(null);
   const feedRef = useRef(null);
@@ -323,6 +328,28 @@ const ChatWindow = ({
     bottomRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [roomId]);
 
+  // Scroll-to-top detection: trigger loadMore when user reaches top 100px
+  useEffect(() => {
+    const feedEl = feedRef.current;
+    if (!feedEl) return;
+
+    const handleScrollForPagination = () => {
+      if (feedEl.scrollTop < 100 && hasMore && !loadingMore && !loading) {
+        // Preserve scroll position after prepend
+        const prevScrollHeight = feedEl.scrollHeight;
+        loadMore().then(() => {
+          // After state updates, adjust scroll to keep viewport stable
+          requestAnimationFrame(() => {
+            feedEl.scrollTop = feedEl.scrollHeight - prevScrollHeight;
+          });
+        });
+      }
+    };
+
+    feedEl.addEventListener('scroll', handleScrollForPagination, { passive: true });
+    return () => feedEl.removeEventListener('scroll', handleScrollForPagination);
+  }, [hasMore, loadingMore, loading, loadMore]);
+
   // Close dropdown on click outside
   useEffect(() => {
     const clickOutside = () => setShowMoreMenu(false);
@@ -512,7 +539,7 @@ const ChatWindow = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Search Input */}
+             {/* Search Input */}
             <div className="relative flex items-center bg-slate-100 hover:bg-slate-150/70 border border-slate-200/50 rounded-xl px-2.5 py-1 text-slate-550 transition-all focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:bg-white focus-within:border-indigo-400 max-w-[120px] sm:max-w-[180px]">
               <LuSearch size={13} className="text-slate-400 mr-1.5 flex-shrink-0" />
               <input
@@ -528,6 +555,15 @@ const ChatWindow = ({
                 </button>
               )}
             </div>
+
+            {/* Soft Refresh Button */}
+            <button
+              className={`chat-icon-btn text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors p-2 rounded-xl flex items-center justify-center ${loading ? 'animate-spin' : ''}`}
+              onClick={refresh}
+              title="Soft Refresh Chat"
+            >
+              <LuRefreshCcw size={14} />
+            </button>
 
 
 
@@ -788,6 +824,30 @@ const ChatWindow = ({
 
         {/* Message feed */}
         <div ref={feedRef} className="chat-feed">
+          {/* ── Top pagination zone ─────────────────────────────────────── */}
+          {loadingMore && (
+            <div className="flex flex-col gap-2.5 px-4 py-3 animate-pulse">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className={`flex items-start gap-2.5 ${i % 2 === 0 ? '' : 'flex-row-reverse'}`}>
+                  <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-zinc-800 flex-shrink-0" />
+                  <div className="flex flex-col gap-1.5" style={{ maxWidth: '60%' }}>
+                    <div className="h-2.5 rounded-full bg-slate-200 dark:bg-zinc-800" style={{ width: `${60 + i * 20}px` }} />
+                    <div className="h-8 rounded-xl bg-slate-100 dark:bg-zinc-900" style={{ width: `${120 + i * 30}px` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Show when all history has been loaded */}
+          {!hasMore && !loading && messages.length > 0 && !loadingMore && (
+            <div className="flex items-center gap-2 px-4 py-3">
+              <div className="flex-1 h-px bg-slate-100 dark:bg-zinc-800" />
+              <span className="text-[10px] font-semibold text-slate-400 dark:text-zinc-600 whitespace-nowrap">
+                📜 Beginning of conversation history
+              </span>
+              <div className="flex-1 h-px bg-slate-100 dark:bg-zinc-800" />
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <LuLoaderCircle className="text-indigo-400 text-3xl animate-spin" />
@@ -966,6 +1026,25 @@ const ChatWindow = ({
                               <LuTrash2 size={11} />
                             </button>
                           )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // ── Soft-deleted message (WhatsApp-style) ────────────────
+                  if (msg.isDeleted) {
+                    return (
+                      <div key={msg.id} id={`msg-${msg.id}`} className={`chat-msg ${isOwn ? 'chat-msg--own' : ''} ${isContinued ? 'chat-msg--continued' : ''}`}>
+                        {!isOwn && !isContinued && <div className="chat-msg-av-spacer" />}
+                        {!isOwn && isContinued && <div className="chat-msg-av-spacer" />}
+                        <div className={`chat-msg-body ${isOwn ? 'chat-msg-body--own' : ''}`}>
+                          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200/60 dark:border-zinc-700/60 bg-slate-50 dark:bg-zinc-900/60 italic text-slate-400 dark:text-zinc-500 text-[11px] max-w-xs select-none">
+                            <LuTrash2 size={11} className="flex-shrink-0 opacity-60" />
+                            <span>This message was deleted</span>
+                          </div>
+                          <span className="text-[9px] text-slate-350 dark:text-zinc-600 mt-0.5 block text-right">
+                            {moment(msg.createdAt).format('h:mm A')}
+                          </span>
                         </div>
                       </div>
                     );
@@ -1406,19 +1485,19 @@ const ChatWindow = ({
                                 </button>
                               )}
 
-                              {/* Delete */}
-                              {(isOwn || isOwnerOrAdmin) && (
-                                <button
-                                  className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors flex items-center gap-2 border-t border-slate-100 dark:border-zinc-800 mt-1 pt-1.5"
-                                  onClick={() => {
-                                    setActiveMenuMessageId(null);
-                                    remove(msg.id);
-                                  }}
-                                >
-                                  <LuTrash2 size={13} className="text-rose-500" />
-                                  <span>Delete</span>
-                                </button>
-                              )}
+                               {/* Delete — WhatsApp-style */}
+                               {(isOwn || isOwnerOrAdmin) && (
+                                 <button
+                                   className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors flex items-center gap-2 border-t border-slate-100 dark:border-zinc-800 mt-1 pt-1.5"
+                                   onClick={() => {
+                                     setActiveMenuMessageId(null);
+                                     setDeleteConfirmMsg(msg);
+                                   }}
+                                 >
+                                   <LuTrash2 size={13} className="text-rose-500" />
+                                   <span>Delete</span>
+                                 </button>
+                               )}
                             </div>
                         )}
                       </div>
@@ -1615,6 +1694,85 @@ const ChatWindow = ({
           roomId={roomId}
           onClose={() => setShowScheduledPanel(false)}
         />
+      )}
+
+      {/* ── WhatsApp-style Delete Confirmation Modal ──────────────────── */}
+      {deleteConfirmMsg && (
+        <div
+          className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+          onClick={() => setDeleteConfirmMsg(null)}
+        >
+          <div
+            className="w-full sm:w-auto sm:min-w-[320px] bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200/50 dark:border-zinc-800 overflow-hidden animate-slide-up"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-5 pt-5 pb-3 border-b border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center flex-shrink-0">
+                  <LuTrash2 size={16} className="text-rose-600 dark:text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">Delete message?</h3>
+                  <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-0.5">Choose who to delete it for</p>
+                </div>
+              </div>
+              {/* Message preview */}
+              <div className="mt-3 px-3 py-2 bg-slate-50 dark:bg-zinc-950/50 rounded-xl border border-slate-100 dark:border-zinc-800/80">
+                <p className="text-[11px] text-slate-500 dark:text-zinc-400 truncate italic">
+                  {deleteConfirmMsg.content ? `"${deleteConfirmMsg.content.slice(0, 80)}${deleteConfirmMsg.content.length > 80 ? '…' : ''}"` : '📎 Attachment'}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col p-3 gap-2">
+              {/* Delete for Me — always available */}
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-left group"
+                onClick={() => {
+                  removeForMe(deleteConfirmMsg.id);
+                  setDeleteConfirmMsg(null);
+                }}
+              >
+                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-zinc-700 transition-colors">
+                  <span className="text-sm">🙈</span>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800 dark:text-zinc-200">Delete for Me</p>
+                  <p className="text-[10px] text-slate-400 dark:text-zinc-500">Only you won't see this message</p>
+                </div>
+              </button>
+
+              {/* Delete for Everyone — ONLY the original message sender */}
+              {deleteConfirmMsg.senderId === user?.id && (
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors text-left group"
+                  onClick={async () => {
+                    await removeForEveryone(deleteConfirmMsg.id);
+                    setDeleteConfirmMsg(null);
+                  }}
+                >
+                  <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center group-hover:bg-rose-200 dark:group-hover:bg-rose-900/40 transition-colors">
+                    <LuTrash2 size={15} className="text-rose-600 dark:text-rose-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">Delete for Everyone</p>
+                    <p className="text-[10px] text-slate-400 dark:text-zinc-500">Removes this message for all members</p>
+                  </div>
+                </button>
+              )}
+
+              {/* Cancel */}
+              <button
+                className="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+                onClick={() => setDeleteConfirmMsg(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

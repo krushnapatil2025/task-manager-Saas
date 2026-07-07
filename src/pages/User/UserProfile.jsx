@@ -360,7 +360,7 @@ const UserProfile = () => {
 
         <div className="text-center pt-4 pb-2">
           <p className="text-[10px] text-slate-400 dark:text-zinc-550 font-bold uppercase tracking-wider flex items-center justify-center gap-1">
-            Made with <LuHeart size={10} className="text-red-400 fill-red-400 animate-pulse" /> by TaskFlow Team
+            Made with <LuHeart size={10} className="text-red-400 fill-red-400 animate-pulse" /> by Strideo Team
           </p>
         </div>
 

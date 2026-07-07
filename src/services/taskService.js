@@ -29,13 +29,6 @@ const TASK_SELECT = `
  * @param {string|null} statusFilter
  */
 export const getAllTasks = async (workspaceId, statusFilter = null) => {
-  // Trigger spawning of recurring tasks automatically
-  try {
-    await supabase.rpc("spawn_recurring_tasks");
-  } catch (spawnErr) {
-    console.warn("Could not auto-spawn tasks:", spawnErr);
-  }
-
   let query = supabase
     .from("tasks")
     .select(TASK_SELECT)
@@ -58,13 +51,6 @@ export const getAllTasks = async (workspaceId, statusFilter = null) => {
  * @param {string|null} statusFilter
  */
 export const getMyTasks = async (userId, workspaceId, statusFilter = null) => {
-  // Trigger spawning of recurring tasks automatically
-  try {
-    await supabase.rpc("spawn_recurring_tasks");
-  } catch (spawnErr) {
-    console.warn("Could not auto-spawn tasks:", spawnErr);
-  }
-
   const { data: assignments, error: aErr } = await supabase
     .from("task_assignments")
     .select("task_id")
@@ -95,11 +81,14 @@ export const getMyTasks = async (userId, workspaceId, statusFilter = null) => {
  * Fetch a single task by ID (workspace check is implicit via RLS).
  * @param {string} taskId
  */
-export const getTaskById = async (taskId) => {
+export const getTaskById = async (taskIdOrNumber) => {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskIdOrNumber);
+  const column = isUuid ? "id" : "task_number";
+
   const { data, error } = await supabase
     .from("tasks")
     .select(TASK_SELECT)
-    .eq("id", taskId)
+    .eq(column, taskIdOrNumber)
     .single();
 
   if (error) throw error;
@@ -133,9 +122,6 @@ export const createTask = async (
       progress: 0,
       created_by: createdBy,
       workspace_id: workspaceId,
-      recurrence_rule: taskData.recurrenceRule || null,
-      recurrence_interval: taskData.recurrenceInterval || 1,
-      recurrence_end_date: taskData.recurrenceEndDate || null,
     })
     .select()
     .single();
@@ -180,9 +166,6 @@ export const updateTask = async (taskId, taskData, assignedTo, todoCheckList) =>
       priority: taskData.priority,
       due_date: taskData.dueDate,
       attachments: taskData.attachments || [],
-      recurrence_rule: taskData.recurrenceRule || null,
-      recurrence_interval: taskData.recurrenceInterval || 1,
-      recurrence_end_date: taskData.recurrenceEndDate || null,
     })
     .eq("id", taskId);
 
@@ -285,7 +268,7 @@ export const getUserDashboardData = async (userId, workspaceId) => {
   const { data: tasks, error } = await supabase
     .from("tasks")
     .select(`
-      id, title, status, priority, due_date, created_at, progress,
+      id, task_number, title, status, priority, due_date, created_at, progress,
       assignees:task_assignments(user:profiles(id, name, profile_image_url)),
       checklist:todo_checklist(id, completed)
     `)
@@ -327,6 +310,7 @@ const buildDashboardSummary = (tasks) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const normalizeTask = (raw) => ({
   id:               raw.id,
+  taskNumber:       raw.task_number,
   title:            raw.title,
   description:      raw.description,
   priority:         raw.priority,
@@ -348,9 +332,4 @@ export const normalizeTask = (raw) => ({
     completed: c.completed,
   })),
   completedTodoCount: (raw.checklist || []).filter((c) => c.completed).length,
-  recurrenceRule:     raw.recurrence_rule,
-  recurrenceInterval: raw.recurrence_interval ?? 1,
-  recurrenceEndDate:  raw.recurrence_end_date,
-  parentTaskId:       raw.parent_task_id,
-  nextOccurrenceAt:   raw.next_occurrence_at,
 });

@@ -26,38 +26,42 @@ DECLARE
   v_workspace_id UUID;
   v_slug         TEXT;
 BEGIN
-  -- 1. Upsert profile (bypasses RLS since SECURITY DEFINER)
+  -- 1. Upsert profile — set account_approval_status = 'pending' so the
+  --    new company admin is held in the review queue until a Super Admin approves.
   INSERT INTO profiles (
     id, name, phone,
     job_profile, company_name, company_industry, company_size,
-    setup_completed, status, role
+    setup_completed, status, role,
+    account_approval_status   -- <-- profile-level approval gate
   )
   VALUES (
     p_user_id, p_name, p_phone,
     'company_admin', p_company_name, p_company_industry, p_company_size,
-    true, 'active', 'admin'
+    true, 'active', 'admin',
+    'pending'                 -- awaiting Super Admin review
   )
   ON CONFLICT (id) DO UPDATE SET
-    name             = EXCLUDED.name,
-    phone            = EXCLUDED.phone,
-    job_profile      = 'company_admin',
-    company_name     = EXCLUDED.company_name,
-    company_industry = EXCLUDED.company_industry,
-    company_size     = EXCLUDED.company_size,
-    setup_completed  = true,
-    status           = 'active',
-    role             = 'admin';
+    name                    = EXCLUDED.name,
+    phone                   = EXCLUDED.phone,
+    job_profile             = 'company_admin',
+    company_name            = EXCLUDED.company_name,
+    company_industry        = EXCLUDED.company_industry,
+    company_size            = EXCLUDED.company_size,
+    setup_completed         = true,
+    status                  = 'active',
+    role                    = 'admin',
+    account_approval_status = 'pending';
 
   -- 2. Build a unique slug
   v_slug := LOWER(REGEXP_REPLACE(p_workspace_slug, '[^a-z0-9\-]', '-', 'g'));
-  -- Ensure uniqueness if slug already taken
   IF EXISTS (SELECT 1 FROM workspaces WHERE slug = v_slug) THEN
     v_slug := v_slug || '-' || FLOOR(RANDOM() * 9000 + 1000)::TEXT;
   END IF;
 
-  -- 3. Create workspace
-  INSERT INTO workspaces (name, slug, created_by)
-  VALUES (p_workspace_name, v_slug, p_user_id)
+  -- 3. Create workspace — always 'approved' (workspaces are never gated).
+  --    Only the company admin's PROFILE requires Super Admin approval.
+  INSERT INTO workspaces (name, slug, owner_id, approval_status)
+  VALUES (p_workspace_name, v_slug, p_user_id, 'approved')
   RETURNING id INTO v_workspace_id;
 
   -- 4. Add user as company_admin workspace member
@@ -78,6 +82,7 @@ EXCEPTION WHEN OTHERS THEN
   );
 END;
 $$;
+
 
 -- Grant execute to the anon/authenticated roles so client can call it
 GRANT EXECUTE ON FUNCTION bootstrap_company_admin(UUID,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT)

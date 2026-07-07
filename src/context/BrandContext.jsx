@@ -22,9 +22,9 @@ export const BRAND_COLORS = [
   { name: 'Zinc',    hex: '#71717a', light: '#fafafa', text: '#3f3f46', ring: '#a1a1aa' },
 ];
 
-const DEFAULT_BRAND = {
-  companyName:      'TaskFlow',
-  companyLogo:      null,
+export const DEFAULT_BRAND = {
+  companyName:      'Strideo',
+  companyLogo:      '/logo.png',
   brandColor:       '#6366f1',
   brandColorLight:  '#eef2ff',
   brandColorText:   '#4338ca',
@@ -32,17 +32,27 @@ const DEFAULT_BRAND = {
 };
 
 // ── Apply all CSS variables to :root ─────────────────────────────────────────
-const applyCSSVariables = (config) => {
+export const applyCSSVariables = (config) => {
+  const isPublic = typeof window !== 'undefined' && (
+    window.location.pathname === '/' ||
+    window.location.pathname === '/login' ||
+    window.location.pathname === '/admin/register' ||
+    window.location.pathname.startsWith('/invite') ||
+    window.location.pathname.startsWith('/setup-account') ||
+    window.location.pathname.startsWith('/auth/callback')
+  );
+
+  const targetConfig = isPublic ? DEFAULT_BRAND : config;
   const root = document.documentElement;
-  const hex  = config.brandColor || DEFAULT_BRAND.brandColor;
+  const hex  = targetConfig.brandColor || DEFAULT_BRAND.brandColor;
 
   const r = parseInt(hex.slice(1,3), 16);
   const g = parseInt(hex.slice(3,5), 16);
   const b = parseInt(hex.slice(5,7), 16);
 
   root.style.setProperty('--brand',          hex);
-  root.style.setProperty('--brand-bg',       config.brandColorLight || DEFAULT_BRAND.brandColorLight);
-  root.style.setProperty('--brand-text',     config.brandColorText  || DEFAULT_BRAND.brandColorText);
+  root.style.setProperty('--brand-bg',       targetConfig.brandColorLight || DEFAULT_BRAND.brandColorLight);
+  root.style.setProperty('--brand-text',     targetConfig.brandColorText  || DEFAULT_BRAND.brandColorText);
   root.style.setProperty('--brand-border',   `rgba(${r},${g},${b},0.35)`);
   root.style.setProperty('--brand-ring',     `rgba(${r},${g},${b},0.25)`);
   root.style.setProperty('--brand-hover',    `rgba(${r},${g},${b},0.08)`);
@@ -85,7 +95,7 @@ export const BrandProvider = ({ children }) => {
         .select('workspace_id, workspaces(id, name, logo_url, brand_color, brand_color_light, brand_color_text, brand_color_name, company_name)')
         .eq('user_id', userId)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error || !memberships?.workspaces) {
         setWorkspaceId(null);

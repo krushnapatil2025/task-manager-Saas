@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { LuX, LuCalendar, LuClock, LuMapPin, LuVideo, LuCheck, LuTag, LuRepeat } from 'react-icons/lu';
+import { LuX, LuCalendar, LuClock, LuMapPin, LuVideo, LuCheck, LuTag, LuRepeat, LuLoaderCircle } from 'react-icons/lu';
 import moment from 'moment';
+import { generateGoogleMeetLink, deleteGoogleCalendarEvent } from '../../services/googleCalendarService';
+
 
 const COLORS = [
   { value: '#6366f1', label: 'Indigo' },
@@ -28,7 +30,8 @@ const EventFormModal = ({
   members = [],
   activeUserId,
   tasks = [],
-  prefilledTaskId = ''
+  prefilledTaskId = '',
+  isSubmitting = false
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -42,6 +45,26 @@ const EventFormModal = ({
   const [showAttendeesList, setShowAttendeesList] = useState(false);
   const [linkedTaskId, setLinkedTaskId] = useState('');
   const [recurrenceRule, setRecurrenceRule] = useState('');
+  const [genStatus, setGenStatus] = useState('idle'); // idle | loading | success | error
+  const [googleEventId, setGoogleEventId] = useState(null);
+
+  // Clean up any orphaned Google Calendar event if the modal is unmounted or closed without saving
+  useEffect(() => {
+    return () => {
+      if (googleEventId) {
+        deleteGoogleCalendarEvent(googleEventId);
+      }
+    };
+  }, [googleEventId]);
+
+  const handleClose = async () => {
+    if (googleEventId) {
+      await deleteGoogleCalendarEvent(googleEventId);
+      setGoogleEventId(null);
+    }
+    onClose();
+  };
+
 
   useEffect(() => {
     if (initialData) {
@@ -54,8 +77,8 @@ const EventFormModal = ({
       setEventType(initialData.event_type || 'meeting');
       setMeetingUrl(initialData.meeting_url || '');
       setAttendeeIds(
-        initialData.attendees 
-          ? initialData.attendees.map(a => a.user_id) 
+        initialData.attendees
+          ? initialData.attendees.map(a => a.user_id)
           : []
       );
       setLinkedTaskId(initialData.tasks?.[0]?.id || '');
@@ -81,6 +104,7 @@ const EventFormModal = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!title.trim() || !startAt || !endAt) return;
 
     const data = {
@@ -92,11 +116,14 @@ const EventFormModal = ({
       color,
       event_type: eventType,
       meeting_url: meetingUrl,
-      recurrence_rule: recurrenceRule || null
+      recurrence_rule: recurrenceRule || null,
+      google_event_id: googleEventId
     };
 
     onSubmit(data, attendeeIds, linkedTaskId);
+    setGoogleEventId(null); // Clear ID so cleanup does not delete the saved event
   };
+
 
   const handleToggleAttendee = (userId) => {
     if (attendeeIds.includes(userId)) {
@@ -109,7 +136,7 @@ const EventFormModal = ({
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-150/60">
           <div className="flex items-center gap-2 text-slate-800">
@@ -118,16 +145,18 @@ const EventFormModal = ({
               {initialData ? 'Edit Event' : 'Create Event'}
             </h3>
           </div>
-          <button 
-            onClick={onClose} 
-            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors"
+          <button
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LuX size={16} />
           </button>
+
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+        <form id="event-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* Title */}
           <div>
             <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
@@ -215,13 +244,45 @@ const EventFormModal = ({
                 </label>
                 <button
                   type="button"
-                  onClick={() => {
-                    const roomName = `taskflow-mtg-${Math.random().toString(36).substring(2, 10)}-${Date.now()}`;
-                    setMeetingUrl(`https://meet.jit.si/${roomName}`);
+                  disabled={genStatus === 'loading'}
+                  onClick={async () => {
+                    setGenStatus('loading');
+                    try {
+                      if (googleEventId) {
+                        await deleteGoogleCalendarEvent(googleEventId);
+                        setGoogleEventId(null);
+                      }
+                      const { meetLink, eventId } = await generateGoogleMeetLink({
+                        title: title || 'Team Meeting',
+                        start: startAt ? new Date(startAt) : new Date(),
+                        end: endAt ? new Date(endAt) : null,
+                      });
+                      setMeetingUrl(meetLink);
+                      setGoogleEventId(eventId);
+                      setGenStatus('success');
+                      setTimeout(() => setGenStatus('idle'), 3000);
+                    } catch (err) {
+                      console.error('Google Meet generation failed:', err);
+                      setGenStatus('error');
+                      setTimeout(() => setGenStatus('idle'), 4000);
+                    }
                   }}
-                  className="text-[9px] font-extrabold text-indigo-650 hover:text-indigo-850 uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
+                  className={`text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer ${genStatus === 'loading' ? 'text-slate-400 cursor-not-allowed' :
+                      genStatus === 'success' ? 'text-emerald-600' :
+                        genStatus === 'error' ? 'text-rose-500' :
+                          'text-indigo-650 hover:text-indigo-850'
+                    }`}
                 >
-                  ✨ Auto-Gen Link
+                  {genStatus === 'loading' && <LuLoaderCircle size={10} className="animate-spin" />}
+                  {genStatus === 'idle' && '✨'}
+                  {genStatus === 'success' && '✅'}
+                  {genStatus === 'error' && '⚠️'}
+                  <span>
+                    {genStatus === 'loading' ? 'Generating…' :
+                      genStatus === 'success' ? 'Ready!' :
+                        genStatus === 'error' ? 'Failed — Retry' :
+                          'Auto-Gen Link'}
+                  </span>
                 </button>
               </div>
               <div className="relative">
@@ -234,6 +295,7 @@ const EventFormModal = ({
                 />
                 <LuVideo className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
               </div>
+
             </div>
           </div>
 
@@ -258,7 +320,7 @@ const EventFormModal = ({
                 <LuTag className="absolute left-3.5 top-3.5 text-slate-400" size={14} />
               </div>
             </div>
-            
+
             {/* Color presets */}
             <div>
               <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">
@@ -309,15 +371,15 @@ const EventFormModal = ({
             <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
               Attendees
             </label>
-            
+
             <button
               type="button"
               onClick={() => setShowAttendeesList(!showAttendeesList)}
               className="w-full text-left px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors flex items-center justify-between text-xs font-semibold text-slate-700"
             >
               <span>
-                {attendeeIds.length > 0 
-                  ? `${attendeeIds.length} attendee(s) selected` 
+                {attendeeIds.length > 0
+                  ? `${attendeeIds.length} attendee(s) selected`
                   : 'Select team members...'
                 }
               </span>
@@ -338,11 +400,10 @@ const EventFormModal = ({
                         key={mem.user_id}
                         type="button"
                         onClick={() => handleToggleAttendee(mem.user_id)}
-                        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-left ${
-                          isSelected 
-                            ? 'bg-indigo-50 text-indigo-700' 
+                        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-left ${isSelected
+                            ? 'bg-indigo-50 text-indigo-700'
                             : 'hover:bg-slate-50 text-slate-700'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           {mem.profile_image_url ? (
@@ -391,16 +452,20 @@ const EventFormModal = ({
         <div className="px-6 py-4 border-t border-slate-150/60 flex items-center justify-end gap-3 bg-slate-50/50">
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
-            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/10"
+            type="submit"
+            form="event-form"
+            disabled={isSubmitting}
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/10 disabled:opacity-75 disabled:cursor-not-allowed flex items-center gap-1.5"
           >
-            {initialData ? 'Save Changes' : 'Create Event'}
+            {isSubmitting && <LuLoaderCircle size={14} className="animate-spin" />}
+            {isSubmitting ? 'Saving...' : (initialData ? 'Save Changes' : 'Create Event')}
           </button>
         </div>
       </div>

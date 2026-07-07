@@ -84,6 +84,7 @@ const MyTasks = () => {
               allTasks.map((item) => (
                 <TaskCard
                   key={item.id}
+                  taskNumber={item.taskNumber}
                   title={item.title}
                   description={item.description}
                   priority={item.priority}
@@ -95,7 +96,7 @@ const MyTasks = () => {
                   attachmentCount={item.attachments?.length || 0}
                   completedTodoCount={item.completedTodoCount}
                   todoChecklist={item.todoChecklist}
-                  onClick={() => navigate(`/user/task-details/${item.id}`)}
+                  onClick={() => navigate(`/user/task-details/${item.taskNumber || item.id}`)}
                 />
               ))
             )}

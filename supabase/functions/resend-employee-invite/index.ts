@@ -19,6 +19,7 @@ const JOB_LABELS: Record<string, { label: string; emoji: string }> = {
   finance:       { label: "Finance",         emoji: "💰" },
   sales:         { label: "Sales",           emoji: "📊" },
   employee:      { label: "Employee",        emoji: "👤" },
+  intern:        { label: "Intern",         emoji: "🎓" },
 };
 
 function generateToken(): string {
@@ -32,6 +33,40 @@ function generateTempPassword(): string {
   const arr   = new Uint8Array(12);
   crypto.getRandomValues(arr);
   return Array.from(arr).map((b) => chars[b % chars.length]).join("");
+}
+
+/** Generate the next sequential employee ID in EMP-001 format */
+async function generateNextEmployeeId(sb: any): Promise<string> {
+  try {
+    const { data: pData } = await sb
+      .from("profiles")
+      .select("employee_id")
+      .not("employee_id", "is", null);
+
+    const { data: iData } = await sb
+      .from("employee_invitations")
+      .select("employee_id")
+      .not("employee_id", "is", null);
+
+    const ids: string[] = [];
+    if (pData) pData.forEach((p: any) => p.employee_id && ids.push(p.employee_id));
+    if (iData) iData.forEach((i: any) => i.employee_id && ids.push(i.employee_id));
+
+    let maxNum = 0;
+    ids.forEach((id) => {
+      const match = id.match(/^EMP-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+
+    const nextNum = maxNum + 1;
+    return `EMP-${String(nextNum).padStart(3, "0")}`;
+  } catch (err) {
+    console.error("Failed to generate employee ID:", err);
+    return "EMP-001";
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -53,8 +88,8 @@ Deno.serve(async (req: Request) => {
 
   const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY");
   const APP_URL       = Deno.env.get("APP_URL") || "http://localhost:5173";
-  const SENDER_EMAIL  = Deno.env.get("SENDER_EMAIL") || "noreply@taskflow.app";
-  const SENDER_NAME   = Deno.env.get("SENDER_NAME")  || "TaskFlow";
+  const SENDER_EMAIL  = Deno.env.get("SENDER_EMAIL") || "noreply@Strideo.app";
+  const SENDER_NAME   = Deno.env.get("SENDER_NAME")  || "Strideo";
 
   if (!BREVO_API_KEY) {
     return json({ error: "BREVO_API_KEY not configured" }, 500);
@@ -77,7 +112,7 @@ Deno.serve(async (req: Request) => {
     // Load existing invitation
     const { data: inv, error: invErr } = await sb
       .from("employee_invitations")
-      .select(`id, workspace_id, email, name, job_profile, department, workspaces(name)`)
+      .select(`id, workspace_id, email, name, job_profile, department, employee_id, workspaces(name)`)
       .eq("id", invitationId)
       .eq("status", "pending")
       .single();
@@ -103,9 +138,19 @@ Deno.serve(async (req: Request) => {
     const newPassword = generateTempPassword();
     const newExpiry   = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
+    let employeeId = inv.employee_id;
+    if (!employeeId) {
+      employeeId = await generateNextEmployeeId(sb);
+    }
+
     await sb
       .from("employee_invitations")
-      .update({ token: newToken, temp_password: newPassword, expires_at: newExpiry })
+      .update({
+        token:         newToken,
+        temp_password: newPassword,
+        expires_at:    newExpiry,
+        employee_id:   employeeId,
+      })
       .eq("id", invitationId);
 
     const workspaceName = (inv as any).workspaces?.name ?? "Your Company";
@@ -116,42 +161,63 @@ Deno.serve(async (req: Request) => {
     });
 
     const htmlContent = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/><title>Invitation Reminder</title></head>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Invitation Reminder</title>
+</head>
 <body style="margin:0;padding:0;background:#0f0a1e;font-family:'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0a1e;padding:40px 16px;">
   <tr><td align="center">
   <table width="100%" style="max-width:560px;border-radius:20px;overflow:hidden;border:1px solid rgba(99,102,241,0.25);background:#1a1035;">
     <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:36px 32px;text-align:center;">
-      <h1 style="margin:0;color:#fff;font-size:24px;font-weight:800;">Invitation Reminder 🔔</h1>
-      <p style="margin:8px 0 0;color:rgba(255,255,255,0.75);font-size:14px;">You still have a pending invite to <strong>${workspaceName}</strong></p>
+      <h1 style="margin:0;color:#fff;font-size:24px;font-weight:800;text-align:center;">Invitation Reminder 🔔</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,0.75);font-size:14px;text-align:center;">You still have a pending invite to <strong>${workspaceName}</strong></p>
     </td></tr>
     <tr><td style="padding:32px;">
-      <p style="color:#e2e8f0;font-size:15px;margin:0 0 20px;">
+      <p style="color:#e2e8f0;font-size:15px;margin:0 0 20px;text-align:left;">
         Hi <strong>${inv.name || "there"}</strong>, this is a reminder that you've been invited to join
         <strong style="color:#c4b5fd;">${workspaceName}</strong> as <strong>${jp.emoji} ${jp.label}</strong>.
       </p>
-      <div style="background:#0f0a1e;border:1px solid rgba(99,102,241,0.4);border-radius:12px;padding:20px;margin-bottom:24px;">
-        <p style="margin:0 0 10px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">🔐 Updated Credentials</p>
-        <p style="margin:0 0 6px;color:#94a3b8;font-size:13px;">Temp Password:
-          <span style="background:rgba(99,102,241,.2);color:#a5b4fc;font-family:monospace;font-weight:700;padding:3px 9px;border-radius:6px;">${newPassword}</span>
-        </p>
-        <p style="margin:0;color:#475569;font-size:11px;">⚠️ Your previous credentials have been reset.</p>
+      
+      <div style="background:#0f0a1e;border:1px solid rgba(99,102,241,0.4);border-radius:12px;padding:20px;margin-bottom:24px;text-align:left;">
+        <p style="margin:0 0 14px;color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">🔐 Updated Credentials</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${employeeId ? `
+          <tr>
+            <td style="color:#64748b;font-size:13px;padding:6px 0;text-align:left;vertical-align:middle;">Employee ID</td>
+            <td style="color:#e2e8f0;font-size:13px;font-family:monospace;font-weight:700;text-align:right;vertical-align:middle;">${employeeId}</td>
+          </tr>` : ""}
+          <tr>
+            <td style="color:#64748b;font-size:13px;padding:6px 0;text-align:left;vertical-align:middle;">Email</td>
+            <td style="color:#e2e8f0;font-size:13px;font-family:monospace;text-align:right;vertical-align:middle;">${inv.email}</td>
+          </tr>
+          <tr>
+            <td style="color:#64748b;font-size:13px;padding:6px 0;text-align:left;vertical-align:middle;">Temp Password</td>
+            <td style="text-align:right;vertical-align:middle;">
+              <span style="background:rgba(99,102,241,.2);color:#a5b4fc;font-family:monospace;font-weight:700;padding:4px 10px;border-radius:6px;display:inline-block;">${newPassword}</span>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:12px 0 0;color:#475569;font-size:11px;">⚠️ Your previous credentials have been reset. Don't share these credentials.</p>
       </div>
+      
       <div style="text-align:center;margin-bottom:24px;">
         <a href="${setupLink}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:12px;">
           Set Up My Account →
         </a>
-        <p style="margin:10px 0 0;color:#475569;font-size:12px;">Expires <strong style="color:#94a3b8;">${expires}</strong></p>
+        <p style="margin:10px 0 0;color:#475569;font-size:12px;text-align:center;">Expires <strong style="color:#94a3b8;">${expires}</strong></p>
       </div>
     </td></tr>
     <tr><td style="background:#0f0a1e;border-top:1px solid rgba(255,255,255,.06);padding:18px 32px;text-align:center;">
-      <p style="margin:0;color:#4f46e5;font-size:14px;font-weight:800;">TaskFlow</p>
-      <p style="margin:4px 0 0;color:#334155;font-size:11px;">© ${new Date().getFullYear()} TaskFlow. All rights reserved.</p>
+      <p style="margin:0;color:#4f46e5;font-size:14px;font-weight:800;text-align:center;">Strideo</p>
+      <p style="margin:4px 0 0;color:#334155;font-size:11px;text-align:center;">© ${new Date().getFullYear()} Strideo. All rights reserved.</p>
     </td></tr>
   </table>
   </td></tr>
 </table>
-</body></html>`;
+</body>
+</html>`;
 
     const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -159,13 +225,13 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         sender:  { name: SENDER_NAME, email: SENDER_EMAIL },
         to:      [{ email: inv.email, name: inv.name || inv.email }],
-        subject: `Reminder: Set up your ${workspaceName} account on TaskFlow`,
+        subject: `Reminder: Set up your ${workspaceName} account on Strideo`,
         htmlContent,
         tags:    ["employee-invite-reminder"],
       }),
     });
 
-    return json({ success: true, emailSent: brevoRes.ok });
+    return json({ success: true, emailSent: brevoRes.ok, employeeId });
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unexpected error";

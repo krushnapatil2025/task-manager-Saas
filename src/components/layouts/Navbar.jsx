@@ -127,6 +127,14 @@ const Navbar = ({ activeMenu }) => {
           }
           refresh();
         })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' },
+        () => {
+          refresh();
+        })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_room_members', filter: `user_id=eq.${user.id}` },
+        () => {
+          refresh();
+        })
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [user?.id, brand.companyName]);

@@ -6,6 +6,7 @@ import moment from "moment";
 
 
 const TaskCard = ({
+    taskNumber,
     title,
     description,
     priority,
@@ -17,12 +18,13 @@ const TaskCard = ({
     attachmentCount,
     completedTodoCount,
     todoChecklist,
-    recurrenceRule,
     onClick
 }) => {
 
     const getStatusTagColor = () => {
         switch (status) {
+            case "Pending":
+                return "text-amber-600 bg-amber-50 border border-amber-500/10";
             case "In Progress":
                 return "text-cyan-500 bg-cyan-50 border border-cyan-500/10";
             case "Completed":
@@ -56,11 +58,6 @@ const TaskCard = ({
                     <div className={`text-[10px] font-bold tracking-wide uppercase ${getPriorityTagColor()} px-3 py-1 rounded-full`}>
                         {priority}
                     </div>
-                    {recurrenceRule && (
-                        <div className="text-[10px] font-bold tracking-wide uppercase text-indigo-700 bg-indigo-50 border border-indigo-200/40 px-3 py-1 rounded-full flex items-center gap-0.5">
-                            🔁 {recurrenceRule}
-                        </div>
-                    )}
                 </div>
                 {attachmentCount > 0 && (
                     <div className="flex items-center gap-1 text-slate-400 font-semibold text-xs">
@@ -78,7 +75,12 @@ const TaskCard = ({
                         : "border-indigo-500"
                     }`}
             >
-                <h4 className="text-sm font-bold text-slate-800 line-clamp-1 leading-snug">
+                <h4 className="text-sm font-bold text-slate-800 line-clamp-1 leading-snug flex items-center gap-1.5">
+                    {taskNumber && (
+                        <span className="text-[10px] bg-slate-100 border border-slate-200 text-slate-655 px-1.5 py-0.5 rounded font-mono font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
+                            {taskNumber}
+                        </span>
+                    )}
                     {title}
                 </h4>
                 <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-[18px] font-medium">

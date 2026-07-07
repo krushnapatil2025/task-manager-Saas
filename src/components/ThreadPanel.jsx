@@ -34,52 +34,132 @@ const ThreadPanel = ({ roomId, parentMessage, onClose, user, members = [], onlin
     if (!parentMessage?.id) return;
 
     // Listen for new replies
+    console.log(`[ThreadPanel] Initiating subscription setup for parentMessage.id: ${parentMessage.id}`);
     const channel = supabase
-      .channel(`chat-thread-${parentMessage.id}`)
+      .channel(`chat-thread-${parentMessage.id}-${Date.now()}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'chat_messages',
-        filter: `thread_id=eq.${parentMessage.id}`,
       }, async (payload) => {
-        const { data } = await supabase
-          .from('chat_messages')
-          .select(`id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
-                   sender:profiles!sender_id(name, profile_image_url),
-                   reply_to:reply_to_id(
-                     id, content, type, file_url,
-                     sender:profiles!sender_id(name)
-                   )`)
-          .eq('id', payload.new.id)
-          .single();
-        if (data) {
-          setReplies(prev => {
-            if (prev.some(r => r.id === data.id)) return prev;
-            return [...prev, normalizeMsg(data)];
-          });
+        console.log('[ThreadPanel] Realtime INSERT event received:', payload);
+        if (!payload.new) return;
+
+        const eventThreadId = String(payload.new.thread_id).toLowerCase();
+        const activeThreadId = String(parentMessage.id).toLowerCase();
+
+        if (eventThreadId !== activeThreadId) {
+          console.log(`[ThreadPanel] Thread ID mismatch on INSERT. Event thread: ${eventThreadId}, Active thread: ${activeThreadId}`);
+          return;
         }
+
+        console.log('[ThreadPanel] Thread matched. Fetching reply details for ID:', payload.new.id);
+        
+        let data = null;
+        try {
+          const res = await supabase
+            .from('chat_messages')
+            .select(`id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+                     sender:profiles!sender_id(name, profile_image_url),
+                     reply_to:reply_to_id(
+                       id, content, type, file_url,
+                       sender:profiles!sender_id(name)
+                     )`)
+            .eq('id', payload.new.id)
+            .single();
+          if (res.error) {
+            console.warn('[ThreadPanel] Error fetching thread reply for realtime INSERT:', res.error);
+          } else {
+            data = res.data;
+          }
+        } catch (err) {
+          console.warn('[ThreadPanel] Exception fetching thread reply for realtime INSERT:', err);
+        }
+
+        const msg = data ? normalizeMsg(data) : normalizeMsg({
+          ...payload.new,
+          sender: {
+            name: payload.new.sender_id === user?.id ? (user?.name || 'You') : 'Someone',
+            profile_image_url: payload.new.sender_id === user?.id ? (user?.profileImageUrl || null) : null
+          },
+          reply_to: null,
+          reads: [],
+          chat_message_reactions: []
+        });
+
+        console.log('[ThreadPanel] Appending reply to state:', msg);
+        setReplies(prev => {
+          if (prev.some(r => r.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
       })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'chat_messages',
-        filter: `thread_id=eq.${parentMessage.id}`,
       }, async (payload) => {
-        const { data } = await supabase
-          .from('chat_messages')
-          .select(`id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
-                   sender:profiles!sender_id(name, profile_image_url),
-                   reply_to:reply_to_id(
-                     id, content, type, file_url,
-                     sender:profiles!sender_id(name)
-                   )`)
-          .eq('id', payload.new.id)
-          .single();
-        if (data) {
-          setReplies(prev => prev.map(r => r.id === data.id ? normalizeMsg(data) : r));
+        console.log('[ThreadPanel] Realtime UPDATE event received:', payload);
+        if (!payload.new) return;
+
+        const eventThreadId = payload.new.thread_id ? String(payload.new.thread_id).toLowerCase() : null;
+        const activeThreadId = String(parentMessage.id).toLowerCase();
+
+        if (eventThreadId && eventThreadId !== activeThreadId) {
+          console.log(`[ThreadPanel] Thread ID mismatch on UPDATE. Event thread: ${eventThreadId}, Active thread: ${activeThreadId}`);
+          return;
         }
+
+        let data = null;
+        try {
+          const res = await supabase
+            .from('chat_messages')
+            .select(`id, content, type, mentions, file_url, edited_at, created_at, sender_id, reactions, thread_id, reply_count, reply_to_id,
+                     sender:profiles!sender_id(name, profile_image_url),
+                     reply_to:reply_to_id(
+                       id, content, type, file_url,
+                       sender:profiles!sender_id(name)
+                     )`)
+            .eq('id', payload.new.id)
+            .single();
+          if (res.error) {
+            console.warn('[ThreadPanel] Error fetching thread reply for realtime UPDATE:', res.error);
+          } else {
+            data = res.data;
+          }
+        } catch (err) {
+          console.warn('[ThreadPanel] Exception fetching thread reply for realtime UPDATE:', err);
+        }
+
+        if (data && String(data.thread_id).toLowerCase() !== activeThreadId) {
+          console.log(`[ThreadPanel] Thread ID mismatch after fetch. Fetched thread: ${data.thread_id}, Active thread: ${activeThreadId}`);
+          return;
+        }
+        if (!data && eventThreadId === null) {
+          let replyExists = false;
+          setReplies(prev => {
+            replyExists = prev.some(r => r.id === payload.new.id);
+            return prev;
+          });
+          if (!replyExists) return;
+        }
+
+        const msg = data ? normalizeMsg(data) : normalizeMsg({
+          ...payload.new,
+          sender: {
+            name: payload.new.sender_id === user?.id ? (user?.name || 'You') : 'Someone',
+            profile_image_url: payload.new.sender_id === user?.id ? (user?.profileImageUrl || null) : null
+          },
+          reply_to: null,
+          reads: [],
+          chat_message_reactions: []
+        });
+
+        console.log('[ThreadPanel] Updating reply in state:', msg);
+        setReplies(prev => prev.map(r => r.id === msg.id ? msg : r));
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log(`[ThreadPanel] Subscription Status for thread ${parentMessage.id}:`, status, err || '');
+      });
 
     return () => supabase.removeChannel(channel);
   }, [parentMessage?.id, fetchReplies]);

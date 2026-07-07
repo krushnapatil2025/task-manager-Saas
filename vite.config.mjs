@@ -76,18 +76,24 @@ export default defineConfig({
       }
     })
   ],
+  preview: {
+    host: '0.0.0.0',
+    port: 4173,
+    allowedHosts: ['task.cicdprosystems.com', 'localhost'],
+  },
   server: {
     port: 5173,
+    allowedHosts: ['task.cicdprosystems.com', 'localhost'],
     headers: {
       "Content-Security-Policy": [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://accounts.google.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: blob: https: http:",
-        "connect-src 'self' https://gxfnmpqbuamzilgeogfh.supabase.co https://*.supabase.co wss://*.supabase.co https://api.brevo.com https://www.googleapis.com https://oauth2.googleapis.com https://drive.google.com https://tmpfiles.org https://api.groq.com https://api.microlink.io https://g.tenor.com https://tenor.googleapis.com",
+        "connect-src 'self' https://gxfnmpqbuamzilgeogfh.supabase.co https://*.supabase.co wss://*.supabase.co https://api.brevo.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com https://drive.google.com https://tmpfiles.org https://api.groq.com https://api.microlink.io https://g.tenor.com https://tenor.googleapis.com",
         "worker-src 'self' blob:",
-        "frame-src 'self' https://drive.google.com",
+        "frame-src 'self' https://drive.google.com https://accounts.google.com",
         "media-src 'self' blob: data: https: http:"
       ].join('; '),
     },

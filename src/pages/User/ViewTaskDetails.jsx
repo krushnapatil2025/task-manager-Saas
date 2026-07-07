@@ -37,7 +37,7 @@ const STATUS_CYCLE = {
 };
 
 const STATUS_COLOR = {
-  'Pending':     'text-violet-600 bg-violet-50 border-violet-200',
+  'Pending':     'text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-955/15 dark:text-amber-400 dark:border-amber-900/30',
   'In Progress': 'text-cyan-600   bg-cyan-50   border-cyan-200',
   'Completed':   'text-lime-600   bg-lime-50   border-lime-200',
 };
@@ -66,11 +66,12 @@ const ViewTaskDetails = () => {
     if (!id) return;
     try {
       setLoading(true);
-      const [raw, taskFiles] = await Promise.all([
-        getTaskById(id),
-        getTaskFiles(id),
-      ]);
-      setTask(normalizeTask(raw));
+      const raw = await getTaskById(id);
+      const normalized = normalizeTask(raw);
+      setTask(normalized);
+
+      // Fetch files using the true UUID (normalized.id)
+      const taskFiles = await getTaskFiles(normalized.id);
       setFiles(taskFiles);
     } catch (err) {
       console.error('ViewTaskDetails load error:', err);
@@ -84,7 +85,7 @@ const ViewTaskDetails = () => {
   useRealtimeTasks(workspace?.id, {
     onTaskChange: (payload) => {
       // Only reload if the changed row is THIS task
-      if (payload?.new?.id === id || payload?.old?.id === id) {
+      if (payload?.new?.id === task?.id || payload?.old?.id === task?.id) {
         loadTask();
       }
     },
@@ -98,17 +99,27 @@ const ViewTaskDetails = () => {
     const next    = STATUS_CYCLE[task.status] || 'Pending';
     const oldTask = { ...task };
     setUpdatingStatus(true);
+    const updatedChecklist = (task.todoChecklist || []).map((c) => ({
+      ...c,
+      completed: next === 'Completed',
+    }));
+    const total          = updatedChecklist.length;
+    const completedCount = updatedChecklist.filter((c) => c.completed).length;
+    const newProgress    = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+    const newStatus      = completedCount === 0       ? 'Pending'
+                         : completedCount === total   ? 'Completed'
+                         :                             'In Progress';
 
     // Optimistic update
     setTask((prev) => ({ ...prev, status: next }));
     try {
-      await updateTaskStatus(id, next);
+      await updateTaskStatus(task.id, next);
       toast.success(`Status → ${next}`);
 
       // Fire automation rules
-      triggerAutomation('task_status_changed', { taskId: id, task: { ...task, status: next }, oldTask });
+      triggerAutomation('task_status_changed', { taskId: task.id, task: { ...task, status: next }, oldTask });
       if (next === 'Completed') {
-        triggerAutomation('task_completed', { taskId: id, task: { ...task, status: next }, oldTask });
+        triggerAutomation('task_completed', { taskId: task.id, task: { ...task, status: next }, oldTask });
       }
     } catch (err) {
       toast.error('Failed to update status');
@@ -211,7 +222,14 @@ const ViewTaskDetails = () => {
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
               {/* Title + status */}
               <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-                <h1 className="text-xl font-bold text-gray-900 flex-1">{task.title}</h1>
+                <h1 className="text-xl font-bold text-gray-900 flex-1 flex items-center gap-2">
+                  {task.taskNumber && (
+                    <span className="text-xs bg-slate-100 border border-slate-200 text-slate-650 px-2 py-0.5 rounded font-mono font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
+                      {task.taskNumber}
+                    </span>
+                  )}
+                  {task.title}
+                </h1>
 
                 {/* Status badge — click to cycle */}
                 <button
@@ -362,7 +380,7 @@ const ViewTaskDetails = () => {
             {workspace?.id && user?.id && (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                 <TaskFileUploader
-                  taskId={id}
+                  taskId={task.id}
                   workspaceId={workspace.id}
                   uploadedBy={user.id}
                   files={files}
@@ -376,11 +394,11 @@ const ViewTaskDetails = () => {
           <div className="lg:col-span-1">
             {/* Time Tracker */}
             <div className="bg-white rounded-2xl border border-slate-200/50 shadow-sm p-5 mb-4">
-              <TaskTimer taskId={id} />
+              <TaskTimer taskId={task.id} />
             </div>
             {/* Real-time Chat */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" style={{ minHeight: 420 }}>
-              <TaskChatPanel taskId={id} taskTitle={task?.title || 'Task'} />
+              <TaskChatPanel taskId={task.id} taskTitle={task?.title || 'Task'} />
             </div>
           </div>
         </div>

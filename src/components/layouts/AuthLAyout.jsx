@@ -1,7 +1,7 @@
 import React from 'react';
 import { LuCircleCheck } from 'react-icons/lu';
 const AuthLayout = ({ children, title = "Sign In", subtitle = "Access your workspace dashboard" }) => {
-  const companyName = 'TaskFlow';
+  const companyName = 'Strideo';
 
   return (
     <div className="flex min-h-screen bg-[#fafbfd] font-sans antialiased">
@@ -13,12 +13,8 @@ const AuthLayout = ({ children, title = "Sign In", subtitle = "Access your works
 
         {/* Top Branding Logo */}
         <div className="relative z-10">
-          <span className="text-xs font-black tracking-tight flex items-center gap-2 text-white">
-            <span 
-              className="w-6 h-6 rounded flex items-center justify-center text-white font-black text-[10px] bg-gradient-to-br from-indigo-500 to-violet-650"
-            >
-              T
-            </span>
+          <span className="text-xs font-black tracking-tight flex items-center gap-2.5 text-white">
+            <img src="/logo.png" className="w-6 h-6 object-contain rounded" alt="Logo" />
             <span>{companyName}</span>
           </span>
         </div>
@@ -56,12 +52,8 @@ const AuthLayout = ({ children, title = "Sign In", subtitle = "Access your works
         <div className="w-full max-w-[420px] bg-white border border-slate-250/70 shadow-xl shadow-slate-100/50 rounded-3xl p-8 md:p-10">
           
           {/* Mobile Header Branding (Hidden on desktop) */}
-          <div className="md:hidden flex items-center gap-2 mb-6 select-none justify-center">
-            <span 
-              className="w-6 h-6 rounded flex items-center justify-center text-white font-black text-[10px] bg-gradient-to-br from-indigo-500 to-violet-650"
-            >
-              T
-            </span>
+          <div className="md:hidden flex items-center gap-2.5 mb-6 select-none justify-center">
+            <img src="/logo.png" className="w-6 h-6 object-contain rounded" alt="Logo" />
             <span className="text-xs font-black text-slate-800">{companyName}</span>
           </div>
 
@@ -70,6 +62,11 @@ const AuthLayout = ({ children, title = "Sign In", subtitle = "Access your works
             <p className="text-xs font-semibold text-slate-450 mt-1">{subtitle}</p>
           </div>
           {children}
+          
+          <div className="mt-8 pt-4 border-t border-slate-100/60 text-center flex flex-col sm:flex-row items-center justify-between gap-2 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+            <p>© 2026 strideo . All rights reserved.</p>
+            <p>Built by <a href="https://www.cicdtech.in/" target="_blank" rel="noopener noreferrer" className="text-indigo-650 hover:underline">CICD Tech</a></p>
+          </div>
         </div>
       </div>
     </div>
