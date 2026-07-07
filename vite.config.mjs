@@ -79,11 +79,11 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: 4173,
-    allowedHosts: ['task.cicdprosystems.com', 'localhost'],
+    allowedHosts: ['strideo.cicdprosystems.com', 'task.cicdprosystems.com', 'localhost'],
   },
   server: {
     port: 5173,
-    allowedHosts: ['task.cicdprosystems.com', 'localhost'],
+    allowedHosts: ['strideo.cicdprosystems.com', 'task.cicdprosystems.com', 'localhost'],
     headers: {
       "Content-Security-Policy": [
         "default-src 'self'",
