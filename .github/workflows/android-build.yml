@@ -29,6 +29,21 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.VITE_GOOGLE_SERVICE_ACCOUNT_KEY }}
+          VITE_GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.VITE_GOOGLE_DRIVE_FOLDER_ID }}
+          VITE_GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_DRIVE_CLIENT_ID }}
+          VITE_GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_DRIVE_CLIENT_SECRET }}
+          VITE_GOOGLE_DRIVE_REFRESH_TOKEN: ${{ secrets.VITE_GOOGLE_DRIVE_REFRESH_TOKEN }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_ADMIN_INVITE_TOKEN: ${{ secrets.VITE_ADMIN_INVITE_TOKEN }}
+          VITE_BREVO_API_KEY: ${{ secrets.VITE_BREVO_API_KEY }}
+          VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
+          VITE_SENDER_EMAIL: ${{ secrets.VITE_SENDER_EMAIL }}
+          VITE_SENDER_NAME: ${{ secrets.VITE_SENDER_NAME }}
+          VITE_SUPER_ADMIN_EMAIL: ${{ secrets.VITE_SUPER_ADMIN_EMAIL }}
+          VITE_SUPER_ADMIN_PASSWORD: ${{ secrets.VITE_SUPER_ADMIN_PASSWORD }}
+          VITE_SUPER_ADMIN_SECRET: ${{ secrets.VITE_SUPER_ADMIN_SECRET }}
+          VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
         run: npm run build
 
       - name: Set up JDK 21
