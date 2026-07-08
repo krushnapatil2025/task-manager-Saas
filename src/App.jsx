@@ -11,6 +11,7 @@ const AcceptInvite = lazy(() => import('./pages/Auth/AcceptInvite'));
 const SetupAccount = lazy(() => import('./pages/Auth/SetupAccount'));
 const SetupExpired = lazy(() => import('./pages/Auth/SetupExpired'));
 const RegistrationPending = lazy(() => import('./pages/Auth/RegistrationPending'));
+const ForgotPassword = lazy(() => import('./pages/Auth/ForgotPassword'));
 
 // ── Public (lazy) ────────────────────────────────────────────────────────────
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -237,6 +238,7 @@ const App = () => (
                   <Route path="/admin/register" element={<AdminRegister />} />
                   <Route path="/setup-account" element={<SetupAccount />} />
                   <Route path="/setup-expired" element={<SetupExpired />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/auth/callback" element={<OAuthCallback />} />
                   <Route path="/invite/:token" element={<AcceptInvite />} />
                   <Route path="/public-board/:token" element={<PublicBoard />} />
