@@ -6,6 +6,8 @@ import { validateEmail } from '../../utils/helper';
 import { BRAND_COLORS, DEFAULT_BRAND, applyCSSVariables } from '../../context/BrandContext';
 import { uploadFileToGoogleDrive } from '../../services/chatService';
 import { sendRegistrationReceivedEmail } from '../../services/companyApprovalEmailService';
+import { COUNTRIES } from '../../utils/countries';
+import CountrySelector from '../../components/CountrySelector';
 import toast from 'react-hot-toast';
 import {
   LuLoaderCircle, LuBuilding2, LuUser, LuMail, LuPhone,
@@ -51,6 +53,7 @@ const AdminRegister = () => {
   // Step 0 — account
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
+  const [country,  setCountry]  = useState(COUNTRIES[0]); // default India
   const [phone,    setPhone]    = useState('');
   const [password, setPassword] = useState('');
 
@@ -106,6 +109,9 @@ const AdminRegister = () => {
     if (step === 0) {
       if (!name.trim())             return setError('Full name is required.'),   false;
       if (!validateEmail(email))    return setError('Enter a valid email.'),     false;
+      if (!phone.trim())            return setError('Phone number is required.'), false;
+      const phoneClean = phone.replace(/\D/g, '');
+      if (phoneClean.length !== 10) return setError('Phone number must be exactly 10 digits.'), false;
       if (password.length < 8)      return setError('Password must be at least 8 characters.'), false;
     }
     if (step === 1) {
@@ -162,11 +168,13 @@ const AdminRegister = () => {
         .replace(/^-|-$/g, '')
         .slice(0, 48);
 
+      const fullPhoneNumber = phone ? `${country.dial_code}${phone}` : null;
+
       // 3. Call bootstrap_company_admin RPC
       const { data: rpcData, error: rpcErr } = await supabase.rpc('bootstrap_company_admin', {
         p_user_id:        userId,
         p_name:           name,
-        p_phone:          phone || null,
+        p_phone:          fullPhoneNumber,
         p_company_name:   company,
         p_company_industry: industry,
         p_company_size:   size,
@@ -185,7 +193,7 @@ const AdminRegister = () => {
         await supabase.from('profiles').upsert({
           id:               userId,
           name,
-          phone:            phone || null,
+          phone:            fullPhoneNumber,
           job_profile:      'company_admin',
           company_name:     company,
           company_industry: industry,
@@ -300,7 +308,7 @@ const AdminRegister = () => {
         {/* ── Step 0: Account ── */}
         {step === 0 && (
           <div className="flex flex-col gap-4">
-            <Field label="Full Name" icon={<LuUser size={13} />}>
+            <Field label="Full Name *" icon={<LuUser size={13} />}>
               <input
                 id="reg-name"
                 type="text"
@@ -312,7 +320,7 @@ const AdminRegister = () => {
               />
             </Field>
 
-            <Field label="Work Email" icon={<LuMail size={13} />}>
+            <Field label="Work Email *" icon={<LuMail size={13} />}>
               <input
                 id="reg-email"
                 type="email"
@@ -324,19 +332,23 @@ const AdminRegister = () => {
               />
             </Field>
 
-            <Field label="Phone (optional)" icon={<LuPhone size={13} />}>
-              <input
-                id="reg-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                className="form-input mt-0"
-              />
+             <Field label="Phone Number *" icon={<LuPhone size={13} />}>
+              <div className="flex items-center gap-2 mt-1">
+                <CountrySelector value={country} onChange={setCountry} />
+                <input
+                  id="reg-phone"
+                  type="tel"
+                  maxLength={10}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                  placeholder="98765 43210"
+                  className="form-input flex-1 !mt-0 h-[38px]"
+                />
+              </div>
             </Field>
 
             <div>
-              <Field label="Password" icon={<LuLock size={13} />}>
+              <Field label="Password *" icon={<LuLock size={13} />}>
                 <div className="relative">
                   <input
                     id="reg-password"
@@ -350,7 +362,7 @@ const AdminRegister = () => {
                   <button
                     type="button"
                     onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-655"
                   >
                     {showPw ? <LuEyeOff size={15} /> : <LuEye size={15} />}
                   </button>
@@ -386,7 +398,7 @@ const AdminRegister = () => {
         {/* ── Step 1: Company ── */}
         {step === 1 && (
           <div className="flex flex-col gap-4">
-            <Field label="Company Name" icon={<LuBuilding2 size={13} />}>
+            <Field label="Company Name *" icon={<LuBuilding2 size={13} />}>
               <input
                 id="reg-company"
                 type="text"
@@ -398,7 +410,9 @@ const AdminRegister = () => {
             </Field>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500 font-semibold">Industry</label>
+              <label className="text-xs text-slate-500 font-semibold">
+                Industry <span className="text-red-500 font-black">*</span>
+              </label>
               <select
                 id="reg-industry"
                 value={industry}
@@ -413,7 +427,9 @@ const AdminRegister = () => {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-500 font-semibold">Company Size</label>
+              <label className="text-xs text-slate-500 font-semibold">
+                Company Size <span className="text-red-500 font-black">*</span>
+              </label>
               <div className="grid grid-cols-5 gap-2">
                 {COMPANY_SIZES.map((s) => (
                   <button
@@ -422,7 +438,7 @@ const AdminRegister = () => {
                     onClick={() => setSize(s)}
                     className={`py-2 rounded-xl text-xs font-bold border transition-all duration-155 cursor-pointer ${
                       size === s
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100'
+                        ? 'bg-indigo-650 text-white border-indigo-600 shadow-md shadow-indigo-100'
                         : 'bg-slate-50 text-slate-650 border-slate-200 hover:border-slate-350 hover:bg-slate-100/60'
                     }`}
                   >
@@ -436,7 +452,7 @@ const AdminRegister = () => {
               <button
                 type="button"
                 onClick={handleBack}
-                className="flex-1 py-2.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-center justify-center gap-1"
+                className="flex-1 py-2.5 text-xs font-semibold text-slate-605 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-center justify-center gap-1"
               >
                 <LuChevronLeft size={14} /> Back
               </button>
@@ -454,7 +470,7 @@ const AdminRegister = () => {
         {/* ── Step 2: Branding Settings ── */}
         {step === 2 && (
           <div className="flex flex-col gap-4">
-            <Field label="Choose Workspace Brand Color" icon={<LuPalette size={13} />}>
+            <Field label="Choose Workspace Brand Color *" icon={<LuPalette size={13} />}>
               <div className="grid grid-cols-5 gap-3 mt-1.5">
                 {BRAND_COLORS.map((c) => (
                   <button
@@ -482,7 +498,7 @@ const AdminRegister = () => {
             {/* Company Logo Upload */}
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-500 font-semibold">Company Logo (Optional)</label>
-              <div className="flex items-center gap-4 bg-slate-50/50 border border-slate-100 p-3 rounded-2xl">
+              <div className="flex items-center gap-4 bg-slate-50/55 border border-slate-100 p-3 rounded-2xl">
                 <div className="relative w-12 h-12 bg-white border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
                   {logoUploading ? (
                     <LuLoaderCircle className="animate-spin text-indigo-650" size={18} />
@@ -542,7 +558,7 @@ const AdminRegister = () => {
                     {company ? company[0].toUpperCase() : 'A'}
                   </span>
                 )}
-                <span className="text-xs font-black text-slate-805">{company || 'My Company'}</span>
+                <span className="text-xs font-black text-slate-850">{company || 'My Company'}</span>
               </div>
               <div className="flex gap-2 mt-0.5">
                 <button
@@ -586,7 +602,7 @@ const AdminRegister = () => {
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 divide-y divide-slate-150/60 overflow-hidden">
               <SummaryRow label="Name"     value={name} />
               <SummaryRow label="Email"    value={email} />
-              <SummaryRow label="Phone"    value={phone || '—'} />
+              <SummaryRow label="Phone"    value={phone ? `${country.dial_code} ${phone}` : '—'} />
               <SummaryRow label="Company"  value={company} />
               <SummaryRow label="Industry" value={industry} />
               <SummaryRow label="Size"     value={size} />
@@ -638,18 +654,23 @@ const AdminRegister = () => {
 };
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────
-const Field = ({ label, icon, children }) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 select-none">
-      <span className="text-slate-400">{icon}</span> {label}
-    </label>
-    {children}
-  </div>
-);
+const Field = ({ label, icon, children }) => {
+  const isRequired = label.endsWith(' *');
+  const cleanLabel = isRequired ? label.slice(0, -2) : label;
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 select-none">
+        <span className="text-slate-400">{icon}</span>
+        {cleanLabel} {isRequired && <span className="text-red-500 font-black ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+};
 
 const SummaryRow = ({ label, value }) => (
   <div className="flex items-center justify-between px-4 py-2.5 bg-white">
-    <span className="text-xs text-slate-450 font-bold">{label}</span>
+    <span className="text-xs text-slate-455 font-bold">{label}</span>
     <span className="text-xs text-slate-800 font-extrabold">{value}</span>
   </div>
 );

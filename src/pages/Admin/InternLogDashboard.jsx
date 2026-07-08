@@ -306,7 +306,9 @@ const InternLogDashboard = () => {
     const tagCounts = {};
     analyticsLogs.forEach(log => {
       if (log.tags && Array.isArray(log.tags)) {
+        const hasCustomOther = log.tags.some(t => t.startsWith('Other:'));
         log.tags.forEach(tag => {
+          if (hasCustomOther && tag === 'Other') return;
           tagCounts[tag] = (tagCounts[tag] || 0) + 1;
         });
       }
@@ -1087,11 +1089,18 @@ const InternLogDashboard = () => {
                       Tags
                     </h4>
                     <div className="flex flex-wrap gap-1">
-                      {activeLog.tags.map(tag => (
-                        <span key={tag} className="px-2 py-0.5 bg-indigo-50/50 dark:bg-indigo-955/15 border border-indigo-100/40 dark:border-indigo-900/35 text-indigo-650 dark:text-indigo-400 text-[10px] font-bold rounded-lg">
-                          {tag}
-                        </span>
-                      ))}
+                      {(() => {
+                        const tagsToRender = activeLog.tags || [];
+                        const hasCustomOther = tagsToRender.some(t => t.startsWith('Other:'));
+                        const filtered = hasCustomOther 
+                          ? tagsToRender.filter(t => t !== 'Other')
+                          : tagsToRender;
+                        return filtered.map(tag => (
+                          <span key={tag} className="px-2 py-0.5 bg-indigo-50/50 dark:bg-indigo-955/15 border border-indigo-100/40 dark:border-indigo-900/35 text-indigo-650 dark:text-indigo-400 text-[10px] font-bold rounded-lg">
+                            {tag}
+                          </span>
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}

@@ -229,11 +229,11 @@ const Navbar = ({ activeMenu }) => {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4 bg-white dark:bg-zinc-950 border-b border-gray-150 dark:border-zinc-800/80 h-[52px] px-6 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+      <div className="flex items-center justify-between gap-2 sm:gap-4 bg-white dark:bg-zinc-950 border-b border-gray-150 dark:border-zinc-800/80 h-[52px] px-4 sm:px-6 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
         {/* ── Left: hamburger + brand ── */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
-            className="block lg:hidden text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition"
+            className="block lg:hidden text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition mr-1"
             onClick={() => setOpenSideMenu((o) => !o)}
             aria-label="Toggle menu"
           >
@@ -242,17 +242,17 @@ const Navbar = ({ activeMenu }) => {
               : <HiOutlineMenu className="text-xl" />}
           </button>
 
-          <div className="flex items-center gap-2.5 select-none">
+          <div className="flex items-center gap-2 select-none">
             {brand.companyLogo ? (
               <img
                 src={brand.companyLogo}
                 alt="Logo"
-                className="w-[30px] h-[30px] rounded-lg object-contain border border-slate-200/40 shadow-sm"
+                className="w-7 h-7 rounded-lg object-contain border border-slate-200/40 shadow-sm"
               />
             ) : (
               <div 
                 style={{ backgroundColor: brand.brandColor }}
-                className="w-[30px] h-[30px] rounded-lg flex items-center justify-center shadow-sm text-white font-black text-xs"
+                className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm text-white font-black text-xs"
               >
                 {brand.companyName?.[0]?.toUpperCase() || 'T'}
               </div>
@@ -272,11 +272,11 @@ const Navbar = ({ activeMenu }) => {
         <WorkspaceSwitcher />
 
         {/* ── Right: AI button + chat badge + notification bell ── */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {user && (
             <button
               id="global-search-trigger"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-650 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200/60 dark:bg-zinc-900/60 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-800/80 cursor-pointer transition-all duration-200 px-2.5 py-1.5 rounded-xl"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-655 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200/60 dark:bg-zinc-900/60 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-800/80 cursor-pointer transition-all duration-200 px-2.5 py-1.5 rounded-xl"
               onClick={() => setSearchOpen(true)}
               title="Global Smart Search (Ctrl+P)"
             >
@@ -289,7 +289,7 @@ const Navbar = ({ activeMenu }) => {
           {user && (
             <button
               id="ai-command-bar-trigger"
-              className="ai-nav-btn"
+              className="hidden sm:inline-flex ai-nav-btn"
               onClick={() => setAiOpen(true)}
               title="Open AI Assistant (Ctrl+K)"
             >

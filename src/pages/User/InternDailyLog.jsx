@@ -43,6 +43,7 @@ const InternDailyLog = () => {
   const [blockers, setBlockers] = useState('');
   const [tomorrowPlan, setTomorrowPlan] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
+  const [otherTagText, setOtherTagText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Calendar State
@@ -69,6 +70,13 @@ const InternDailyLog = () => {
         setTomorrowPlan(log.tomorrow_plan || '');
         setSelectedTags(log.tags || []);
         
+        const otherTag = (log.tags || []).find(t => t.startsWith('Other: '));
+        if (otherTag) {
+          setOtherTagText(otherTag.substring(7));
+        } else {
+          setOtherTagText('');
+        }
+        
         try {
           const parsedTasks = typeof log.tasks_done === 'string' 
             ? JSON.parse(log.tasks_done) 
@@ -84,6 +92,7 @@ const InternDailyLog = () => {
         setBlockers('');
         setTomorrowPlan('');
         setSelectedTags([]);
+        setOtherTagText('');
       }
 
       // 2. Fetch history
@@ -116,9 +125,19 @@ const InternDailyLog = () => {
   };
 
   const handleToggleTag = (tag) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    );
+    if (tag === 'Other') {
+      const hasOther = selectedTags.includes('Other') || selectedTags.some(t => t.startsWith('Other:'));
+      if (hasOther) {
+        setSelectedTags(prev => prev.filter(t => t !== 'Other' && !t.startsWith('Other:')));
+        setOtherTagText('');
+      } else {
+        setSelectedTags(prev => [...prev, 'Other']);
+      }
+    } else {
+      setSelectedTags(prev => 
+        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+      );
+    }
   };
 
   const handleSave = async (statusType) => {
@@ -132,10 +151,24 @@ const InternDailyLog = () => {
         toast.error('Please fill in the learnings section.');
         return;
       }
+      const hasOther = selectedTags.includes('Other') || selectedTags.some(t => t.startsWith('Other:'));
+      if (hasOther && !otherTagText.trim()) {
+        toast.error('Please enter a custom category name for the Other tag.');
+        return;
+      }
     }
 
     setIsSubmitting(true);
     try {
+      let finalTags = selectedTags.filter(t => t !== 'Other' && !t.startsWith('Other:'));
+      const hasOther = selectedTags.includes('Other') || selectedTags.some(t => t.startsWith('Other:'));
+      if (hasOther) {
+        finalTags.push('Other');
+        if (otherTagText.trim()) {
+          finalTags.push(`Other: ${otherTagText.trim()}`);
+        }
+      }
+
       const payload = {
         workspace_id: workspace.id,
         user_id: user.id,
@@ -144,7 +177,7 @@ const InternDailyLog = () => {
         learnings,
         blockers,
         tomorrow_plan: tomorrowPlan,
-        tags: selectedTags,
+        tags: finalTags,
         status: statusType
       };
 
@@ -469,7 +502,9 @@ const InternDailyLog = () => {
                   </label>
                   <div className="flex flex-wrap gap-1.5">
                     {AVAILABLE_TAGS.map(tag => {
-                      const isSelected = selectedTags.includes(tag);
+                      const isSelected = tag === 'Other'
+                        ? (selectedTags.includes('Other') || selectedTags.some(t => t.startsWith('Other:')))
+                        : selectedTags.includes(tag);
                       return (
                         <button
                           key={tag}
@@ -487,6 +522,22 @@ const InternDailyLog = () => {
                       );
                     })}
                   </div>
+
+                  {(selectedTags.includes('Other') || selectedTags.some(t => t.startsWith('Other:'))) && (
+                    <div className="mt-3 space-y-1.5 animate-fadeIn">
+                      <label className="text-[10px] font-black uppercase text-slate-400 dark:text-zinc-550 block">
+                        Custom Category Name *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter custom work category (e.g. DevOps, Testing)"
+                        value={otherTagText}
+                        disabled={isTodayLocked}
+                        onChange={(e) => setOtherTagText(e.target.value)}
+                        className="w-full md:w-80 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-zinc-205 font-bold focus:border-indigo-500 focus:outline-none transition-all"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions Footer */}
@@ -802,21 +853,28 @@ const InternDailyLog = () => {
                   </div>
                 )}
 
-                {/* Tags */}
-                {selectedPastLog.tags && selectedPastLog.tags.length > 0 && (
-                  <div className="space-y-1.5">
-                    <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
-                      Tags
-                    </h4>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedPastLog.tags.map(tag => (
-                        <span key={tag} className="px-2 py-0.5 bg-brand-bg dark:bg-indigo-950/20 border border-brand-bg dark:border-indigo-900/30 text-brand-text dark:text-indigo-400 text-[10px] font-bold rounded-lg">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                 {/* Tags */}
+                 {selectedPastLog.tags && selectedPastLog.tags.length > 0 && (
+                   <div className="space-y-1.5">
+                     <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
+                       Tags
+                     </h4>
+                     <div className="flex flex-wrap gap-1">
+                       {(() => {
+                         const tagsToRender = selectedPastLog.tags || [];
+                         const hasCustomOther = tagsToRender.some(t => t.startsWith('Other:'));
+                         const filtered = hasCustomOther 
+                           ? tagsToRender.filter(t => t !== 'Other')
+                           : tagsToRender;
+                         return filtered.map(tag => (
+                           <span key={tag} className="px-2 py-0.5 bg-brand-bg dark:bg-indigo-950/20 border border-brand-bg dark:border-indigo-900/30 text-brand-text dark:text-indigo-400 text-[10px] font-bold rounded-lg">
+                             {tag}
+                           </span>
+                         ));
+                       })()}
+                     </div>
+                   </div>
+                 )}
 
                 {/* Manager Feedback */}
                 {(selectedPastLog.status === 'acknowledged' || selectedPastLog.status === 'flagged' || selectedPastLog.manager_note) && (
