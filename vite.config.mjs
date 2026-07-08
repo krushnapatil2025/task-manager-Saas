@@ -11,7 +11,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['Print.svg', 'logo.png'],
+      includeAssets: ['Print.svg', 'logo.png', 'logo-192.png', 'logo-512.png'],
       manifest: {
         name: 'Task Manager SaaS',
         short_name: 'TaskSaaS',
@@ -26,28 +26,33 @@ export default defineConfig({
           {
             src: '/logo.png',
             sizes: '1024x1024',
-            type: 'image/jpeg',
+            type: 'image/png',
             form_factor: 'wide',
             label: 'Strideo Desktop Dashboard'
           },
           {
             src: '/logo.png',
             sizes: '1024x1024',
-            type: 'image/jpeg',
+            type: 'image/png',
             form_factor: 'narrow',
             label: 'Strideo Mobile App'
           }
         ],
         icons: [
           {
-            src: '/logo.png',
-            sizes: '1024x1024',
-            type: 'image/jpeg'
+            src: '/logo-192.png',
+            sizes: '192x192',
+            type: 'image/png'
           },
           {
-            src: '/logo.png',
-            sizes: '1024x1024',
-            type: 'image/jpeg',
+            src: '/logo-512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: '/logo-512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any maskable'
           }
         ],
@@ -57,14 +62,14 @@ export default defineConfig({
             short_name: 'Tasks',
             description: 'Open task boards',
             url: '/admin/tasks',
-            icons: [{ src: '/logo.png', sizes: '1024x1024', type: 'image/jpeg' }]
+            icons: [{ src: '/logo-192.png', sizes: '192x192', type: 'image/png' }]
           },
           {
             name: 'Team Chat',
             short_name: 'Chat',
             description: 'Open chat channels',
             url: '/chat',
-            icons: [{ src: '/logo.png', sizes: '1024x1024', type: 'image/jpeg' }]
+            icons: [{ src: '/logo-192.png', sizes: '192x192', type: 'image/png' }]
           }
         ]
       },
