@@ -10,6 +10,9 @@
 
 set -e  # Exit immediately on any error
 
+# Limit Node memory to prevent Out Of Memory crashes on low-RAM EC2 instances
+export NODE_OPTIONS="--max-old-space-size=1024"
+
 echo "╔══════════════════════════════════════════╗"
 echo "║   Strideo — EC2 Production Deploy        ║"
 echo "╚══════════════════════════════════════════╝"
