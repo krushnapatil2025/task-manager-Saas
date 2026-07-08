@@ -25,15 +25,15 @@ export default defineConfig({
         screenshots: [
           {
             src: '/logo.png',
-            sizes: '512x512',
-            type: 'image/png',
+            sizes: '1024x1024',
+            type: 'image/jpeg',
             form_factor: 'wide',
             label: 'Strideo Desktop Dashboard'
           },
           {
             src: '/logo.png',
-            sizes: '512x512',
-            type: 'image/png',
+            sizes: '1024x1024',
+            type: 'image/jpeg',
             form_factor: 'narrow',
             label: 'Strideo Mobile App'
           }
@@ -41,18 +41,13 @@ export default defineConfig({
         icons: [
           {
             src: '/logo.png',
-            sizes: '192x192',
-            type: 'image/png'
+            sizes: '1024x1024',
+            type: 'image/jpeg'
           },
           {
             src: '/logo.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: '/logo.png',
-            sizes: '512x512',
-            type: 'image/png',
+            sizes: '1024x1024',
+            type: 'image/jpeg',
             purpose: 'any maskable'
           }
         ],
@@ -62,14 +57,14 @@ export default defineConfig({
             short_name: 'Tasks',
             description: 'Open task boards',
             url: '/admin/tasks',
-            icons: [{ src: '/logo.png', sizes: '192x192' }]
+            icons: [{ src: '/logo.png', sizes: '1024x1024', type: 'image/jpeg' }]
           },
           {
             name: 'Team Chat',
             short_name: 'Chat',
             description: 'Open chat channels',
             url: '/chat',
-            icons: [{ src: '/logo.png', sizes: '192x192' }]
+            icons: [{ src: '/logo.png', sizes: '1024x1024', type: 'image/jpeg' }]
           }
         ]
       },
