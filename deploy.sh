@@ -25,7 +25,7 @@ cd $APP_DIR || { echo "❌ Directory $APP_DIR not found. Run setup first."; exit
 # ── Step 2: Pull latest code from git ────────────────────────────────
 echo ""
 echo "► [2/5] Pulling latest code from git..."
-git pull origin main
+git pull origin krushna
 echo "✅ Code updated."
 
 # ── Step 3: Install/update dependencies ─────────────────────────────
