@@ -28,7 +28,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState('password'); // 'password' | 'magic'
 
-  const { updateUser } = useContext(UserContext);
+  const { user, updateUser } = useContext(UserContext);
   const navigate = useNavigate();
   const location = useLocation();
   const sessionExpired = location.state?.sessionExpired === true;
@@ -36,6 +36,14 @@ const Login = () => {
   useEffect(() => {
     applyCSSVariables(DEFAULT_BRAND);
   }, []);
+
+  // Redirect if already logged in (resolves mobile/SPA cold start race conditions)
+  useEffect(() => {
+    if (user) {
+      const isAdmin = user.role === 'admin' || user.job_profile === 'company_admin';
+      navigate(isAdmin ? '/admin/dashboard' : '/user/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const companyName = 'Strideo';
 
