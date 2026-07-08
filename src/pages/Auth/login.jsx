@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import AuthLayout from '../../components/layouts/AuthLAyout';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { DEFAULT_BRAND, applyCSSVariables } from '../../context/BrandContext';
 import Input from '../../components/Inputs/Input';
 import { validateEmail } from '../../utils/helper';
@@ -30,6 +30,8 @@ const Login = () => {
 
   const { updateUser } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const sessionExpired = location.state?.sessionExpired === true;
 
   useEffect(() => {
     applyCSSVariables(DEFAULT_BRAND);
@@ -126,6 +128,24 @@ const Login = () => {
 
   return (
     <AuthLayout title="Welcome Back" subtitle={`Sign in to your ${companyName} workspace`}>
+      {/* ── Session expired banner ── */}
+      {sessionExpired && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(251,146,60,0.12), rgba(239,68,68,0.08))',
+          border: '1px solid rgba(251,146,60,0.35)',
+          borderRadius: '12px',
+          padding: '10px 14px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}>
+          <span style={{ fontSize: '1.1rem' }}>⏱️</span>
+          <p style={{ fontSize: '0.8rem', color: '#92400e', fontWeight: 600, margin: 0 }}>
+            Your session expired after 6 hours of inactivity. Please sign in again.
+          </p>
+        </div>
+      )}
       {/* ── Tab switcher ── */}
       <div className="flex gap-2 bg-slate-50 border border-slate-200/50 rounded-xl p-1 mb-6">
         {['password', 'magic'].map((t) => (

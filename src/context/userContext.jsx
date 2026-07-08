@@ -1,8 +1,11 @@
 // @refresh reset
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 import { supabase } from "../utils/supabaseClient";
 
 export const UserContext = createContext();
+
+/** Key used by useSessionManager to track last user activity */
+export const SESSION_STORAGE_KEY = 'strideo_last_activity';
 
 // Valid values enforced by the check constraints on profiles.job_profile
 const VALID_JOB_PROFILES = new Set([
@@ -113,17 +116,23 @@ const UserProvider = ({ children }) => {
     if (session?.user) await loadProfile(session.user);
   };
 
-  /** Sign out and clear state. */
-  const clearUser = async () => {
+  /** Sign out and clear state. Also clears the idle session timestamp. */
+  const clearUser = useCallback(async () => {
+    try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch {}
     await supabase.auth.signOut();
     setUser(null);
-  };
+  }, []);
+
+  /** Manually extend the session by stamping Date.now() — called by useSessionManager. */
+  const extendSession = useCallback(() => {
+    try { localStorage.setItem(SESSION_STORAGE_KEY, String(Date.now())); } catch {}
+  }, []);
 
   // Keep the old `clearuser` name as an alias so existing components don't break
   const clearuser = clearUser;
 
   return (
-    <UserContext.Provider value={{ user, loading, updateUser, clearUser, clearuser }}>
+    <UserContext.Provider value={{ user, loading, updateUser, clearUser, clearuser, extendSession }}>
       {children}
     </UserContext.Provider>
   );

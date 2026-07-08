@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, Suspense, lazy } from 'react';
+import React, { useContext, useEffect, Suspense, lazy, useCallback } from 'react';
 import {
   BrowserRouter as Router, Routes, Route,
   Navigate, Outlet, useNavigate,
@@ -11,8 +11,6 @@ const AcceptInvite = lazy(() => import('./pages/Auth/AcceptInvite'));
 const SetupAccount = lazy(() => import('./pages/Auth/SetupAccount'));
 const SetupExpired = lazy(() => import('./pages/Auth/SetupExpired'));
 const RegistrationPending = lazy(() => import('./pages/Auth/RegistrationPending'));
-// CompanyPendingDashboard removed — blocked admins now stay in the app shell
-// at /admin/dashboard where the ApprovalStatusBanner shows their status.
 
 // ── Public (lazy) ────────────────────────────────────────────────────────────
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -78,6 +76,10 @@ const SecurityAudit = lazy(() => import('./pages/SuperAdmin/SecurityAudit'));
 import PrivateRoute from './routes/PrivateRoute';
 import SuperAdminRoute from './routes/SuperAdminRoute';
 
+// ── Session management ────────────────────────────────────────────────────────
+import { useSessionManager } from './hooks/useSessionManager';
+import SessionWarningModal from './components/SessionWarningModal';
+
 // ── Providers ─────────────────────────────────────────────────────────────────
 import UserProvider, { UserContext } from './context/userContext';
 import WorkspaceProvider, { WorkspaceContext } from './context/WorkspaceContext';
@@ -94,6 +96,43 @@ const PageLoader = () => (
   </div>
 );
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SessionGuard — activates idle-timeout tracking for authenticated users.
+// Super Admins are exempt. Renders the warning modal when countdown begins.
+// Must be rendered INSIDE <Router> so it can call useNavigate().
+// ─────────────────────────────────────────────────────────────────────────────
+const SessionGuard = ({ children }) => {
+  const { user, clearUser } = useContext(UserContext);
+  const navigate = useNavigate();
+
+  const isSuperAdmin = !!user && user.email === import.meta.env.VITE_SUPER_ADMIN_EMAIL;
+  const isActive     = !!user;
+
+  const handleExpire = useCallback(async () => {
+    await clearUser();
+    navigate('/login', { replace: true, state: { sessionExpired: true } });
+  }, [clearUser, navigate]);
+
+  const { showWarning, secondsLeft, extendSession } = useSessionManager({
+    onExpire:     handleExpire,
+    isActive,
+    isSuperAdmin,
+  });
+
+  return (
+    <>
+      {children}
+      {showWarning && (
+        <SessionWarningModal
+          secondsLeft={secondsLeft}
+          onStayLoggedIn={extendSession}
+          onLogoutNow={handleExpire}
+        />
+      )}
+    </>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OAuthCallback — /auth/callback (Google OAuth + Magic Link redirect target)
@@ -189,98 +228,99 @@ const App = () => (
       <UserProvider>
         <WorkspaceProvider>
           <Router>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                {/* ── Public ──────────────────────────────────────────────────── */}
+            <SessionGuard>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* ── Public ──────────────────────────────────────────────────── */}
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/admin/register" element={<AdminRegister />} />
+                  <Route path="/setup-account" element={<SetupAccount />} />
+                  <Route path="/setup-expired" element={<SetupExpired />} />
+                  <Route path="/auth/callback" element={<OAuthCallback />} />
+                  <Route path="/invite/:token" element={<AcceptInvite />} />
+                  <Route path="/public-board/:token" element={<PublicBoard />} />
+                  <Route path="/registration-pending" element={<RegistrationPending />} />
 
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/admin/register" element={<AdminRegister />} />
-                <Route path="/setup-account" element={<SetupAccount />} />
-                <Route path="/setup-expired" element={<SetupExpired />} />
-                <Route path="/auth/callback" element={<OAuthCallback />} />
-                <Route path="/invite/:token" element={<AcceptInvite />} />
-                <Route path="/public-board/:token" element={<PublicBoard />} />
-                <Route path="/registration-pending" element={<RegistrationPending />} />
+                  {/* Blocked admins → redirect to dashboard where banner shows status */}
+                  <Route path="/company-pending" element={<Navigate to="/admin/dashboard" replace />} />
 
-                {/* Blocked admins → redirect to dashboard where banner shows status */}
-                <Route path="/company-pending" element={<Navigate to="/admin/dashboard" replace />} />
-
-                {/* ── Onboarding — admin + manager only (page guard rejects others) ── */}
-                <Route element={<PrivateRoute allowedRoles={['admin', 'member']} />}>
-                  <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
-                </Route>
-
-                {/* ── Admin ───────────────────────────────────────────────────── */}
-                <Route element={<PrivateRoute allowedRoles={['admin']} />}>
-                  <Route element={<OnboardingGuard />}>
-                    <Route path="/admin/dashboard" element={<Dashboard />} />
-                    <Route path="/admin/kanban" element={<KanbanBoard />} />
-                    <Route path="/admin/tasks" element={<ManageTasks />} />
-                    <Route path="/admin/users" element={<ManageUsers />} />
-                    <Route path="/admin/invitations" element={<ManageInvitations />} />
-                    <Route path="/admin/teams" element={<ManageTeams />} />
-                    <Route path="/admin/permissions" element={<PermissionMatrix />} />
-                    <Route path="/admin/audit" element={<AuditLog />} />
-                    <Route path="/admin/api-keys" element={<ApiKeys />} />
-                    <Route path="/admin/webhooks" element={<Webhooks />} />
-                    <Route path="/admin/integrations" element={<Integrations />} />
-                    <Route path="/admin/create-task" element={<CreateTask />} />
-                    <Route path="/admin/analytics" element={<Analytics />} />
-                    <Route path="/admin/reports" element={<Reports />} />
-                    <Route path="/admin/timesheets" element={<AdminTimesheets />} />
-                    <Route path="/admin/sprints" element={<SprintBoard />} />
-                    <Route path="/admin/automations" element={<AutomationRules />} />
-                    <Route path="/admin/calendar" element={<CalendarPage adminView />} />
-                    <Route path="/admin/leaves" element={<LeaveManagement />} />
-                    <Route path="/admin/intern-logs" element={<InternLogDashboard />} />
+                  {/* ── Onboarding — admin + manager only (page guard rejects others) ── */}
+                  <Route element={<PrivateRoute allowedRoles={['admin', 'member']} />}>
+                    <Route path="/onboarding/workspace" element={<CreateWorkspace />} />
                   </Route>
-                </Route>
 
-                {/* ── Chat routes (shared — any logged-in user) ───────────────── */}
-                <Route element={<PrivateRoute />}>
-                  <Route path="/chat" element={<TeamChat />} />
-                  <Route path="/chat/dm" element={<DirectMessages />} />
-                  <Route path="/chat/dm/:userId" element={<DirectMessages />} />
-                  <Route path="/calendar" element={<CalendarPage />} />
-                  <Route path="/calendar/event/:id" element={<CalendarPage />} />
-                  <Route path="/settings" element={<Settings />} />
-                </Route>
-
-                {/* ── Member (also accessible by admin) ───────────────────── */}
-                <Route element={<PrivateRoute allowedRoles={['member', 'admin']} />}>
-                  <Route element={<OnboardingGuard />}>
-                    <Route path="/user/dashboard" element={<UserDashboard />} />
-                    <Route path="/user/tasks" element={<MyTasks />} />
-                    <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
-                    <Route path="/user/timesheet" element={<MyTimesheet />} />
-                    <Route path="/user/profile" element={<UserProfile />} />
-                    <Route path="/user/leaves" element={<MyLeaves />} />
-                    <Route path="/user/daily-log" element={<InternDailyLog />} />
-                    <Route path="/admin/goals" element={<Goals />} />
-                    <Route path="/admin/goals/:id" element={<GoalDetail />} />
-                    <Route path="/admin/files" element={<FilesHub />} />
+                  {/* ── Admin ───────────────────────────────────────────────────── */}
+                  <Route element={<PrivateRoute allowedRoles={['admin']} />}>
+                    <Route element={<OnboardingGuard />}>
+                      <Route path="/admin/dashboard" element={<Dashboard />} />
+                      <Route path="/admin/kanban" element={<KanbanBoard />} />
+                      <Route path="/admin/tasks" element={<ManageTasks />} />
+                      <Route path="/admin/users" element={<ManageUsers />} />
+                      <Route path="/admin/invitations" element={<ManageInvitations />} />
+                      <Route path="/admin/teams" element={<ManageTeams />} />
+                      <Route path="/admin/permissions" element={<PermissionMatrix />} />
+                      <Route path="/admin/audit" element={<AuditLog />} />
+                      <Route path="/admin/api-keys" element={<ApiKeys />} />
+                      <Route path="/admin/webhooks" element={<Webhooks />} />
+                      <Route path="/admin/integrations" element={<Integrations />} />
+                      <Route path="/admin/create-task" element={<CreateTask />} />
+                      <Route path="/admin/analytics" element={<Analytics />} />
+                      <Route path="/admin/reports" element={<Reports />} />
+                      <Route path="/admin/timesheets" element={<AdminTimesheets />} />
+                      <Route path="/admin/sprints" element={<SprintBoard />} />
+                      <Route path="/admin/automations" element={<AutomationRules />} />
+                      <Route path="/admin/calendar" element={<CalendarPage adminView />} />
+                      <Route path="/admin/leaves" element={<LeaveManagement />} />
+                      <Route path="/admin/intern-logs" element={<InternLogDashboard />} />
+                    </Route>
                   </Route>
-                </Route>
 
-                {/* ── Super Admin ─────────────────────────────────────────────── */}
-                <Route element={<SuperAdminRoute />}>
-                  <Route element={<SuperAdminLayout />}>
-                    <Route path="/super-admin/dashboard" element={<SuperDashboard />} />
-                    <Route path="/super-admin/workspaces" element={<AllWorkspaces />} />
-                    <Route path="/super-admin/users" element={<AllUsers />} />
-                    <Route path="/super-admin/activity" element={<PlatformActivity />} />
-                    <Route path="/super-admin/registrations" element={<CompanyRegistrations />} />
-                    <Route path="/super-admin/email-logs" element={<EmailLogs />} />
-                    <Route path="/super-admin/settings" element={<SystemSettings />} />
-                    <Route path="/super-admin/security" element={<SecurityAudit />} />
+                  {/* ── Chat routes (shared — any logged-in user) ───────────────── */}
+                  <Route element={<PrivateRoute />}>
+                    <Route path="/chat" element={<TeamChat />} />
+                    <Route path="/chat/dm" element={<DirectMessages />} />
+                    <Route path="/chat/dm/:userId" element={<DirectMessages />} />
+                    <Route path="/calendar" element={<CalendarPage />} />
+                    <Route path="/calendar/event/:id" element={<CalendarPage />} />
+                    <Route path="/settings" element={<Settings />} />
                   </Route>
-                </Route>
 
-                {/* ── Fallback ────────────────────────────────────────────────── */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
+                  {/* ── Member (also accessible by admin) ───────────────────── */}
+                  <Route element={<PrivateRoute allowedRoles={['member', 'admin']} />}>
+                    <Route element={<OnboardingGuard />}>
+                      <Route path="/user/dashboard" element={<UserDashboard />} />
+                      <Route path="/user/tasks" element={<MyTasks />} />
+                      <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
+                      <Route path="/user/timesheet" element={<MyTimesheet />} />
+                      <Route path="/user/profile" element={<UserProfile />} />
+                      <Route path="/user/leaves" element={<MyLeaves />} />
+                      <Route path="/user/daily-log" element={<InternDailyLog />} />
+                      <Route path="/admin/goals" element={<Goals />} />
+                      <Route path="/admin/goals/:id" element={<GoalDetail />} />
+                      <Route path="/admin/files" element={<FilesHub />} />
+                    </Route>
+                  </Route>
+
+                  {/* ── Super Admin ─────────────────────────────────────────────── */}
+                  <Route element={<SuperAdminRoute />}>
+                    <Route element={<SuperAdminLayout />}>
+                      <Route path="/super-admin/dashboard" element={<SuperDashboard />} />
+                      <Route path="/super-admin/workspaces" element={<AllWorkspaces />} />
+                      <Route path="/super-admin/users" element={<AllUsers />} />
+                      <Route path="/super-admin/activity" element={<PlatformActivity />} />
+                      <Route path="/super-admin/registrations" element={<CompanyRegistrations />} />
+                      <Route path="/super-admin/email-logs" element={<EmailLogs />} />
+                      <Route path="/super-admin/settings" element={<SystemSettings />} />
+                      <Route path="/super-admin/security" element={<SecurityAudit />} />
+                    </Route>
+                  </Route>
+
+                  {/* ── Fallback ────────────────────────────────────────────────── */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </SessionGuard>
           </Router>
 
           <Toaster
