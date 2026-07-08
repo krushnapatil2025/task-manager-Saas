@@ -3269,3 +3269,28 @@ html.dark .text-red-650 {
 html.dark .bg-emerald-955\/15 {
   background-color: rgba(16, 185, 129, 0.15) !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBILE APP UX ENHANCEMENTS
+   ══════════════════════════════════════════════════════════════════════════ */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Prevent native selection of interactive components to feel like a native app */
+button,
+a,
+select,
+input[type="submit"],
+.card-btn,
+.ai-suggest-btn {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* Enable momentum scrolling for smoother touch interfaces */
+.overflow-y-auto,
+.overflow-x-auto,
+.scroll-container {
+  -webkit-overflow-scrolling: touch !important;
+}

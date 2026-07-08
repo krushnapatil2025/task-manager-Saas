@@ -15,11 +15,29 @@ export default defineConfig({
       manifest: {
         name: 'Task Manager SaaS',
         short_name: 'TaskSaaS',
+        id: '/',
+        orientation: 'any',
         description: 'Next-gen collaborative task management suite',
         theme_color: '#6366f1',
         background_color: '#fafafa',
         display: 'standalone',
         start_url: '/',
+        screenshots: [
+          {
+            src: '/logo.png',
+            sizes: '512x512',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Strideo Desktop Dashboard'
+          },
+          {
+            src: '/logo.png',
+            sizes: '512x512',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Strideo Mobile App'
+          }
+        ],
         icons: [
           {
             src: '/logo.png',
