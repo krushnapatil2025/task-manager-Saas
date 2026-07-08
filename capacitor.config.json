@@ -1,5 +1,10 @@
 {
   "appId": "com.taskmanager.saas",
   "appName": "Strideo",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://strideo.cicdprosystems.com",
+    "cleartext": false,
+    "androidScheme": "https"
+  }
 }
