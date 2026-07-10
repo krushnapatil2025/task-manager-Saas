@@ -87,7 +87,12 @@ const UserProvider = ({ children }) => {
           .select('*')
           .maybeSingle();
 
-        if (!seedErr) profile = seeded;
+        if (seedErr) {
+          console.error('Failed to seed profile, clearing orphaned session:', seedErr);
+          await clearUser();
+          return;
+        }
+        profile = seeded;
       }
 
       if (profile) {

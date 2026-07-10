@@ -95,16 +95,22 @@ const SetupAccount = () => {
 
     (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const currentUser = session?.user;
-        if (currentUser && currentUser.email?.toLowerCase() === invite.email?.toLowerCase()) {
+        const { data: { user }, error: userErr } = await supabase.auth.getUser();
+        if (userErr || !user) {
+          // If there is an orphaned/invalid session, sign out to clear local storage
+          await supabase.auth.signOut();
+          setIsAlreadyLoggedIn(false);
+          return;
+        }
+
+        if (user.email?.toLowerCase() === invite.email?.toLowerCase()) {
           setIsAlreadyLoggedIn(true);
           
           // Pre-fill profile from existing profile
           const { data: existingProf } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', currentUser.id)
+            .eq('id', user.id)
             .maybeSingle();
           if (existingProf) {
             if (existingProf.phone) {
@@ -121,6 +127,10 @@ const SetupAccount = () => {
             if (existingProf.employee_id) setEmpId(existingProf.employee_id);
             if (existingProf.profile_image_url) setAvatarPreview(existingProf.profile_image_url);
           }
+        } else {
+          // Logged in as a different user -> sign them out to avoid cross-user pollution
+          await supabase.auth.signOut();
+          setIsAlreadyLoggedIn(false);
         }
       } catch (err) {
         console.warn('Failed to verify session on load:', err);
@@ -156,14 +166,10 @@ const SetupAccount = () => {
       if (newPw === tempPw)              return setError('Choose a different password from your temporary one.'), false;
     }
     if (step === 2) {
-      // Avatar is optional for existing accounts since they already have one, but required for new signups
-      if (!avatarPreview && !avatarFile) return setError('Please upload a profile photo.'), false;
       if (!phone.trim())                 return setError('Phone number is required.'), false;
       const phoneClean = phone.replace(/\D/g, '');
       if (phoneClean.length !== 10)      return setError('Phone number must be exactly 10 digits.'), false;
       if (!empId.trim())                 return setError('Employee ID is required.'), false;
-      if (!bio.trim())                   return setError('About/Bio is required.'), false;
-      if (bio.trim().length < 10)        return setError('Bio must be at least 10 characters long.'), false;
     }
     return true;
   };
@@ -181,6 +187,13 @@ const SetupAccount = () => {
       setLoading(true);
 
       try {
+        // Clean up any failed/abandoned signup attempts first
+        try {
+          await supabase.rpc('cleanup_failed_signup', { p_token: token });
+        } catch (rpcErr) {
+          console.warn('cleanup_failed_signup RPC not deployed:', rpcErr.message);
+        }
+
         // Try standard signup to check if email already exists
         const { error: signUpErr } = await supabase.auth.signUp({
           email:    invite.email,
@@ -254,14 +267,8 @@ const SetupAccount = () => {
         }
         sessionUser = data.user;
       } else {
-        // New account signup flow
-        try {
-          await supabase.rpc('cleanup_failed_signup', { p_token: token });
-        } catch (rpcErr) {
-          console.warn('cleanup_failed_signup RPC not deployed:', rpcErr.message);
-        }
-
-        // Attempt login (sign up was already triggered in handleNext)
+        // New account signup flow (sign up was already triggered in handleNext)
+        // Attempt login
         const { data, error: signInErr } = await supabase.auth.signInWithPassword({
           email:    invite.email,
           password: newPw,
@@ -742,9 +749,9 @@ const SetupAccount = () => {
 
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider select-none">
-                      About / Bio <span className="text-red-500 font-black ml-0.5">*</span>
+                      About / Bio
                     </label>
-                    <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Minimum 10 characters." rows={3} className="onboarding-input resize-none" />
+                    <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us a bit about yourself (optional)" rows={3} className="onboarding-input resize-none" />
                   </div>
                 </div>
 
