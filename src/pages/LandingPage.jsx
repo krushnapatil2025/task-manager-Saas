@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { DEFAULT_BRAND, applyCSSVariables } from '../context/BrandContext';
+import SEO from '../components/SEO';
 import {
   LuKanban, LuBell, LuShield, LuZap, LuUsers, LuChartBar,
   LuArrowRight, LuCheck, LuStar, LuMenu, LuX,
@@ -145,6 +146,12 @@ const LandingPage = () => {
 
   return (
     <div className="bg-slate-50/50 text-slate-800 min-h-screen overflow-x-hidden font-sans antialiased selection:bg-indigo-150 selection:text-indigo-950">
+      <SEO 
+        title="Collaborate Effortlessly & Ship Projects Faster" 
+        description="Strideo is an enterprise-grade multi-tenant task manager featuring real-time Kanban boards, time tracking, chat, and analytics."
+        keywords="task manager, enterprise task manager, saas board, kanban board, sprint planning, team chat, time tracking"
+        canonical="/"
+      />
 
       {/* ══════════════════════ NAVBAR ══════════════════════════════════════ */}
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/60 shadow-sm' : 'bg-transparent'}`}>

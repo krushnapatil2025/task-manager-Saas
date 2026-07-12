@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthLayout from '../../components/layouts/AuthLAyout';
+import SEO from '../../components/SEO';
 import { supabase } from '../../utils/supabaseClient';
 import { validateEmail } from '../../utils/helper';
 import { BRAND_COLORS, DEFAULT_BRAND, applyCSSVariables } from '../../context/BrandContext';
@@ -270,6 +271,7 @@ const AdminRegister = () => {
 
   return (
     <AuthLayout title="Create Workspace" subtitle="Set up your enterprise tenant shell">
+      <SEO title="Register Workspace" canonical="/admin/register" />
       <div className="w-full">
         {/* ── Progress stepper ── */}
         <div className="flex items-center justify-center gap-1.5 mb-6 select-none">

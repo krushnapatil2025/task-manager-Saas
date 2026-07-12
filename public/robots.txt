@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /admin/register
+Allow: /forgot-password
+Allow: /invite/
+Disallow: /admin/
+Disallow: /user/
+Disallow: /super-admin/
+Disallow: /onboarding/
+
+Sitemap: https://strideo.cicdprosystems.com/sitemap.xml

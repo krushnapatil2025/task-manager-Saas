@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import AuthLayout from '../../components/layouts/AuthLAyout';
+import SEO from '../../components/SEO';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { DEFAULT_BRAND, applyCSSVariables } from '../../context/BrandContext';
 import Input from '../../components/Inputs/Input';
@@ -136,6 +137,7 @@ const Login = () => {
 
   return (
     <AuthLayout title="Welcome Back" subtitle={`Sign in to your ${companyName} workspace`}>
+      <SEO title="Workspace Login" canonical="/login" />
       {/* ── Session expired banner ── */}
       {sessionExpired && (
         <div style={{
