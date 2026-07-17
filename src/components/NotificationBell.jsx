@@ -20,6 +20,13 @@ const TYPE_ICON = {
   task_status:   <LuClipboardCheck className="text-lime-500"  />,
   mention:       <LuMessageSquare className="text-amber-500"  />,
   calendar_event:<LuCalendar      className="text-indigo-500" />,
+  intern_log_comment:        <LuMessageSquare className="text-pink-500" />,
+  intern_log_submitted:      <LuClipboardCheck className="text-indigo-500" />,
+  intern_log_acknowledged:   <LuClipboardCheck className="text-emerald-500" />,
+  intern_log_flagged:        <LuClipboardCheck className="text-amber-500" />,
+  intern_log_missed:         <LuClipboardCheck className="text-rose-500" />,
+  intern_log_missed_manager: <LuClipboardCheck className="text-rose-500" />,
+  intern_log_reminder:       <LuCalendar      className="text-amber-500" />,
 };
 
 const NotificationBell = () => {

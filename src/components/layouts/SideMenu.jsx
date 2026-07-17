@@ -6,6 +6,7 @@ import { useBrand } from '../../context/BrandContext';
 import { SIDE_MENU_DATA, SIDE_MENU_USER_DATA } from '../../utils/data';
 import { JOB_PROFILES } from '../../pages/Admin/InviteEmployee';
 import { LuPanelLeftClose, LuPanelLeftOpen } from 'react-icons/lu';
+import { toast } from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SideMenu — Grouped, light/white aesthetic enterprise navigation sidebar
@@ -57,7 +58,8 @@ const SideMenu = ({ activeMenu, onItemClick, isMobile = false }) => {
 
   const handleLogout = async () => {
     await clearUser();
-    navigate('/login');
+    toast.success('Successfully logged out!');
+    navigate('/');
   };
 
   // Group menu items dynamically

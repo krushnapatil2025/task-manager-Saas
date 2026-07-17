@@ -3,6 +3,7 @@ import { WorkspaceContext } from '../../context/WorkspaceContext';
 import { UserContext } from '../../context/userContext';
 import DashboardLayout from '../../components/layouts/DashboardLayout';
 import RefreshButton from '../../components/RefreshButton';
+import InternLogComments from '../../components/InternLogComments';
 import { getAllUsers } from '../../services/userService';
 import { 
   getAllWorkspaceLogs, 
@@ -603,6 +604,15 @@ const InternLogDashboard = () => {
                                   } catch(e) { return '0 hrs'; }
                                 })()}
                               </span>
+                              {log.intern_log_messages?.[0]?.count > 0 && (
+                                <>
+                                  <span className="text-slate-300 dark:text-zinc-800">•</span>
+                                  <span className="text-[10px] text-indigo-650 dark:text-indigo-400 font-bold flex items-center gap-0.5">
+                                    <LuMessageSquare size={10} />
+                                    {log.intern_log_messages[0].count}
+                                  </span>
+                                </>
+                              )}
                             </div>
                             <button
                               onClick={() => handleOpenReview(log)}
@@ -662,12 +672,21 @@ const InternLogDashboard = () => {
                                   <span>{log.user?.name}</span>
                                 </td>
                                 <td className="px-4 py-3 text-xs font-black text-slate-700 dark:text-zinc-300">
-                                  {(() => {
-                                    try {
-                                      const t = typeof log.tasks_done === 'string' ? JSON.parse(log.tasks_done) : log.tasks_done;
-                                      return `${t.reduce((sum, item) => sum + parseFloat(item.hours || 0), 0)}h`;
-                                    } catch(e) { return '0h'; }
-                                  })()}
+                                  <div className="flex items-center gap-1.5">
+                                    <span>
+                                      {(() => {
+                                        try {
+                                          const t = typeof log.tasks_done === 'string' ? JSON.parse(log.tasks_done) : log.tasks_done;
+                                          return `${t.reduce((sum, item) => sum + parseFloat(item.hours || 0), 0)}h`;
+                                        } catch(e) { return '0h'; }
+                                      })()}
+                                    </span>
+                                    {log.intern_log_messages?.[0]?.count > 0 && (
+                                      <span className="inline-flex items-center gap-0.5 text-indigo-550 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/20 px-1 py-0.2 rounded text-[9px]">
+                                        <LuMessageSquare size={9} /> {log.intern_log_messages[0].count}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-4 py-3 text-xs text-slate-500 dark:text-zinc-400 max-w-[200px] truncate" title={log.learnings}>
                                   {log.learnings}
@@ -1140,6 +1159,16 @@ const InternLogDashboard = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Real-time Follow-up Chat */}
+                {activeLog?.id && (
+                  <div className="mt-4 pt-4 border-t border-slate-105 dark:border-zinc-850">
+                    <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] mb-2.5">
+                      💬 Discussion Thread
+                    </h4>
+                    <InternLogComments logId={activeLog.id} />
+                  </div>
+                )}
               </div>
             </div>
           </div>

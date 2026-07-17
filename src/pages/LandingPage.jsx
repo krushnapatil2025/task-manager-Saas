@@ -57,12 +57,6 @@ const PLANS = [
 
 
 
-const STATS = [
-  { value: '25K+',  label: 'Tasks Completed'   },
-  { value: '1.2K+',  label: 'Active Workspaces'  },
-  { value: '99.99%', label: 'Uptime SLA'         },
-  { value: '<45ms', label: 'Realtime Latency'   },
-];
 
 const STEPS = [
   {
@@ -156,10 +150,10 @@ const LandingPage = () => {
       {/* ══════════════════════ NAVBAR ══════════════════════════════════════ */}
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-slate-200/60 shadow-sm' : 'bg-transparent'}`}>
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
-          <span className="text-lg font-black tracking-tight flex items-center gap-2 select-none">
+          <Link to="/" className="text-lg font-black tracking-tight flex items-center gap-2 select-none hover:opacity-85 transition-opacity">
             <img src="/logo.png" className="w-7 h-7 object-contain rounded-lg shadow-sm" alt="Logo" />
             <span className="text-slate-900 font-extrabold">{companyName}</span>
-          </span>
+          </Link>
 
           <div className="hidden md:flex items-center gap-8 text-xs font-bold text-slate-500">
             {['Features', 'How it Works', 'Pricing', 'FAQ'].map((s) => (
@@ -381,17 +375,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ══════════════════════ STATS ════════════════════════════════════════ */}
-      <section className="py-20 border-y border-slate-200/70 bg-white">
-        <div className="max-w-4xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {STATS.map((s) => (
-            <div key={s.label}>
-              <p className="text-4xl font-black bg-gradient-to-r from-indigo-600 to-indigo-755 bg-clip-text text-transparent">{s.value}</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-2.5">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ══════════════════════ FEATURES ════════════════════════════════════ */}
       <section id="features" className="py-28 px-6 bg-slate-50/50">
@@ -564,10 +547,10 @@ const LandingPage = () => {
       <footer className="bg-slate-900 text-slate-400 pt-20 pb-10 px-6 border-t border-slate-800">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-12 mb-16">
           <div className="md:col-span-2 space-y-6">
-            <span className="text-lg font-black text-white flex items-center gap-2 select-none">
+            <Link to="/" className="text-lg font-black text-white flex items-center gap-2 select-none hover:opacity-85 transition-opacity inline-flex">
               <img src="/logo.png" className="w-8 h-8 object-contain rounded-lg shadow-lg" alt="Logo" />
               <span className="tracking-tight text-white">{companyName}</span>
-            </span>
+            </Link>
             <p className="text-xs text-slate-400 max-w-xs leading-relaxed font-semibold">
               The ultimate high-performance workspace for agile teams. Organize tasks, track time logs, and collaborate in real-time.
             </p>

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { UserContext } from '../../context/userContext';
 import { useBrand } from '../../context/BrandContext';
 import {
@@ -16,6 +16,7 @@ import {
   LuUser,
   LuBriefcase,
 } from 'react-icons/lu';
+import { toast } from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CompanyPendingDashboard
@@ -106,7 +107,8 @@ const CompanyPendingDashboard = () => {
 
   const handleLogout = async () => {
     await clearUser();
-    navigate('/login');
+    toast.success('Successfully logged out!');
+    navigate('/');
   };
 
   const handleManualRefresh = () => checkStatus(true);
@@ -145,10 +147,10 @@ const CompanyPendingDashboard = () => {
 
         <div className="p-8 md:p-10">
           {/* Brand Header */}
-          <div className="flex items-center gap-2.5 mb-8 select-none justify-center">
+          <Link to="/" className="flex items-center gap-2.5 mb-8 select-none justify-center hover:opacity-85 transition-opacity">
             <img src="/logo.png" className="w-7 h-7 object-contain rounded" alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
             <span className="text-sm font-black text-white tracking-tight">{brand.companyName || 'Strideo'}</span>
-          </div>
+          </Link>
 
           {/* Status Icon & Heading */}
           <div className="flex flex-col items-center text-center mb-7">

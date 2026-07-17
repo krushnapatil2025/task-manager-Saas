@@ -29,6 +29,8 @@ import SelectDropdown2 from './Inputs/SelectDropdown'; // Fallback
 import SelectUsers from './Inputs/SelectUsers';
 import TodoListInput from './Inputs/TodoListInput';
 import AddAttachmentsInput from './Inputs/AddAttachmentsInput';
+import TaskFileUploader from './TaskFileUploader';
+import { getTaskFiles } from '../services/fileService';
 import {
   getTaskLinkedKeyResults,
   linkTaskToKeyResult,
@@ -36,6 +38,12 @@ import {
   getGoals,
   getKeyResults
 } from '../services/goalService';
+
+const PRIORITY_COLOR = {
+  high:   'text-red-755 bg-red-50 border border-red-200/50',
+  medium: 'text-amber-705 bg-amber-50 border border-amber-250/60',
+  low:    'text-indigo-755 bg-indigo-50 border border-indigo-200/40',
+};
 
 const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
   const { workspace } = useContext(WorkspaceContext);
@@ -61,6 +69,9 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [assignedUsers, setAssignedUsers] = useState([]);
+  const [files, setFiles] = useState([]);
 
   const [dependencies, setDependencies] = useState({ blocking: [], blockedBy: [] });
   const [allTasksList, setAllTasksList] = useState([]);
@@ -109,8 +120,10 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
 
         if (currentTaskId) {
           // Edit mode
+          setIsEditing(false);
           const raw = await getTaskById(currentTaskId);
           const task = normalizeTask(raw);
+          setAssignedUsers(task.assignedTo || []);
           setTaskData({
             title: task.title || '',
             description: task.description || '',
@@ -136,8 +149,19 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
           } catch (krErr) {
             console.error("Error loading task KRs:", krErr);
           }
+
+          // Fetch files
+          try {
+            const taskFiles = await getTaskFiles(currentTaskId);
+            setFiles(taskFiles);
+          } catch (fileErr) {
+            console.error("Error loading task files:", fileErr);
+          }
         } else {
           // Create mode: clear data / apply AI prefill
+          setIsEditing(true);
+          setAssignedUsers([]);
+          setFiles([]);
           setTaskData({
             title: aiPrefill?.title || '',
             description: aiPrefill?.description || '',
@@ -208,6 +232,7 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
   }, [currentTaskId, user?.id, isOpen]);
 
   const handleFocus = (field) => {
+    if (!isEditing) return;
     if (channelRef.current) {
       channelRef.current.send({
         type: 'broadcast',
@@ -218,6 +243,7 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
   };
 
   const handleBlur = (field) => {
+    if (!isEditing) return;
     if (channelRef.current) {
       channelRef.current.send({
         type: 'broadcast',
@@ -400,14 +426,35 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              {currentTaskId ? 'Workspace Task' : 'New Task'}
+              {currentTaskId ? (isEditing ? 'Edit Workspace Task' : 'Workspace Task') : 'New Task'}
             </span>
             <h3 className="text-sm font-extrabold text-slate-900 mt-0.5 flex items-center gap-2">
-              {currentTaskId ? `Task Details` : 'Create New Task'}
+              {currentTaskId ? (isEditing ? 'Edit Task Details' : 'Task Details') : 'Create New Task'}
             </h3>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Edit / View Mode Toggle */}
+            {currentTaskId && (
+              <>
+                {isEditing ? (
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-655 text-[11px] font-bold rounded-lg border border-slate-200 transition cursor-pointer shadow-sm"
+                  >
+                    👁️ View Mode
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-650 text-[11px] font-bold rounded-lg border border-indigo-200 transition cursor-pointer shadow-sm"
+                  >
+                    📝 Edit Task
+                  </button>
+                )}
+              </>
+            )}
+
             {/* Presence avatars */}
             {taskId && presentUsers.filter(u => u.id !== user?.id).length > 0 && (
               <div className="flex -space-x-1 mr-2 items-center">
@@ -418,22 +465,22 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
                 {presentUsers
                   .filter(u => u.id !== user?.id)
                   .map((u) => (
-                    <div
-                      key={u.id}
-                      title={`${u.name} is viewing this task`}
-                      className="w-6 h-6 rounded-full border-2 border-white bg-indigo-50 text-[10px] font-extrabold text-indigo-600 flex items-center justify-center overflow-hidden uppercase shadow-sm ring-1 ring-emerald-500/30"
-                    >
-                      {u.avatar ? (
-                        <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
-                      ) : (
-                        u.name?.charAt(0)
-                      )}
-                    </div>
+                     <div
+                       key={u.id}
+                       title={`${u.name} is viewing this task`}
+                       className="w-6 h-6 rounded-full border-2 border-white bg-indigo-50 text-[10px] font-extrabold text-indigo-600 flex items-center justify-center overflow-hidden uppercase shadow-sm ring-1 ring-emerald-500/30"
+                     >
+                       {u.avatar ? (
+                         <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                       ) : (
+                         u.name?.charAt(0)
+                       )}
+                     </div>
                   ))}
               </div>
             )}
 
-            {taskId && (
+            {taskId && isEditing && (
               <button
                 onClick={handleDelete}
                 className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
@@ -461,84 +508,137 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
             </div>
           ) : (
             <>
-              {/* Task Title with lock indicator */}
+              {/* Task Title */}
               <div className="relative">
                 <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
                   Task Title
                 </label>
-                <div className="relative">
-                  {renderLockOverlay('title')}
-                  <input
-                    type="text"
-                    disabled={!!locks['title'] && locks['title'].userId !== user?.id}
-                    className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 placeholder-slate-350 bg-slate-25 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 transition-all"
-                    placeholder="e.g. Design Landing Hero Grid"
-                    value={taskData.title}
-                    onChange={(e) => handleValueChange('title', e.target.value)}
-                    onFocus={() => handleFocus('title')}
-                    onBlur={() => handleBlur('title')}
-                  />
-                </div>
+                {isEditing ? (
+                  <div className="relative">
+                    {renderLockOverlay('title')}
+                    <input
+                      type="text"
+                      disabled={!!locks['title'] && locks['title'].userId !== user?.id}
+                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-700 placeholder-slate-350 bg-slate-25 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                      placeholder="e.g. Design Landing Hero Grid"
+                      value={taskData.title}
+                      onChange={(e) => handleValueChange('title', e.target.value)}
+                      onFocus={() => handleFocus('title')}
+                      onBlur={() => handleBlur('title')}
+                    />
+                  </div>
+                ) : (
+                  <h2 className="text-sm font-extrabold text-slate-800 dark:text-zinc-200 leading-snug">
+                    {taskData.title}
+                  </h2>
+                )}
               </div>
 
-              {/* Task Description with lock indicator */}
+              {/* Task Description */}
               <div className="relative">
                 <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
                   Description
                 </label>
-                <div className="relative">
-                  {renderLockOverlay('description')}
-                  <textarea
-                    disabled={!!locks['description'] && locks['description'].userId !== user?.id}
-                    className="w-full px-4 py-3 text-xs font-semibold text-slate-700 placeholder-slate-350 bg-slate-25 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 transition-all"
-                    rows={4}
-                    placeholder="Provide a clear, detailed summary of scope, references, and acceptance criteria..."
-                    value={taskData.description}
-                    onChange={(e) => handleValueChange('description', e.target.value)}
-                    onFocus={() => handleFocus('description')}
-                    onBlur={() => handleBlur('description')}
-                  />
-                </div>
+                {isEditing ? (
+                  <div className="relative">
+                    {renderLockOverlay('description')}
+                    <textarea
+                      disabled={!!locks['description'] && locks['description'].userId !== user?.id}
+                      className="w-full px-4 py-3 text-xs font-semibold text-slate-700 placeholder-slate-350 bg-slate-25 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                      rows={4}
+                      placeholder="Provide a clear, detailed summary of scope, references, and acceptance criteria..."
+                      value={taskData.description}
+                      onChange={(e) => handleValueChange('description', e.target.value)}
+                      onFocus={() => handleFocus('description')}
+                      onBlur={() => handleBlur('description')}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-xs font-semibold text-slate-655 bg-slate-50 dark:bg-zinc-900/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-zinc-800/80 leading-relaxed whitespace-pre-wrap">
+                    {taskData.description || <span className="italic text-slate-400 font-medium">No description provided.</span>}
+                  </div>
+                )}
               </div>
 
               {/* Task Metadata Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
-                    Priority
-                  </label>
-                  <SelectDropdown
-                    options={PRIORITY_DATA}
-                    value={taskData.priority}
-                    onChange={(val) => handleValueChange('priority', val)}
-                    placeholder="Select Priority"
-                  />
-                </div>
+              {isEditing ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
+                      Priority
+                    </label>
+                    <SelectDropdown
+                      options={PRIORITY_DATA}
+                      value={taskData.priority}
+                      onChange={(val) => handleValueChange('priority', val)}
+                      placeholder="Select Priority"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
-                    Due Date
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2.5 text-xs font-semibold text-slate-700 bg-slate-25 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                      value={taskData.dueDate}
-                      onChange={(e) => handleValueChange('dueDate', e.target.value)}
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
+                      Due Date
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="date"
+                        className="w-full px-4 py-2.5 text-xs font-semibold text-slate-700 bg-slate-25 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                        value={taskData.dueDate}
+                        onChange={(e) => handleValueChange('dueDate', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
+                      Assignees
+                    </label>
+                    <SelectUsers
+                      selectedUsers={taskData.assignedTo}
+                      setSelectedUsers={(val) => handleValueChange('assignedTo', val)}
                     />
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
-                    Assignees
-                  </label>
-                  <SelectUsers
-                    selectedUsers={taskData.assignedTo}
-                    setSelectedUsers={(val) => handleValueChange('assignedTo', val)}
-                  />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-25/55 border border-slate-200/50 rounded-2xl p-4">
+                  <div>
+                    <span className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Priority</span>
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-xl border capitalize ${PRIORITY_COLOR[taskData.priority] || 'text-slate-655 bg-slate-50 border-slate-200'}`}>
+                      <LuFlag className="text-xs" />
+                      {taskData.priority}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Due Date</span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-xl border border-slate-200 dark:border-zinc-800 text-slate-700 bg-white shadow-sm">
+                      <LuCalendar className="text-xs text-slate-400" />
+                      {taskData.dueDate ? moment(taskData.dueDate).format('Do MMM YYYY') : 'No due date'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Assignees</span>
+                    <div className="flex -space-x-1.5 items-center mt-1">
+                      {assignedUsers.length === 0 ? (
+                        <span className="text-xs font-semibold text-slate-400">Unassigned</span>
+                      ) : (
+                        assignedUsers.map((u, i) => (
+                          <div
+                            key={i}
+                            title={u.name}
+                            className="w-7 h-7 rounded-full border-2 border-white bg-slate-50 text-[10px] font-extrabold text-slate-600 flex items-center justify-center overflow-hidden uppercase shadow-sm"
+                          >
+                            {u.profileImageUrl || u.avatar ? (
+                              <img src={u.profileImageUrl || u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                            ) : (
+                              u.name?.charAt(0)
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
 
               {/* Dependencies Widget (Phase 4 Rebuild highlight) */}
@@ -551,260 +651,352 @@ const TaskSlidePanel = ({ taskId, isOpen, onClose, onSuccess, aiPrefill }) => {
                   {/* Blocked By lists */}
                   <div className="space-y-3">
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Blocked By (Blockers)</span>
-                        <button
-                          onClick={() => setShowBlockerSelect(!showBlockerSelect)}
-                          className="text-[10px] font-bold text-indigo-600 hover:text-indigo-850 flex items-center gap-0.5 cursor-pointer"
-                        >
-                          <LuCirclePlus size={11} /> Add Blocker
-                        </button>
+                       <div className="flex items-center justify-between mb-1">
+                         <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Blocked By (Blockers)</span>
+                         {isEditing && (
+                           <button
+                             onClick={() => setShowBlockerSelect(!showBlockerSelect)}
+                             className="text-[10px] font-bold text-indigo-600 hover:text-indigo-850 flex items-center gap-0.5 cursor-pointer"
+                           >
+                             <LuCirclePlus size={11} /> Add Blocker
+                           </button>
+                         )}
+                       </div>
+
+                       {isEditing && showBlockerSelect && (
+                         <div className="bg-white border border-slate-200 rounded-xl p-2 mb-2 max-h-40 overflow-y-auto shadow-sm">
+                           {allTasksList.length === 0 ? (
+                             <p className="text-[10px] text-slate-400 text-center py-2">No options available</p>
+                           ) : (
+                             allTasksList
+                               .filter(t => !dependencies.blockedBy.some(x => x.id === t.id))
+                               .map(t => (
+                                 <button
+                                   key={t.id}
+                                   onClick={() => handleAddDependency(t.id, 'blockedBy')}
+                                   className="w-full text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50 px-2 py-1.5 rounded transition cursor-pointer"
+                                 >
+                                   {t.title} <span className="text-[9px] text-slate-400 uppercase">({t.status})</span>
+                                 </button>
+                               ))
+                           )}
+                         </div>
+                       )}
+
+                       <div className="space-y-1.5">
+                         {dependencies.blockedBy.length === 0 ? (
+                           <p className="text-[10px] text-slate-400 italic">No blocker tasks assigned.</p>
+                         ) : (
+                           dependencies.blockedBy.map(d => {
+                             const isResolved = d.status === 'Completed';
+                             return (
+                               <div key={d.id} className="flex items-center justify-between bg-white border border-slate-200/60 rounded-xl px-3 py-2">
+                                 <div className="flex items-center gap-2">
+                                   {isResolved ? (
+                                     <LuCircleCheck size={13} className="text-emerald-500" />
+                                   ) : (
+                                     <LuTriangleAlert size={13} className="text-amber-500 animate-pulse" />
+                                   )}
+                                   <span className="text-xs font-semibold text-slate-700 truncate max-w-[280px]">
+                                     {d.title}
+                                   </span>
+                                 </div>
+                                 <div className="flex items-center gap-2">
+                                   <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                     isResolved ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
+                                   }`}>
+                                     {d.status}
+                                   </span>
+                                   {isEditing && (
+                                     <button
+                                       onClick={() => handleRemoveDependency(d.depId)}
+                                       className="text-xs text-slate-350 hover:text-red-500 cursor-pointer"
+                                     >
+                                       ×
+                                     </button>
+                                   )}
+                                 </div>
+                               </div>
+                             );
+                           })
+                         )}
+                       </div>
                       </div>
 
-                      {showBlockerSelect && (
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 mb-2 max-h-40 overflow-y-auto shadow-sm">
-                          {allTasksList.length === 0 ? (
-                            <p className="text-[10px] text-slate-400 text-center py-2">No options available</p>
-                          ) : (
-                            allTasksList
-                              .filter(t => !dependencies.blockedBy.some(x => x.id === t.id))
-                              .map(t => (
-                                <button
-                                  key={t.id}
-                                  onClick={() => handleAddDependency(t.id, 'blockedBy')}
-                                  className="w-full text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50 px-2 py-1.5 rounded transition cursor-pointer"
-                                >
-                                  {t.title} <span className="text-[9px] text-slate-400 uppercase">({t.status})</span>
-                                </button>
-                              ))
-                          )}
-                        </div>
-                      )}
+                      {/* Blocks (Tasks that depend on current task) */}
+                      <div>
+                      <div>
+                       <div className="flex items-center justify-between mb-1 mt-2">
+                         <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Blocks (Dependencies)</span>
+                         {isEditing && (
+                           <button
+                             onClick={() => setShowBlockedSelect(!showBlockedSelect)}
+                             className="text-[10px] font-bold text-indigo-600 hover:text-indigo-850 flex items-center gap-0.5 cursor-pointer"
+                           >
+                             <LuCirclePlus size={11} /> Add Dependency
+                           </button>
+                         )}
+                       </div>
 
-                      <div className="space-y-1.5">
-                        {dependencies.blockedBy.length === 0 ? (
-                          <p className="text-[10px] text-slate-400 italic">No blocker tasks assigned.</p>
-                        ) : (
-                          dependencies.blockedBy.map(d => {
-                            const isResolved = d.status === 'Completed';
-                            return (
-                              <div key={d.id} className="flex items-center justify-between bg-white border border-slate-200/60 rounded-xl px-3 py-2">
-                                <div className="flex items-center gap-2">
-                                  {isResolved ? (
-                                    <LuCircleCheck size={13} className="text-emerald-500" />
-                                  ) : (
-                                    <LuTriangleAlert size={13} className="text-amber-500 animate-pulse" />
-                                  )}
-                                  <span className="text-xs font-semibold text-slate-700 truncate max-w-[280px]">
-                                    {d.title}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                                    isResolved ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
-                                  }`}>
-                                    {d.status}
-                                  </span>
-                                  <button
-                                    onClick={() => handleRemoveDependency(d.depId)}
-                                    className="text-xs text-slate-350 hover:text-red-500 cursor-pointer"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
+                       {isEditing && showBlockedSelect && (
+                         <div className="bg-white border border-slate-200 rounded-xl p-2 mb-2 max-h-40 overflow-y-auto shadow-sm">
+                           {allTasksList.length === 0 ? (
+                             <p className="text-[10px] text-slate-400 text-center py-2">No options available</p>
+                           ) : (
+                             allTasksList
+                               .filter(t => !dependencies.blocking.some(x => x.id === t.id))
+                               .map(t => (
+                                 <button
+                                   key={t.id}
+                                   onClick={() => handleAddDependency(t.id, 'blocks')}
+                                   className="w-full text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50 px-2 py-1.5 rounded transition cursor-pointer"
+                                 >
+                                   {t.title} <span className="text-[9px] text-slate-400 uppercase">({t.status})</span>
+                                 </button>
+                               ))
+                           )}
+                         </div>
+                       )}
+
+                       <div className="space-y-1.5">
+                         {dependencies.blocking.length === 0 ? (
+                           <p className="text-[10px] text-slate-400 italic">No tasks blocked by this task.</p>
+                         ) : (
+                           dependencies.blocking.map(d => (
+                             <div key={d.id} className="flex items-center justify-between bg-white border border-slate-200/60 rounded-xl px-3 py-2">
+                               <span className="text-xs font-semibold text-slate-700 truncate max-w-[280px]">
+                                 {d.title}
+                               </span>
+                               <div className="flex items-center gap-2">
+                                 <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                   {d.status}
+                                 </span>
+                                 {isEditing && (
+                                   <button
+                                     onClick={() => handleRemoveDependency(d.depId)}
+                                     className="text-xs text-slate-350 hover:text-red-500 cursor-pointer"
+                                   >
+                                     ×
+                                   </button>
+                                 )}
+                               </div>
+                             </div>
+                           ))
+                         )}
+                       </div>
                     </div>
-
-                    {/* Blocks (Tasks that depend on current task) */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1 mt-2">
-                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Blocks (Dependencies)</span>
-                        <button
-                          onClick={() => setShowBlockedSelect(!showBlockedSelect)}
-                          className="text-[10px] font-bold text-indigo-600 hover:text-indigo-850 flex items-center gap-0.5 cursor-pointer"
-                        >
-                          <LuCirclePlus size={11} /> Add Dependency
-                        </button>
-                      </div>
-
-                      {showBlockedSelect && (
-                        <div className="bg-white border border-slate-200 rounded-xl p-2 mb-2 max-h-40 overflow-y-auto shadow-sm">
-                          {allTasksList.length === 0 ? (
-                            <p className="text-[10px] text-slate-400 text-center py-2">No options available</p>
-                          ) : (
-                            allTasksList
-                              .filter(t => !dependencies.blocking.some(x => x.id === t.id))
-                              .map(t => (
-                                <button
-                                  key={t.id}
-                                  onClick={() => handleAddDependency(t.id, 'blocks')}
-                                  className="w-full text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50 px-2 py-1.5 rounded transition cursor-pointer"
-                                >
-                                  {t.title} <span className="text-[9px] text-slate-400 uppercase">({t.status})</span>
-                                </button>
-                              ))
-                          )}
-                        </div>
-                      )}
-
-                      <div className="space-y-1.5">
-                        {dependencies.blocking.length === 0 ? (
-                          <p className="text-[10px] text-slate-400 italic">No tasks blocked by this task.</p>
-                        ) : (
-                          dependencies.blocking.map(d => (
-                            <div key={d.id} className="flex items-center justify-between bg-white border border-slate-200/60 rounded-xl px-3 py-2">
-                              <span className="text-xs font-semibold text-slate-700 truncate max-w-[280px]">
-                                {d.title}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                                  {d.status}
-                                </span>
-                                <button
-                                  onClick={() => handleRemoveDependency(d.depId)}
-                                  className="text-xs text-slate-350 hover:text-red-500 cursor-pointer"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
+                  </div>
                   </div>
                 </div>
               )}
 
-              {/* OKR Alignments */}
-              {currentTaskId && (
-                <div className="border border-slate-200/70 rounded-2xl p-4 bg-slate-25">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <LuTarget size={12} className="text-indigo-500" /> Strategic OKR Alignment
-                    </span>
-                    <button
-                      onClick={() => setShowKrSelect(!showKrSelect)}
-                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-850 flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <LuPlus size={11} /> Align Key Result
-                    </button>
-                  </div>
+               {/* OKR Alignments */}
+               {currentTaskId && (
+                 <div className="border border-slate-200/70 rounded-2xl p-4 bg-slate-25">
+                   <div className="flex items-center justify-between mb-3">
+                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                       <LuTarget size={12} className="text-indigo-500" /> Strategic OKR Alignment
+                     </span>
+                     {isEditing && (
+                       <button
+                         onClick={() => setShowKrSelect(!showKrSelect)}
+                         className="text-[10px] font-bold text-indigo-600 hover:text-indigo-850 flex items-center gap-0.5 cursor-pointer"
+                       >
+                         <LuPlus size={11} /> Align Key Result
+                       </button>
+                     )}
+                   </div>
+ 
+                   {isEditing && showKrSelect && (
+                     <div className="bg-white border border-slate-200 rounded-xl p-2.5 mb-3 flex gap-2 shadow-sm">
+                       <select
+                         value={selectedKrId}
+                         onChange={e => setSelectedKrId(e.target.value)}
+                         className="flex-1 text-xs border border-slate-200 rounded-lg p-1.5 bg-slate-25"
+                       >
+                         <option value="">Choose a Key Result...</option>
+                         {workspaceKrs
+                           .filter(kr => !linkedKrs.some(lk => lk.id === kr.id))
+                           .map(kr => (
+                             <option key={kr.id} value={kr.id}>
+                               [{kr.goalTitle}] {kr.title} ({kr.current_value}/{kr.target_value} {kr.unit})
+                             </option>
+                           ))
+                         }
+                       </select>
+                       <button
+                         onClick={handleLinkKr}
+                         disabled={!selectedKrId}
+                         className="text-[10px] font-bold px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition disabled:opacity-50"
+                       >
+                         Link
+                       </button>
+                     </div>
+                   )}
+ 
+                   <div className="space-y-2">
+                     {linkedKrs.length === 0 ? (
+                       <p className="text-[10px] text-slate-400 italic">This task is not currently aligned with any strategic objectives.</p>
+                     ) : (
+                       linkedKrs.map(kr => (
+                         <div key={kr.id} className="flex items-center justify-between bg-white border border-slate-200/60 rounded-xl px-3 py-2">
+                           <div className="min-w-0">
+                             <span className="text-[9px] font-extrabold text-indigo-500 uppercase block tracking-wider truncate">
+                               {kr.goal?.title || 'Objective'}
+                             </span>
+                             <span className="text-xs font-semibold text-slate-700 truncate block mt-0.5 max-w-[280px]">
+                               {kr.title}
+                             </span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                               {kr.current_value}/{kr.target_value} {kr.unit}
+                             </span>
+                             {isEditing && (
+                               <button
+                                 onClick={() => handleUnlinkKr(kr.id)}
+                                 className="text-slate-350 hover:text-red-500 cursor-pointer text-xs"
+                                 title="Unlink Objective"
+                               >
+                                 ×
+                               </button>
+                             )}
+                           </div>
+                         </div>
+                       ))
+                     )}
+                   </div>
+                 </div>
+               )}
 
-                  {showKrSelect && (
-                    <div className="bg-white border border-slate-200 rounded-xl p-2.5 mb-3 flex gap-2 shadow-sm">
-                      <select
-                        value={selectedKrId}
-                        onChange={e => setSelectedKrId(e.target.value)}
-                        className="flex-1 text-xs border border-slate-200 rounded-lg p-1.5 bg-slate-25"
-                      >
-                        <option value="">Choose a Key Result...</option>
-                        {workspaceKrs
-                          .filter(kr => !linkedKrs.some(lk => lk.id === kr.id))
-                          .map(kr => (
-                            <option key={kr.id} value={kr.id}>
-                              [{kr.goalTitle}] {kr.title} ({kr.current_value}/{kr.target_value} {kr.unit})
-                            </option>
-                          ))
-                        }
-                      </select>
-                      <button
-                        onClick={handleLinkKr}
-                        disabled={!selectedKrId}
-                        className="text-[10px] font-bold px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition disabled:opacity-50"
-                      >
-                        Link
-                      </button>
-                    </div>
-                  )}
+               {/* Checklist */}
+               <div>
+                 <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
+                   Subtasks
+                 </label>
+                 {isEditing ? (
+                   <TodoListInput
+                     todoList={taskData.todoCheckList}
+                     setTodoList={(val) => handleValueChange('todoCheckList', val)}
+                   />
+                 ) : (
+                   <div className="space-y-2">
+                     {taskData.todoCheckList.length === 0 ? (
+                       <p className="text-xs text-slate-400 italic font-semibold">No subtasks created.</p>
+                     ) : (
+                       taskData.todoCheckList.map((item, idx) => (
+                         <div key={idx} className="flex items-start gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200/60">
+                           <input
+                             type="checkbox"
+                             disabled
+                             checked={item.completed}
+                             className="w-3.5 h-3.5 rounded border-slate-350 accent-indigo-600 mt-0.5"
+                           />
+                           <div className="flex-1">
+                             <span className={`text-xs font-bold ${item.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                               {item.title}
+                             </span>
+                             {item.description && (
+                               <p className="text-[10px] text-slate-450 mt-0.5 font-medium">{item.description}</p>
+                             )}
+                           </div>
+                         </div>
+                       ))
+                     )}
+                   </div>
+                 )}
+               </div>
+ 
+               {/* Attachments */}
+               <div>
+                 <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
+                   Links
+                 </label>
+                 {isEditing ? (
+                   <AddAttachmentsInput
+                     attachments={taskData.attachments}
+                     setAttachments={(val) => handleValueChange('attachments', val)}
+                   />
+                 ) : (
+                   <div className="grid grid-cols-1 gap-2">
+                     {taskData.attachments.length === 0 ? (
+                       <p className="text-xs text-slate-400 italic font-semibold">No links added.</p>
+                     ) : (
+                       taskData.attachments.map((link, idx) => (
+                         <button
+                           key={idx}
+                           onClick={() => {
+                             const url = /^https?:\/\//.test(link) ? link : 'https://' + link;
+                             window.open(url, '_blank');
+                           }}
+                           className="w-full flex items-center justify-between bg-slate-50 hover:bg-indigo-50 border border-slate-200/60 hover:border-indigo-200 rounded-xl px-4 py-2.5 text-left transition group"
+                         >
+                           <span className="text-xs font-semibold text-slate-655 truncate flex-1">{link}</span>
+                           <LuLink className="text-slate-450 group-hover:text-indigo-650 flex-shrink-0 ml-2 text-sm transition" />
+                         </button>
+                       ))
+                     )}
+                   </div>
+                 )}
+               </div>
 
-                  <div className="space-y-2">
-                    {linkedKrs.length === 0 ? (
-                      <p className="text-[10px] text-slate-400 italic">This task is not currently aligned with any strategic objectives.</p>
-                    ) : (
-                      linkedKrs.map(kr => (
-                        <div key={kr.id} className="flex items-center justify-between bg-white border border-slate-200/60 rounded-xl px-3 py-2">
-                          <div className="min-w-0">
-                            <span className="text-[9px] font-extrabold text-indigo-500 uppercase block tracking-wider truncate">
-                              {kr.goal?.title || 'Objective'}
-                            </span>
-                            <span className="text-xs font-semibold text-slate-700 truncate block mt-0.5 max-w-[280px]">
-                              {kr.title}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap">
-                              {kr.current_value}/{kr.target_value} {kr.unit}
-                            </span>
-                            <button
-                              onClick={() => handleUnlinkKr(kr.id)}
-                              className="text-slate-350 hover:text-red-500 cursor-pointer text-xs"
-                              title="Unlink Objective"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Checklist */}
-              <div>
-                <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
-                  Subtasks
-                </label>
-                <TodoListInput
-                  todoList={taskData.todoCheckList}
-                  setTodoList={(val) => handleValueChange('todoCheckList', val)}
-                />
-              </div>
-
-              {/* Attachments */}
-              <div>
-                <label className="block text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">
-                  Attachments
-                </label>
-                <AddAttachmentsInput
-                  attachments={taskData.attachments}
-                  setAttachments={(val) => handleValueChange('attachments', val)}
-                />
-              </div>
-
-              {error && (
-                <p className="text-xs text-rose-600 font-extrabold bg-rose-50 border border-rose-200/40 p-3 rounded-xl">
-                  {error}
-                </p>
-              )}
+               {/* File Attachments */}
+               {workspace?.id && user?.id && currentTaskId && (
+                 <TaskFileUploader
+                   taskId={currentTaskId}
+                   workspaceId={workspace.id}
+                   uploadedBy={user.id}
+                   files={files}
+                   onFilesChange={setFiles}
+                   readOnly={!isEditing}
+                 />
+               )}
+ 
+               {error && (
+                 <p className="text-xs text-rose-600 font-extrabold bg-rose-50 border border-rose-200/40 p-3 rounded-xl">
+                   {error}
+                 </p>
+               )}
             </>
           )}
         </div>
 
-        {/* Footer controls */}
-        {!loading && (
-          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-25">
-            <button
-              onClick={onClose}
-              disabled={saving}
-              className="text-xs font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl px-4 py-2 cursor-pointer transition"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => handleSave()}
-              disabled={saving}
-              className="text-xs font-bold text-white bg-brand hover:opacity-90 shadow-[0_4px_12px_var(--brand-ring)] rounded-xl px-5 py-2 cursor-pointer transition"
-            >
-              {saving ? 'Saving...' : currentTaskId ? 'Save Updates' : 'Create Task'}
-            </button>
-          </div>
-        )}
+         {/* Footer controls */}
+         {!loading && (
+           <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-25">
+             {isEditing ? (
+               <>
+                 <button
+                   onClick={() => {
+                     if (currentTaskId) {
+                       setIsEditing(false);
+                     } else {
+                       onClose();
+                     }
+                   }}
+                   disabled={saving}
+                   className="text-xs font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl px-4 py-2 cursor-pointer transition"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={() => handleSave()}
+                   disabled={saving}
+                   className="text-xs font-bold text-white bg-brand hover:opacity-90 shadow-[0_4px_12px_var(--brand-ring)] rounded-xl px-5 py-2 cursor-pointer transition"
+                 >
+                   {saving ? 'Saving...' : currentTaskId ? 'Save Updates' : 'Create Task'}
+                 </button>
+               </>
+             ) : (
+               <button
+                 onClick={onClose}
+                 className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-750 rounded-xl text-xs font-bold transition cursor-pointer"
+               >
+                 Close Drawer
+               </button>
+             )}
+           </div>
+         )}
 
         {/* Save Recurring Task Option Modal */}
         {showSaveChoice && (

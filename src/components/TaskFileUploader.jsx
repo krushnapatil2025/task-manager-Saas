@@ -23,13 +23,14 @@ const ICON_MAP = {
   file:  <LuFile className="text-gray-400" />,
 };
 
-const TaskFileUploader = ({ taskId, workspaceId, uploadedBy, files = [], onFilesChange }) => {
+const TaskFileUploader = ({ taskId, workspaceId, uploadedBy, files = [], onFilesChange, readOnly = false }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver]   = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const inputRef = useRef(null);
 
   const handleFiles = async (fileList) => {
+    if (readOnly) return;
     const arr = Array.from(fileList);
     if (arr.length === 0) return;
 
@@ -58,6 +59,7 @@ const TaskFileUploader = ({ taskId, workspaceId, uploadedBy, files = [], onFiles
   };
 
   const handleDelete = async (file) => {
+    if (readOnly) return;
     try {
       await deleteTaskFile(file.id, file.storagePath || file.publicUrl);
       onFilesChange?.((prev) => prev.filter((f) => f.id !== file.id));
@@ -76,35 +78,37 @@ const TaskFileUploader = ({ taskId, workspaceId, uploadedBy, files = [], onFiles
         </h4>
       </div>
 
-      {/* Drop zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
-        onClick={() => inputRef.current?.click()}
-        className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-7 cursor-pointer transition-colors ${
-          dragOver
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-200 bg-gray-50/60 hover:border-blue-300 hover:bg-blue-50/30'
-        }`}
-      >
-        {uploading ? (
-          <LuLoaderCircle className="text-blue-500 text-2xl animate-spin" />
-        ) : (
-          <LuUpload className="text-gray-400 text-2xl" />
-        )}
-        <p className="text-xs text-gray-500 font-medium">
-          {uploading ? 'Uploading...' : 'Click or drag files here'}
-        </p>
-        <p className="text-[10px] text-gray-400">Max 10 MB per file</p>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-      </div>
+      {/* Drop zone - only if NOT readOnly */}
+      {!readOnly && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+          onClick={() => inputRef.current?.click()}
+          className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-7 cursor-pointer transition-colors ${
+            dragOver
+              ? 'border-blue-400 bg-blue-50'
+              : 'border-gray-200 bg-gray-50/60 hover:border-blue-300 hover:bg-blue-50/30'
+          }`}
+        >
+          {uploading ? (
+            <LuLoaderCircle className="text-blue-500 text-2xl animate-spin" />
+          ) : (
+            <LuUpload className="text-gray-400 text-2xl" />
+          )}
+          <p className="text-xs text-gray-500 font-medium">
+            Click or drag files here
+          </p>
+          <p className="text-[10px] text-gray-400">Max 10 MB per file</p>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+        </div>
+      )}
 
       {/* File list */}
       {files.length > 0 && (
@@ -113,6 +117,7 @@ const TaskFileUploader = ({ taskId, workspaceId, uploadedBy, files = [], onFiles
             <FileRow 
               key={f.id} 
               file={f} 
+              readOnly={readOnly}
               onDelete={() => handleDelete(f)} 
               onPreview={() => setPreviewFile({ ...f, fileSizeFormatted: formatFileSize(f.fileSize) })}
             />
@@ -134,7 +139,7 @@ export default TaskFileUploader;
 
 // ─────────────────────────── File Row ────────────────────────────────────────
 
-const FileRow = ({ file, onDelete, onPreview }) => {
+const FileRow = ({ file, onDelete, onPreview, readOnly }) => {
   const iconType = getMimeIcon(file.mimeType || '');
 
   return (
@@ -152,13 +157,15 @@ const FileRow = ({ file, onDelete, onPreview }) => {
         >
           <LuExternalLink />
         </button>
-        <button
-          onClick={onDelete}
-          className="text-gray-400 hover:text-red-500 text-sm"
-          title="Delete File"
-        >
-          <LuTrash2 />
-        </button>
+        {!readOnly && (
+          <button
+            onClick={onDelete}
+            className="text-gray-400 hover:text-red-500 text-sm"
+            title="Delete File"
+          >
+            <LuTrash2 />
+          </button>
+        )}
       </div>
     </div>
   );

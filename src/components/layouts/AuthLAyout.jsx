@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { LuCircleCheck } from 'react-icons/lu';
 
 const AuthLayout = ({ children, title = "Sign In", subtitle = "Access your workspace dashboard", variant = "split", step = 0 }) => {
@@ -182,10 +183,10 @@ const AuthLayout = ({ children, title = "Sign In", subtitle = "Access your works
             </svg>
 
             {/* Logo */}
-            <div className="relative z-10 flex items-center gap-2 select-none">
+            <Link to="/" className="relative z-10 flex items-center gap-2 select-none hover:opacity-85 transition-opacity">
               <img src="/logo.png" className="w-5 h-5 object-contain bg-white/10 rounded p-0.5" alt="Logo" />
               <span className="text-[10px] font-black tracking-widest text-white uppercase">{companyName}</span>
-            </div>
+            </Link>
 
             {/* Changing step message */}
             <div className="relative z-10 my-auto pt-12 md:pt-0">
@@ -240,10 +241,10 @@ const AuthLayout = ({ children, title = "Sign In", subtitle = "Access your works
         <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-indigo-600/10 dark:bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10">
-          <span className="text-xs font-black tracking-tight flex items-center gap-2.5 text-white dark:text-zinc-200">
+          <Link to="/" className="text-xs font-black tracking-tight flex items-center gap-2.5 text-white dark:text-zinc-200 hover:opacity-85 transition-opacity">
             <img src="/logo.png" className="w-6 h-6 object-contain rounded" alt="Logo" />
             <span>{companyName}</span>
-          </span>
+          </Link>
         </div>
 
         <div className="relative z-10 my-auto pr-6">
@@ -274,10 +275,10 @@ const AuthLayout = ({ children, title = "Sign In", subtitle = "Access your works
 
       <div className="w-full md:w-[60%] flex flex-col justify-center items-center px-6 py-12 bg-slate-50 dark:bg-zinc-950 transition-colors duration-300">
         <div className="w-full max-w-[420px] bg-white dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800/80 shadow-2xl shadow-slate-100/40 dark:shadow-none rounded-3xl p-8 md:p-10 transition-all duration-300">
-          <div className="md:hidden flex items-center gap-2.5 mb-6 select-none justify-center">
+          <Link to="/" className="md:hidden flex items-center gap-2.5 mb-6 select-none justify-center hover:opacity-85 transition-opacity">
             <img src="/logo.png" className="w-6 h-6 object-contain rounded" alt="Logo" />
             <span className="text-xs font-black text-slate-800 dark:text-zinc-200">{companyName}</span>
-          </div>
+          </Link>
 
           <div className="mb-6 text-center">
             <h2 className="text-base font-black text-slate-900 dark:text-zinc-100 tracking-tight">{title}</h2>

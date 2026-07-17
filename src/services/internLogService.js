@@ -64,7 +64,8 @@ export const getInternLogHistory = async (userId, workspaceId) => {
     .from("intern_daily_logs")
     .select(`
       *,
-      reviewer:profiles!reviewed_by(id, name, profile_image_url)
+      reviewer:profiles!reviewed_by(id, name, profile_image_url),
+      intern_log_messages(count)
     `)
     .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
@@ -88,7 +89,8 @@ export const getAllWorkspaceLogs = async (workspaceId, filters = {}) => {
     .select(`
       *,
       user:profiles!user_id(id, name, profile_image_url),
-      reviewer:profiles!reviewed_by(id, name, profile_image_url)
+      reviewer:profiles!reviewed_by(id, name, profile_image_url),
+      intern_log_messages(count)
     `)
     .eq("workspace_id", workspaceId);
 
@@ -223,3 +225,34 @@ export const getWorkspaceDailyStats = async (workspaceId, dateString) => {
 
   return stats;
 };
+
+/**
+ * Update specific fields of an existing daily work log (for edit/resubmission).
+ * This uses UPDATE rather than UPSERT so RLS policies can check correctly,
+ * and leaves manager review fields completely untouched.
+ * @param {string} logId
+ * @param {object} updateData - { tasks_done, learnings, blockers, tomorrow_plan, tags, status }
+ */
+export const updateInternLog = async (logId, updateData) => {
+  const { data, error } = await supabase
+    .from("intern_daily_logs")
+    .update({
+      tasks_done:    updateData.tasks_done,
+      learnings:     updateData.learnings,
+      blockers:      updateData.blockers,
+      tomorrow_plan: updateData.tomorrow_plan,
+      tags:          updateData.tags,
+      status:        updateData.status,
+      updated_at:    new Date().toISOString()
+    })
+    .eq("id", logId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("updateInternLog error:", error);
+    throw error;
+  }
+  return data;
+};
+

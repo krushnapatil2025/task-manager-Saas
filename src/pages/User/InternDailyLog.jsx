@@ -6,8 +6,11 @@ import RefreshButton from '../../components/RefreshButton';
 import { 
   getTodayLog, 
   saveLog, 
-  getInternLogHistory 
+  getInternLogHistory,
+  updateInternLog
 } from '../../services/internLogService';
+import InternLogComments from '../../components/InternLogComments';
+import { supabase } from '../../utils/supabaseClient';
 import toast from 'react-hot-toast';
 import { 
   LuPlus, 
@@ -24,7 +27,8 @@ import {
   LuChevronLeft,
   LuCornerDownRight,
   LuFlame,
-  LuTrendingUp
+  LuTrendingUp,
+  LuMessageSquare
 } from 'react-icons/lu';
 
 const AVAILABLE_TAGS = ['Frontend', 'Backend', 'Design', 'Research', 'Meeting', 'Bug Fix', 'Documentation', 'Other'];
@@ -36,6 +40,7 @@ const InternDailyLog = () => {
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState([]);
   const [todayLog, setTodayLog] = useState(null);
+  const [logCommentCounts, setLogCommentCounts] = useState({});
 
   // Form State
   const [tasks, setTasks] = useState([]);
@@ -45,6 +50,15 @@ const InternDailyLog = () => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [otherTagText, setOtherTagText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // States for editing past logs in modal
+  const [isEditingPastLog, setIsEditingPastLog] = useState(false);
+  const [pastLogTasks, setPastLogTasks] = useState([]);
+  const [pastLogLearnings, setPastLogLearnings] = useState('');
+  const [pastLogBlockers, setPastLogBlockers] = useState('');
+  const [pastLogTomorrowPlan, setPastLogTomorrowPlan] = useState('');
+  const [pastLogTags, setPastLogTags] = useState([]);
+  const [pastLogOtherTagText, setPastLogOtherTagText] = useState('');
 
   // Calendar State
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
@@ -98,6 +112,26 @@ const InternDailyLog = () => {
       // 2. Fetch history
       const historyData = await getInternLogHistory(user.id, workspace.id);
       setHistory(historyData);
+
+      // 3. Fetch comment counts
+      const logIds = historyData.map(h => h.id);
+      if (log?.id && !logIds.includes(log.id)) {
+        logIds.push(log.id);
+      }
+      if (logIds.length > 0) {
+        const { data: commentCounts, error: countErr } = await supabase
+          .from('intern_log_messages')
+          .select('log_id')
+          .in('log_id', logIds);
+
+        if (!countErr && commentCounts) {
+          const counts = {};
+          commentCounts.forEach(c => {
+            counts[c.log_id] = (counts[c.log_id] || 0) + 1;
+          });
+          setLogCommentCounts(counts);
+        }
+      }
     } catch (err) {
       console.error(err);
       toast.error('Failed to load daily log information');
@@ -109,6 +143,32 @@ const InternDailyLog = () => {
   useEffect(() => {
     loadData();
   }, [workspace?.id, user?.id, wsRole]);
+
+  useEffect(() => {
+    if (selectedPastLog) {
+      setIsEditingPastLog(false);
+      setPastLogLearnings(selectedPastLog.learnings || '');
+      setPastLogBlockers(selectedPastLog.blockers || '');
+      setPastLogTomorrowPlan(selectedPastLog.tomorrow_plan || '');
+      setPastLogTags(selectedPastLog.tags || []);
+      
+      const otherTag = (selectedPastLog.tags || []).find(t => t.startsWith('Other: '));
+      if (otherTag) {
+        setPastLogOtherTagText(otherTag.substring(7));
+      } else {
+        setPastLogOtherTagText('');
+      }
+
+      try {
+        const parsedTasks = typeof selectedPastLog.tasks_done === 'string'
+          ? JSON.parse(selectedPastLog.tasks_done)
+          : (selectedPastLog.tasks_done || []);
+        setPastLogTasks(parsedTasks);
+      } catch (e) {
+        setPastLogTasks([]);
+      }
+    }
+  }, [selectedPastLog]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -137,6 +197,85 @@ const InternDailyLog = () => {
       setSelectedTags(prev => 
         prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
       );
+    }
+  };
+
+  const handleAddTaskPast = () => {
+    setPastLogTasks(prev => [...prev, { title: '', description: '', hours: '1' }]);
+  };
+
+  const handleRemoveTaskPast = (index) => {
+    setPastLogTasks(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleTaskChangePast = (index, field, value) => {
+    setPastLogTasks(prev => prev.map((t, idx) => idx === index ? { ...t, [field]: value } : t));
+  };
+
+  const handleToggleTagPast = (tag) => {
+    if (tag === 'Other') {
+      const hasOther = pastLogTags.includes('Other') || pastLogTags.some(t => t.startsWith('Other:'));
+      if (hasOther) {
+        setPastLogTags(prev => prev.filter(t => t !== 'Other' && !t.startsWith('Other:')));
+        setPastLogOtherTagText('');
+      } else {
+        setPastLogTags(prev => [...prev, 'Other']);
+      }
+    } else {
+      setPastLogTags(prev => 
+        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+      );
+    }
+  };
+
+  const handleSavePast = async () => {
+    if (pastLogTasks.length === 0 || pastLogTasks.some(t => !t.title.trim() || !t.hours)) {
+      toast.error('Please enter at least one task with a title and hours spent.');
+      return;
+    }
+    if (!pastLogLearnings.trim()) {
+      toast.error('Please fill in the learnings section.');
+      return;
+    }
+    const hasOther = pastLogTags.includes('Other') || pastLogTags.some(t => t.startsWith('Other:'));
+    if (hasOther && !pastLogOtherTagText.trim()) {
+      toast.error('Please enter a custom category name for the Other tag.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      let finalTags = pastLogTags.filter(t => t !== 'Other' && !t.startsWith('Other:'));
+      if (hasOther) {
+        finalTags.push('Other');
+        if (pastLogOtherTagText.trim()) {
+          finalTags.push(`Other: ${pastLogOtherTagText.trim()}`);
+        }
+      }
+
+      const payload = {
+        tasks_done: pastLogTasks,
+        learnings: pastLogLearnings,
+        blockers: pastLogBlockers,
+        tomorrow_plan: pastLogTomorrowPlan,
+        tags: finalTags,
+        status: 'submitted'
+      };
+
+      const updated = await updateInternLog(selectedPastLog.id, payload);
+      toast.success('Work log resubmitted successfully! 🚀');
+      
+      setSelectedPastLog(prev => ({
+        ...prev,
+        ...updated
+      }));
+      setIsEditingPastLog(false);
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to resubmit work log');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -182,10 +321,11 @@ const InternDailyLog = () => {
       };
 
       if (todayLog?.id) {
-        payload.id = todayLog.id;
+        await updateInternLog(todayLog.id, payload);
+      } else {
+        await saveLog(payload);
       }
-
-      await saveLog(payload);
+      
       toast.success(statusType === 'submitted' ? 'Daily log submitted successfully! 🚀' : 'Draft saved.');
       await loadData();
     } catch (err) {
@@ -263,7 +403,7 @@ const InternDailyLog = () => {
     );
   }
 
-  const isTodayLocked = todayLog?.status === 'submitted' || todayLog?.status === 'acknowledged' || todayLog?.status === 'flagged';
+  const isTodayLocked = todayLog?.status === 'submitted' || todayLog?.status === 'acknowledged';
 
   return (
     <DashboardLayout activeMenu="My Daily Log">
@@ -558,11 +698,18 @@ const InternDailyLog = () => {
                       className="px-5 py-2 bg-brand hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition cursor-pointer flex items-center gap-1.5"
                     >
                       {isSubmitting ? <LuLoader className="animate-spin" size={14} /> : null}
-                      Submit Log
+                      {todayLog?.status === 'flagged' ? 'Submit Updates' : 'Submit Log'}
                     </button>
                   </div>
                 )}
               </div>
+
+              {/* Real-time Discussion Chat */}
+              {todayLog?.id && (
+                <div className="card dark:bg-[#151518]/90 dark:border-zinc-800/80 p-5 mt-4">
+                  <InternLogComments logId={todayLog.id} />
+                </div>
+              )}
             </div>
 
             {/* Right Column: Streak + Calendar + History */}
@@ -732,9 +879,14 @@ const InternDailyLog = () => {
                             <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">
                               {new Date(log.log_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                             </p>
-                            <p className="text-[10px] text-slate-400 dark:text-zinc-550 mt-0.5 flex items-center gap-1">
+                            <p className="text-[10px] text-slate-450 dark:text-zinc-550 mt-0.5 flex items-center gap-1 flex-wrap">
                               <LuClock size={9} />
                               {(() => { try { const t = typeof log.tasks_done === 'string' ? JSON.parse(log.tasks_done) : log.tasks_done; return `${t.reduce((s,i) => s + parseFloat(i.hours||0), 0)}h · ${t.length} task${t.length !== 1 ? 's' : ''}`; } catch(e) { return '—'; } })()}
+                              {(log.intern_log_messages?.[0]?.count > 0 || logCommentCounts[log.id] > 0) && (
+                                <span className="inline-flex items-center gap-0.5 text-indigo-500 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/20 px-1.5 py-0.2 rounded border border-indigo-100/30 dark:border-indigo-900/30 text-[8px] uppercase">
+                                  <LuMessageSquare size={8} /> {log.intern_log_messages?.[0]?.count || logCommentCounts[log.id]}
+                                </span>
+                              )}
                             </p>
                           </div>
                           <div className="flex items-center gap-1">
@@ -754,159 +906,349 @@ const InternDailyLog = () => {
           </div>
         )}
 
-
         {/* Read-only details Modal for past log */}
         {selectedPastLog && (
           <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-zinc-950 border border-slate-105 dark:border-zinc-850 rounded-2xl max-w-xl w-full shadow-2xl p-5 relative max-h-[85vh] overflow-y-auto custom-scrollbar">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-850 pb-3 mb-4">
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-zinc-100 uppercase tracking-wider">
-                    Log Details
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+                    {isEditingPastLog ? '✏️ Edit Log Details' : '📋 Log Details'}
                   </h3>
                   <p className="text-[10px] text-slate-450 dark:text-zinc-550 font-bold uppercase tracking-wider mt-0.5">
-                    {new Date(selectedPastLog.log_date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    {new Date(selectedPastLog.log_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                   </p>
                 </div>
-                <button
-                  onClick={() => setSelectedPastLog(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-900 cursor-pointer text-sm font-bold"
-                >
-                  Close
-                </button>
+                <div className="flex items-center gap-2">
+                  {selectedPastLog.status === 'flagged' && !isEditingPastLog && (
+                    <button
+                      onClick={() => setIsEditingPastLog(true)}
+                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-md shadow-amber-500/10 transition cursor-pointer"
+                    >
+                      Edit Log
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setSelectedPastLog(null);
+                      setIsEditingPastLog(false);
+                    }}
+                    className="p-1 px-3 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-900 cursor-pointer text-xs font-bold"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-4 text-xs">
-                {/* Status Block */}
-                <div className="flex items-center justify-between bg-slate-50/80 dark:bg-zinc-900/40 p-3 rounded-xl border border-slate-150/40 dark:border-zinc-850/50">
-                  <span className="font-bold text-slate-500 dark:text-zinc-400">Submission Status</span>
-                  <span className="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300">
-                    {selectedPastLog.status === 'submitted' ? 'pending review' : selectedPastLog.status}
-                  </span>
-                </div>
-
-                {/* Tasks List */}
-                <div className="space-y-2">
-                  <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
-                    Tasks Logged
-                  </h4>
+              {isEditingPastLog ? (
+                /* EDIT FORM BODY FOR FLAGGED LOGS */
+                <div className="space-y-4 text-xs">
+                  {/* Tasks List */}
                   <div className="space-y-2">
-                    {(() => {
-                      try {
-                        const parsed = typeof selectedPastLog.tasks_done === 'string' 
-                          ? JSON.parse(selectedPastLog.tasks_done) 
-                          : selectedPastLog.tasks_done;
-                        
-                        if (!parsed || parsed.length === 0) {
-                          return <p className="text-slate-400 italic">No tasks logged.</p>;
-                        }
-
-                        return parsed.map((t, idx) => (
-                          <div key={idx} className="p-3 bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-100 dark:border-zinc-900 rounded-xl space-y-1">
-                            <div className="flex justify-between items-center">
-                              <span className="font-bold text-slate-800 dark:text-zinc-200">{t.title}</span>
-                              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 px-1.5 py-0.5 rounded-md">{t.hours} hrs</span>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
+                        Tasks Logged *
+                      </h4>
+                      <button
+                        onClick={handleAddTaskPast}
+                        className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        <LuPlus size={12} /> Add Task
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                      {pastLogTasks.map((task, idx) => (
+                        <div 
+                          key={idx} 
+                          className="p-3.5 rounded-2xl bg-slate-50/50 dark:bg-zinc-900/40 border border-slate-150/40 dark:border-zinc-800/50 flex flex-col gap-2 relative group"
+                        >
+                          <input
+                            type="text"
+                            placeholder="What task/ticket did you work on?"
+                            value={task.title}
+                            onChange={(e) => handleTaskChangePast(idx, 'title', e.target.value)}
+                            className="w-full bg-white dark:bg-zinc-950 border border-slate-205 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-zinc-205 font-bold focus:border-indigo-500 focus:outline-none transition-all"
+                          />
+                          <textarea
+                            placeholder="Briefly describe what you did..."
+                            value={task.description}
+                            rows={1}
+                            onChange={(e) => handleTaskChangePast(idx, 'description', e.target.value)}
+                            className="w-full bg-white dark:bg-zinc-950 border border-slate-205 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-655 dark:text-zinc-400 focus:border-indigo-500 focus:outline-none transition-all resize-none"
+                          />
+                          <div className="flex justify-between items-center gap-2">
+                            <div className="flex items-center gap-1 border border-slate-205 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-1 rounded-xl">
+                              <span className="text-[10px] font-black uppercase text-slate-400 dark:text-zinc-650 pr-1">Hrs</span>
+                              <input
+                                type="number"
+                                min="0.5"
+                                max="12"
+                                step="0.5"
+                                value={task.hours}
+                                onChange={(e) => handleTaskChangePast(idx, 'hours', e.target.value)}
+                                className="w-12 bg-transparent border-none text-xs text-center font-bold text-slate-800 dark:text-zinc-200 focus:outline-none"
+                              />
                             </div>
-                            {t.description && (
-                              <p className="text-slate-500 dark:text-zinc-400 text-xs mt-1 leading-normal pl-2 border-l border-slate-200 dark:border-zinc-800">{t.description}</p>
+                            {pastLogTasks.length > 1 && (
+                              <button
+                                onClick={() => handleRemoveTaskPast(idx)}
+                                className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-955/15 transition cursor-pointer"
+                                title="Delete task row"
+                              >
+                                <LuTrash2 size={14} />
+                              </button>
                             )}
                           </div>
-                        ));
-                      } catch (e) {
-                        return <p className="text-rose-500">Failed to parse tasks data.</p>;
-                      }
-                    })()}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Learnings */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+                      Key Learnings *
+                    </label>
+                    <textarea
+                      placeholder="What did you learn today?"
+                      value={pastLogLearnings}
+                      rows={3}
+                      onChange={(e) => setPastLogLearnings(e.target.value)}
+                      className="w-full bg-white dark:bg-zinc-950 border border-slate-205 dark:border-zinc-800 rounded-xl p-3 text-xs text-slate-700 dark:text-zinc-300 focus:border-indigo-500 focus:outline-none transition-all leading-normal"
+                    />
+                  </div>
+
+                  {/* Blockers */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+                      Blockers or Help Needed
+                    </label>
+                    <textarea
+                      placeholder="Detail blockers, if any..."
+                      value={pastLogBlockers}
+                      rows={2}
+                      onChange={(e) => setPastLogBlockers(e.target.value)}
+                      className="w-full bg-white dark:bg-zinc-950 border border-slate-205 dark:border-zinc-800 rounded-xl p-3 text-xs text-slate-700 dark:text-zinc-300 focus:border-indigo-500 focus:outline-none transition-all leading-normal"
+                    />
+                  </div>
+
+                  {/* Plan for Tomorrow */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+                      Plan for Tomorrow
+                    </label>
+                    <textarea
+                      placeholder="What is your plan for tomorrow?"
+                      value={pastLogTomorrowPlan}
+                      rows={2}
+                      onChange={(e) => setPastLogTomorrowPlan(e.target.value)}
+                      className="w-full bg-white dark:bg-zinc-950 border border-slate-205 dark:border-zinc-800 rounded-xl p-3 text-xs text-slate-700 dark:text-zinc-300 focus:border-indigo-500 focus:outline-none transition-all leading-normal"
+                    />
+                  </div>
+
+                  {/* Tags */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+                      Work Category Tags
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {AVAILABLE_TAGS.map(tag => {
+                        const isSelected = tag === 'Other'
+                          ? (pastLogTags.includes('Other') || pastLogTags.some(t => t.startsWith('Other:')))
+                          : pastLogTags.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleToggleTagPast(tag)}
+                            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                              isSelected
+                                ? 'bg-brand border-brand text-white shadow-sm'
+                                : 'bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-slate-550 dark:text-zinc-400 hover:border-slate-350 dark:hover:border-zinc-700'
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {(pastLogTags.includes('Other') || pastLogTags.some(t => t.startsWith('Other:'))) && (
+                      <input
+                        type="text"
+                        placeholder="Enter custom category name"
+                        value={pastLogOtherTagText}
+                        onChange={(e) => setPastLogOtherTagText(e.target.value)}
+                        className="w-full md:w-80 bg-white dark:bg-zinc-950 border border-slate-205 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-805 dark:text-zinc-200 font-bold focus:border-indigo-500 focus:outline-none transition-all"
+                      />
+                    )}
+                  </div>
+
+                  {/* Save Footer */}
+                  <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-zinc-800 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingPastLog(false)}
+                      className="px-4 py-2 border border-slate-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-slate-700 dark:text-zinc-350 hover:bg-slate-50 dark:hover:bg-zinc-900/40 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={handleSavePast}
+                      className="px-5 py-2 bg-brand hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      {isSubmitting ? <LuLoader className="animate-spin" size={14} /> : null}
+                      Submit Updates
+                    </button>
                   </div>
                 </div>
+              ) : (
+                /* READ-ONLY DISPLAY BODY */
+                <div className="space-y-4 text-xs">
+                  {/* Status Block */}
+                  <div className="flex items-center justify-between bg-slate-50/80 dark:bg-zinc-900/40 p-3 rounded-xl border border-slate-150/40 dark:border-zinc-850/50">
+                    <span className="font-bold text-slate-500 dark:text-zinc-400">Submission Status</span>
+                    <span className="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300">
+                      {selectedPastLog.status === 'submitted' ? 'pending review' : selectedPastLog.status}
+                    </span>
+                  </div>
 
-                {/* Learnings */}
-                <div className="space-y-1">
-                  <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
-                    Key Learnings
-                  </h4>
-                  <p className="p-3.5 bg-slate-50/30 dark:bg-zinc-900/20 border border-slate-100 dark:border-zinc-900 rounded-xl text-slate-700 dark:text-zinc-300 leading-relaxed">
-                    {selectedPastLog.learnings || <span className="text-slate-400 italic">None logged.</span>}
-                  </p>
-                </div>
-
-                {/* Blockers */}
-                {selectedPastLog.blockers && (
-                  <div className="space-y-1">
-                    <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] flex items-center gap-1 text-rose-600 dark:text-rose-455">
-                      Blockers / Challenges
+                  {/* Tasks List */}
+                  <div className="space-y-2">
+                    <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
+                      Tasks Logged
                     </h4>
-                    <p className="p-3.5 bg-rose-50/20 dark:bg-rose-955/5 border border-rose-100/30 dark:border-rose-900/20 rounded-xl text-slate-700 dark:text-zinc-350 leading-relaxed font-semibold">
-                      {selectedPastLog.blockers}
-                    </p>
-                  </div>
-                )}
+                    <div className="space-y-2">
+                      {(() => {
+                        try {
+                          const parsed = typeof selectedPastLog.tasks_done === 'string' 
+                            ? JSON.parse(selectedPastLog.tasks_done) 
+                            : selectedPastLog.tasks_done;
+                          
+                          if (!parsed || parsed.length === 0) {
+                            return <p className="text-slate-400 italic">No tasks logged.</p>;
+                          }
 
-                {/* Tomorrow Plan */}
-                {selectedPastLog.tomorrow_plan && (
+                          return parsed.map((t, idx) => (
+                            <div key={idx} className="p-3 bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-100 dark:border-zinc-900 rounded-xl space-y-1">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-slate-800 dark:text-zinc-200">{t.title}</span>
+                                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 px-1.5 py-0.5 rounded-md">{t.hours} hrs</span>
+                              </div>
+                              {t.description && (
+                                <p className="text-slate-500 dark:text-zinc-400 text-xs mt-1 leading-normal pl-2 border-l border-slate-200 dark:border-zinc-800">{t.description}</p>
+                              )}
+                            </div>
+                          ));
+                        } catch (e) {
+                          return <p className="text-rose-500">Failed to parse tasks data.</p>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Learnings */}
                   <div className="space-y-1">
                     <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
-                      Plan for Tomorrow
+                      Key Learnings
                     </h4>
                     <p className="p-3.5 bg-slate-50/30 dark:bg-zinc-900/20 border border-slate-100 dark:border-zinc-900 rounded-xl text-slate-700 dark:text-zinc-300 leading-relaxed">
-                      {selectedPastLog.tomorrow_plan}
+                      {selectedPastLog.learnings || <span className="text-slate-400 italic">None logged.</span>}
                     </p>
                   </div>
-                )}
 
-                 {/* Tags */}
-                 {selectedPastLog.tags && selectedPastLog.tags.length > 0 && (
-                   <div className="space-y-1.5">
-                     <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
-                       Tags
-                     </h4>
-                     <div className="flex flex-wrap gap-1">
-                       {(() => {
-                         const tagsToRender = selectedPastLog.tags || [];
-                         const hasCustomOther = tagsToRender.some(t => t.startsWith('Other:'));
-                         const filtered = hasCustomOther 
-                           ? tagsToRender.filter(t => t !== 'Other')
-                           : tagsToRender;
-                         return filtered.map(tag => (
-                           <span key={tag} className="px-2 py-0.5 bg-brand-bg dark:bg-indigo-950/20 border border-brand-bg dark:border-indigo-900/30 text-brand-text dark:text-indigo-400 text-[10px] font-bold rounded-lg">
-                             {tag}
-                           </span>
-                         ));
-                       })()}
-                     </div>
-                   </div>
-                 )}
-
-                {/* Manager Feedback */}
-                {(selectedPastLog.status === 'acknowledged' || selectedPastLog.status === 'flagged' || selectedPastLog.manager_note) && (
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-850 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-slate-800 dark:text-zinc-200 uppercase tracking-wide text-[10px]">
-                        Manager Review
+                  {/* Blockers */}
+                  {selectedPastLog.blockers && (
+                    <div className="space-y-1">
+                      <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] flex items-center gap-1 text-rose-600 dark:text-rose-455">
+                        Blockers / Challenges
                       </h4>
-                      {selectedPastLog.reviewed_at && (
-                        <span className="text-[9px] text-slate-400 dark:text-zinc-550 font-bold">
-                          Reviewed {new Date(selectedPastLog.reviewed_at).toLocaleDateString()}
-                        </span>
-                      )}
+                      <p className="p-3.5 bg-rose-50/20 dark:bg-rose-955/5 border border-rose-100/30 dark:border-rose-900/20 rounded-xl text-slate-700 dark:text-zinc-350 leading-relaxed font-semibold">
+                        {selectedPastLog.blockers}
+                      </p>
                     </div>
-                    <div className="p-3.5 bg-slate-50/80 dark:bg-zinc-900/40 border border-slate-150/40 dark:border-zinc-800 rounded-xl flex items-start gap-3">
-                      {selectedPastLog.reviewer?.profile_image_url ? (
-                        <img src={selectedPastLog.reviewer.profile_image_url} alt="Reviewer" className="w-6 h-6 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-[10px] text-slate-600 dark:text-zinc-400">
-                          {selectedPastLog.reviewer?.name?.[0] || 'M'}
-                        </div>
-                      )}
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-slate-700 dark:text-zinc-300">{selectedPastLog.reviewer?.name || 'Workspace Manager'}</p>
-                        <p className="text-slate-655 dark:text-zinc-400 font-semibold italic text-xs leading-normal">
-                          {selectedPastLog.manager_note ? `"${selectedPastLog.manager_note}"` : 'Acknowledged with no comments.'}
-                        </p>
+                  )}
+
+                  {/* Tomorrow Plan */}
+                  {selectedPastLog.tomorrow_plan && (
+                    <div className="space-y-1">
+                      <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
+                        Plan for Tomorrow
+                      </h4>
+                      <p className="p-3.5 bg-slate-50/30 dark:bg-zinc-900/20 border border-slate-100 dark:border-zinc-900 rounded-xl text-slate-700 dark:text-zinc-300 leading-relaxed">
+                        {selectedPastLog.tomorrow_plan}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  {selectedPastLog.tags && selectedPastLog.tags.length > 0 && (
+                    <div className="space-y-1.5">
+                      <h4 className="font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
+                        Tags
+                      </h4>
+                      <div className="flex flex-wrap gap-1">
+                        {(() => {
+                          const tagsToRender = selectedPastLog.tags || [];
+                          const hasCustomOther = tagsToRender.some(t => t.startsWith('Other:'));
+                          const filtered = hasCustomOther 
+                            ? tagsToRender.filter(t => t !== 'Other')
+                            : tagsToRender;
+                          return filtered.map(tag => (
+                            <span key={tag} className="px-2 py-0.5 bg-brand-bg dark:bg-indigo-950/20 border border-brand-bg dark:border-indigo-900/30 text-brand-text dark:text-indigo-400 text-[10px] font-bold rounded-lg">
+                              {tag}
+                            </span>
+                          ));
+                        })()}
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+
+                  {/* Manager Feedback */}
+                  {(selectedPastLog.status === 'acknowledged' || selectedPastLog.status === 'flagged' || selectedPastLog.manager_note) && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-850 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-black text-slate-800 dark:text-zinc-200 uppercase tracking-wide text-[10px]">
+                          Manager Review
+                        </h4>
+                        {selectedPastLog.reviewed_at && (
+                          <span className="text-[9px] text-slate-400 dark:text-zinc-550 font-bold">
+                            Reviewed {new Date(selectedPastLog.reviewed_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-3.5 bg-slate-50/80 dark:bg-zinc-900/40 border border-slate-150/40 dark:border-zinc-800 rounded-xl flex items-start gap-3">
+                        {selectedPastLog.reviewer?.profile_image_url ? (
+                          <img src={selectedPastLog.reviewer.profile_image_url} alt="Reviewer" className="w-6 h-6 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-[10px] text-slate-600 dark:text-zinc-400">
+                            {selectedPastLog.reviewer?.name?.[0] || 'M'}
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-slate-700 dark:text-zinc-300">{selectedPastLog.reviewer?.name || 'Workspace Manager'}</p>
+                          <p className="text-slate-655 dark:text-zinc-400 font-semibold italic text-xs leading-normal">
+                            {selectedPastLog.manager_note ? `"${selectedPastLog.manager_note}"` : 'Acknowledged with no comments.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Real-time Follow-up Chat for selected past log */}
+                  {selectedPastLog?.id && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-850">
+                      <h4 className="font-black text-slate-800 dark:text-zinc-200 uppercase tracking-wide text-[10px] mb-2">
+                        Discussion Thread
+                      </h4>
+                      <InternLogComments logId={selectedPastLog.id} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

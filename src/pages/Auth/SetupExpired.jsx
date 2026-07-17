@@ -46,10 +46,10 @@ const SetupExpired = ({ reason = 'expired' }) => {
       <div className="w-full max-w-[420px] bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800/80 shadow-2xl rounded-3xl p-8 md:p-10 transition-all duration-300">
         
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-8 select-none justify-center">
+        <Link to="/" className="flex items-center gap-2 mb-8 select-none justify-center hover:opacity-85 transition-opacity">
           <img src="/logo.png" className="w-5 h-5 object-contain rounded bg-slate-100 dark:bg-zinc-800 p-0.5" alt="Logo" />
           <span className="text-[10px] font-black text-slate-800 dark:text-zinc-200 uppercase tracking-widest">STRIDEO</span>
-        </div>
+        </Link>
 
         {/* Animated Icon Circle */}
         <div className={`w-16 h-16 rounded-full ${copy.iconBg} border flex items-center justify-center mx-auto mb-6 shadow-sm animate-bounce-slow`}>

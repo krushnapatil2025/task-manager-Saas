@@ -54,6 +54,15 @@ const ChatInput = ({
     };
   }, []);
 
+  // Auto-resize message input height based on content length
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [value]);
+
   const handleChange = (e) => {
     const v = e.target.value;
     setValue(v);

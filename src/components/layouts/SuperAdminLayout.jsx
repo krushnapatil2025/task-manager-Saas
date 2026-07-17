@@ -8,6 +8,7 @@ import {
   LuChevronLeft, LuClipboardCheck, LuMail, LuSettings,
   LuLock, LuMenu, LuServer
 } from 'react-icons/lu';
+import { toast } from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SuperAdminLayout — Collapsible glassmorphic dark sidebar console layout
@@ -38,7 +39,8 @@ const SuperAdminLayout = ({ title = 'Super Admin' }) => {
 
   const handleLogout = () => {
     superAdminLogout();
-    navigate('/login');
+    toast.success('Successfully logged out!');
+    navigate('/');
   };
 
   const toggleSidebar = () => {
